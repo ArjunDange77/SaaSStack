@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
+import { PortalCardSkeleton } from "@/components/pg/PortalCardSkeleton";
 
 interface PortalData {
   profile: {
@@ -29,6 +30,10 @@ interface PortalData {
   recent_activity: { verb: string; message: string; created_at: string }[];
 }
 
+function firstName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] || fullName;
+}
+
 export function ResidentPortal() {
   const { logout } = useAuth();
   const { data, isLoading, error } = useQuery({
@@ -39,22 +44,40 @@ export function ResidentPortal() {
     },
   });
 
-  if (isLoading) return <p className="portal-page">Loading your portal…</p>;
+  if (isLoading) {
+    return (
+      <div className="portal-page">
+        <header className="portal-header">
+          <div>
+            <h1>My PG</h1>
+            <p className="muted">Loading…</p>
+          </div>
+        </header>
+        <PortalCardSkeleton />
+        <PortalCardSkeleton />
+        <PortalCardSkeleton />
+        <PortalCardSkeleton />
+      </div>
+    );
+  }
+
   if (error || !data) {
     return (
       <div className="portal-page">
-        <p className="error">Could not load resident profile.</p>
+        <p className="error">Could not load your profile. Please try again or sign out.</p>
         <button type="button" onClick={logout}>Sign out</button>
       </div>
     );
   }
+
+  const greeting = firstName(data.profile.full_name);
 
   return (
     <div className="portal-page">
       <header className="portal-header">
         <div>
           <h1>My PG</h1>
-          <p className="muted">{data.profile.full_name}</p>
+          <p className="portal-greeting">Hi, {greeting}</p>
         </div>
         <button type="button" className="secondary" onClick={logout}>Sign out</button>
       </header>
@@ -68,12 +91,12 @@ export function ResidentPortal() {
             <span className="muted">Since {data.assignment.assigned_date}</span>
           </p>
         ) : (
-          <p className="muted">No active room assignment.</p>
+          <p className="muted">You don&apos;t have a room assigned yet. Contact the office if you need help.</p>
         )}
       </section>
 
       <section className="portal-card">
-        <h2>Rent</h2>
+        <h2>My rent</h2>
         {data.latest_rent ? (
           <p>
             ₹{data.latest_rent.amount} due {data.latest_rent.due_date} ·{" "}
@@ -82,14 +105,14 @@ export function ResidentPortal() {
             </span>
           </p>
         ) : (
-          <p className="muted">No rent records yet.</p>
+          <p className="muted">You&apos;re all caught up on rent — no records to show right now.</p>
         )}
       </section>
 
       <section className="portal-card">
-        <h2>Documents</h2>
+        <h2>My documents</h2>
         {data.documents.length === 0 ? (
-          <p className="muted">No documents uploaded.</p>
+          <p className="muted">No documents uploaded yet.</p>
         ) : (
           <ul className="portal-list">
             {data.documents.map((d) => (
@@ -99,13 +122,13 @@ export function ResidentPortal() {
             ))}
           </ul>
         )}
-        <Link to="/r/pg-documents" className="portal-link">Manage documents</Link>
+        <Link to="/r/pg-documents" className="portal-link">View my documents</Link>
       </section>
 
       <section className="portal-card">
-        <h2>Complaints</h2>
+        <h2>My complaints</h2>
         {data.open_complaints.length === 0 ? (
-          <p className="muted">No open complaints.</p>
+          <p className="muted">No open issues — tap below if something needs fixing.</p>
         ) : (
           <ul className="portal-list">
             {data.open_complaints.map((c) => (
@@ -115,12 +138,12 @@ export function ResidentPortal() {
             ))}
           </ul>
         )}
-        <Link to="/r/pg-complaints" className="portal-link">View all / raise complaint</Link>
+        <Link to="/r/pg-complaints" className="portal-link">Raise or track a complaint</Link>
       </section>
 
       {data.recent_activity.length > 0 && (
         <section className="portal-card">
-          <h2>Recent activity</h2>
+          <h2>What&apos;s new</h2>
           <ul className="portal-list muted">
             {data.recent_activity.map((a, i) => (
               <li key={`${a.created_at}-${i}`}>{a.message || a.verb}</li>

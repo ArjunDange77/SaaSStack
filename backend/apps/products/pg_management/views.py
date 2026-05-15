@@ -148,6 +148,7 @@ class RoomViewSet(PGViewSet):
         "room_number",
         "floor",
         "occupancy_display",
+        "sharing_label",
         "availability_label",
         "room_status",
     )
@@ -158,7 +159,18 @@ class RoomViewSet(PGViewSet):
         {"param": "room_status", "label": "Maintenance", "value": "maintenance"},
         {"param": "full", "label": "Full", "value": "1"},
     )
-    field_ui_overrides = {"room_status": BADGE_STATUS}
+    field_ui_overrides = {
+        "room_status": BADGE_STATUS,
+        "availability_label": {
+            "variant": "badge",
+            "badge_map": {
+                "Available": "success",
+                "Full": "neutral",
+                "Maintenance": "warning",
+                "Occupied": "neutral",
+            },
+        },
+    }
 
     def get_queryset(self):
         qs = super().get_queryset()

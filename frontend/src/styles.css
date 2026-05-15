@@ -875,6 +875,11 @@ tbody tr.row-clickable:hover td {
   margin-bottom: 1.25rem;
 }
 
+.portal-greeting {
+  margin: 0.25rem 0 0;
+  font-size: 1.05rem;
+}
+
 .portal-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -888,6 +893,24 @@ tbody tr.row-clickable:hover td {
   font-size: 1rem;
 }
 
+.portal-card-skeleton .portal-skel-title {
+  display: block;
+  height: 1.25rem;
+  width: 40%;
+  margin-bottom: 0.75rem;
+}
+
+.portal-card-skeleton .portal-skel-line {
+  display: block;
+  height: 0.875rem;
+  width: 85%;
+  margin-bottom: 0.5rem;
+}
+
+.portal-card-skeleton .portal-skel-line.short {
+  width: 55%;
+}
+
 .portal-list {
   list-style: none;
   padding: 0;
@@ -898,31 +921,194 @@ tbody tr.row-clickable:hover td {
   font-size: 0.9rem;
 }
 
-.public-booking .room-grid {
-  display: grid;
-  gap: 0.75rem;
-  margin: 1rem 0;
-}
-
-.public-booking .room-card {
+/* PG room cards */
+.pg-room-card {
+  display: block;
+  width: 100%;
   text-align: left;
-  padding: 1rem;
-  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--surface);
+  color: var(--text);
   cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+button.pg-room-card {
+  font: inherit;
+}
+
+.pg-room-card:hover {
+  border-color: var(--brand-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.pg-room-card-selected {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.pg-room-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.pg-room-card-title {
+  font-size: 1.1rem;
+}
+
+.pg-room-card-floor {
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+}
+
+.pg-room-card-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pg-room-card-skeleton {
+  min-height: 6.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(
+    90deg,
+    var(--surface) 0%,
+    rgba(128, 128, 128, 0.08) 50%,
+    var(--surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
 }
 
 .room-card-available {
-  border-color: var(--success, #16a34a);
+  border-left: 3px solid #16a34a;
 }
 
 .room-card-full {
-  opacity: 0.7;
+  opacity: 0.85;
+  border-left: 3px solid var(--muted);
 }
 
 .room-card-maintenance {
-  border-color: var(--warning, #ca8a04);
+  border-left: 3px solid #ca8a04;
+}
+
+.room-card-occupied {
+  border-left: 3px solid var(--border);
+}
+
+/* Public booking */
+.public-booking-header {
+  margin-bottom: 1rem;
+}
+
+.public-booking-header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.booking-steps {
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.25rem;
+}
+
+.booking-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  opacity: 0.45;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.booking-step.active {
+  opacity: 1;
+}
+
+.booking-step.current {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.booking-step-num {
+  width: 1.5rem;
+  height: 1.5rem;
+  line-height: 1.5rem;
+  border-radius: 50%;
+  background: var(--border);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.booking-step.current .booking-step-num {
+  background: var(--brand-primary);
+  color: #fff;
+}
+
+.public-booking .room-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.booking-empty {
+  padding: 1.25rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.booking-skip-room {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.booking-selected-room {
+  margin-bottom: 1rem;
+}
+
+.booking-selected-room .pg-room-card {
+  cursor: default;
+  margin-top: 0.35rem;
+}
+
+.booking-success {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.booking-success-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 auto 1rem;
+  line-height: 3.5rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.15);
+  border-radius: 50%;
+}
+
+.booking-success-lead {
+  font-size: 1.05rem;
+  margin-bottom: 0.75rem;
+}
+
+.booking-ref {
+  margin-bottom: 1rem;
+  font-weight: 500;
 }
 
 .booking-form label {
@@ -934,4 +1120,107 @@ tbody tr.row-clickable:hover td {
 .booking-form textarea {
   width: 100%;
   margin-top: 0.25rem;
+}
+
+/* Command center dashboard */
+.command-center {
+  margin-bottom: 1.5rem;
+}
+
+.command-center-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.command-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1.1rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s;
+}
+
+.command-tile:hover {
+  border-color: var(--brand-primary);
+}
+
+.command-tile-highlight {
+  border-color: #eab308;
+  background: rgba(234, 179, 8, 0.08);
+}
+
+.command-tile-value {
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 800;
+  color: var(--brand-primary);
+  line-height: 1.1;
+}
+
+.command-tile-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.command-tile-skeleton {
+  min-height: 5.5rem;
+  border-radius: 12px;
+  background: linear-gradient(
+    90deg,
+    var(--surface) 0%,
+    rgba(128, 128, 128, 0.08) 50%,
+    var(--surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.dashboard-all-clear {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.dashboard-secondary {
+  margin-top: 0.5rem;
+}
+
+/* Nav pending badge */
+nav a,
+nav .active {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: #eab308;
+  border-radius: 999px;
+}
+
+@media (max-width: 479px) {
+  .booking-step-label {
+    font-size: 0.65rem;
+  }
+
+  .command-center-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

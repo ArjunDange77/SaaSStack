@@ -4,6 +4,24 @@ from .models import BedAssignment, BookingRequest, Complaint, Document, RentReco
 from .services import validate_assignment
 
 
+def room_occupancy_display(room: Room) -> str:
+    return f"{room.current_occupancy}/{room.occupancy_limit}"
+
+
+def room_availability_label(room: Room) -> str:
+    if room.room_status == "maintenance":
+        return "Maintenance"
+    if room.current_occupancy >= room.occupancy_limit:
+        return "Full"
+    if room.room_status == "available":
+        return "Available"
+    return "Occupied"
+
+
+def room_sharing_label(room: Room) -> str:
+    return "Single" if room.occupancy_limit <= 1 else "Shared"
+
+
 class ResidentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resident
@@ -42,6 +60,7 @@ class ResidentSerializer(serializers.ModelSerializer):
 class RoomSerializer(serializers.ModelSerializer):
     occupancy_display = serializers.SerializerMethodField()
     availability_label = serializers.SerializerMethodField()
+    sharing_label = serializers.SerializerMethodField()
 
     class Meta:
         model = Room
@@ -54,6 +73,7 @@ class RoomSerializer(serializers.ModelSerializer):
             "current_occupancy",
             "occupancy_display",
             "availability_label",
+            "sharing_label",
             "room_status",
             "created_at",
             "updated_at",
@@ -66,6 +86,7 @@ class RoomSerializer(serializers.ModelSerializer):
             "current_occupancy",
             "occupancy_display",
             "availability_label",
+            "sharing_label",
             "created_at",
             "updated_at",
             "created_by",
@@ -73,16 +94,13 @@ class RoomSerializer(serializers.ModelSerializer):
         )
 
     def get_occupancy_display(self, obj):
-        return f"{obj.current_occupancy}/{obj.occupancy_limit}"
+        return room_occupancy_display(obj)
 
     def get_availability_label(self, obj):
-        if obj.room_status == "maintenance":
-            return "Maintenance"
-        if obj.current_occupancy >= obj.occupancy_limit:
-            return "Full"
-        if obj.room_status == "available":
-            return "Available"
-        return "Occupied"
+        return room_availability_label(obj)
+
+    def get_sharing_label(self, obj):
+        return room_sharing_label(obj)
 
 
 class BedAssignmentSerializer(serializers.ModelSerializer):
@@ -211,9 +229,32 @@ class BookingRequestSerializer(serializers.ModelSerializer):
 
 
 class PublicRoomSerializer(serializers.ModelSerializer):
+    occupancy_display = serializers.SerializerMethodField()
+    availability_label = serializers.SerializerMethodField()
+    sharing_label = serializers.SerializerMethodField()
+
     class Meta:
         model = Room
-        fields = ("id", "room_number", "floor", "occupancy_limit", "current_occupancy", "room_status")
+        fields = (
+            "id",
+            "room_number",
+            "floor",
+            "occupancy_limit",
+            "current_occupancy",
+            "occupancy_display",
+            "availability_label",
+            "sharing_label",
+            "room_status",
+        )
+
+    def get_occupancy_display(self, obj):
+        return room_occupancy_display(obj)
+
+    def get_availability_label(self, obj):
+        return room_availability_label(obj)
+
+    def get_sharing_label(self, obj):
+        return room_sharing_label(obj)
 
 
 class PublicBookingSerializer(serializers.Serializer):

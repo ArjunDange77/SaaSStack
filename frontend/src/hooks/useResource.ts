@@ -225,13 +225,29 @@ export function useResourceMutations(slug: string, schema?: ResourceSchema) {
   return { create, update, remove, runAction };
 }
 
-export function usePgDashboard() {
+export interface PgDashboardStats {
+  active_residents: number;
+  total_rooms: number;
+  occupied_rooms: number;
+  rooms_available: number;
+  rooms_maintenance: number;
+  rooms_full: number;
+  occupancy_rate: number;
+  open_complaints: number;
+  rent_due_unpaid: number;
+  rent_overdue: number;
+  pending_bookings: number;
+  as_of?: string;
+}
+
+export function usePgDashboard(enabled = true) {
   return useQuery({
     queryKey: ["pg", "dashboard"],
     queryFn: async () => {
-      const { data } = await api.get<Record<string, number>>("/pg/dashboard/");
+      const { data } = await api.get<PgDashboardStats>("/pg/dashboard/");
       return data;
     },
+    enabled,
   });
 }
 

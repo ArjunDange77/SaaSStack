@@ -4,12 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { useIsMobile } from "@/hooks/useMediaQuery";
-import { useMyTenants } from "@/hooks/useResource";
+import { useMyTenants, usePgDashboard } from "@/hooks/useResource";
 import { MobileHeader } from "./MobileHeader";
 import { NavBar } from "./NavBar";
 
 export function AppShell() {
-  const { user, logout, tenantSlug, setTenantSlug } = useAuth();
+  const { user, logout, tenantSlug, setTenantSlug, role } = useAuth();
+  const isOperator = role === "owner" || role === "staff";
+  const { data: dashboardStats } = usePgDashboard(isOperator);
+  const navBadges = isOperator
+    ? { "/r/pg-booking-requests": dashboardStats?.pending_bookings ?? 0 }
+    : undefined;
   const { data: myTenants } = useMyTenants(true);
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -63,7 +68,7 @@ export function AppShell() {
       <aside id="app-sidebar" className="sidebar" aria-hidden={isMobile ? !menuOpen : false}>
         <h1 className="sidebar-brand">SaaSStack</h1>
         {branding?.name && <p className="sidebar-tagline">{branding.name}</p>}
-        <NavBar />
+        <NavBar badges={navBadges} />
         <hr className="sidebar-divider" />
         <label className="sidebar-label">Tenant</label>
         {myTenants && myTenants.length > 0 ? (
