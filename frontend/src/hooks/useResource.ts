@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { api, apiErrorMessage } from "@/api/client";
+import { useToast } from "@/components/ui/ToastProvider";
 import type { PaginatedResponse, ResourceSchema } from "@/types/metadata";
 import { hasFileValues, toFormData } from "@/utils/formValues";
+import { actionSuccessMessage } from "@/utils/feedbackMessages";
 
 function stripUnchangedFiles(
   body: Record<string, unknown>,
@@ -51,10 +53,11 @@ export function useResourceList(
   slug: string | undefined,
   search: string,
   page: number,
-  ordering?: string
+  ordering?: string,
+  filters: Record<string, string> = {}
 ) {
   return useQuery({
-    queryKey: ["resource", slug, "list", search, page, ordering],
+    queryKey: ["resource", slug, "list", search, page, ordering, filters],
     queryFn: async () => {
       const { data } = await api.get<PaginatedResponse<Record<string, unknown>> | Record<string, unknown>[]>(
         `/meta/resources/${slug}/`,
@@ -63,6 +66,7 @@ export function useResourceList(
             ...(search ? { search } : {}),
             page,
             ...(ordering ? { ordering } : {}),
+            ...filters,
           },
         }
       );
@@ -119,16 +123,27 @@ export function useResourceTimeline(slug: string | undefined, id: string | undef
   });
 }
 
-export function useResourceMutations(slug: string) {
+export function useResourceMutations(slug: string, schema?: ResourceSchema) {
   const qc = useQueryClient();
+  const { success, error: toastError } = useToast();
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["resource", slug] });
     qc.invalidateQueries({ queryKey: ["timeline", slug] });
+    qc.invalidateQueries({ queryKey: ["pg", "dashboard"] });
   };
 
   const create = useMutation({
     mutationFn: async (body: Record<string, unknown>) => writeResource("post", slug, body),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      if (schema) {
+        const singular = schema.title.replace(/s$/, "");
+        success(`${singular} created`);
+      } else {
+        success("Record created");
+      }
+    },
+    onError: (err) => toastError(apiErrorMessage(err, "Could not create record.")),
   });
 
   const update = useMutation({
@@ -141,14 +156,32 @@ export function useResourceMutations(slug: string) {
       body: Record<string, unknown>;
       initial?: Record<string, unknown>;
     }) => writeResource("patch", slug, body, id, initial),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      if (schema) {
+        const singular = schema.title.replace(/s$/, "");
+        success(`${singular} saved`);
+      } else {
+        success("Record saved");
+      }
+    },
+    onError: (err) => toastError(apiErrorMessage(err, "Could not save record.")),
   });
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/meta/resources/${slug}/${id}/`);
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      if (schema) {
+        const singular = schema.title.replace(/s$/, "");
+        success(`${singular} deleted`);
+      } else {
+        success("Record deleted");
+      }
+    },
+    onError: (err) => toastError(apiErrorMessage(err, "Could not delete record.")),
   });
 
   const runAction = useMutation({
@@ -157,23 +190,36 @@ export function useResourceMutations(slug: string) {
       actionPath,
       method = "post",
       body = {},
+      actionName,
     }: {
       id?: string;
       actionPath: string;
       method?: string;
       body?: Record<string, unknown>;
+      actionName?: string;
     }) => {
       const base = `/meta/resources/${slug}/`;
       const url = id ? `${base}${id}/${actionPath}/` : `${base}${actionPath}/`;
       const m = method.toLowerCase();
       if (m === "get") {
         const { data } = await api.get(url);
-        return data;
+        return { data, actionName };
       }
       const { data } = await api.post(url, body);
-      return data;
+      return { data, actionName };
     },
-    onSuccess: invalidate,
+    onSuccess: (_data, variables) => {
+      invalidate();
+      const action = schema?.actions.find(
+        (a) => a.url_path === variables.actionPath || a.name === variables.actionName
+      );
+      if (action) {
+        success(actionSuccessMessage(action));
+      } else {
+        success("Action completed");
+      }
+    },
+    onError: (err) => toastError(apiErrorMessage(err, "Action failed.")),
   });
 
   return { create, update, remove, runAction };

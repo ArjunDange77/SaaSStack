@@ -6,53 +6,78 @@ import { CellValue } from "./CellValue";
 interface Props {
   schema: ResourceSchema;
   rows: Record<string, unknown>[];
+  loading?: boolean;
   onRowClick?: (row: Record<string, unknown>) => void;
 }
 
-export function DynamicTable({ schema, rows, onRowClick }: Props) {
+function TableSkeleton({ columns }: { columns: number }) {
+  return (
+    <>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <tr key={i} className="skeleton-row">
+          {Array.from({ length: columns }).map((__, j) => (
+            <td key={j}>
+              <span className="skeleton-cell" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+export function DynamicTable({ schema, rows, loading, onRowClick }: Props) {
   const labelMaps = useRelationLabelMaps(schema);
   const columns = schema.list_display.length ? schema.list_display : ["id"];
+  const emptyMessage = schema.empty_state ?? "No records yet. Create one to get started.";
 
   return (
-    <table>
-      <thead>
-        <tr>
-          {columns.map((col) => (
-            <th key={col}>{col}</th>
-          ))}
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 ? (
+    <div className="table-wrap">
+      <table>
+        <thead>
           <tr>
-            <td colSpan={columns.length + 1} className="empty-state">
-              No records yet. Create one to get started.
-            </td>
+            {columns.map((col) => (
+              <th key={col}>{col.replace(/_/g, " ")}</th>
+            ))}
+            <th>Actions</th>
           </tr>
-        ) : (
-          rows.map((row) => (
-            <tr key={String(row.id)} style={{ cursor: onRowClick ? "pointer" : undefined }}>
-              {columns.map((col) => (
-                <td key={col} onClick={() => onRowClick?.(row)}>
-                  <CellValue
-                    field={fieldByName(schema, col)}
-                    value={row[col]}
-                    labelMaps={labelMaps}
-                  />
-                </td>
-              ))}
-              <td>
-                {onRowClick && (
-                  <button type="button" className="secondary" onClick={() => onRowClick(row)}>
-                    Open
-                  </button>
-                )}
+        </thead>
+        <tbody>
+          {loading && rows.length === 0 ? (
+            <TableSkeleton columns={columns.length + 1} />
+          ) : rows.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length + 1} className="empty-state">
+                <p>{emptyMessage}</p>
+                <p className="muted">Use New to add your first record.</p>
               </td>
             </tr>
-          ))
-        )}
-      </tbody>
-    </table>
+          ) : (
+            rows.map((row) => (
+              <tr key={String(row.id)} className={onRowClick ? "row-clickable" : undefined}>
+                {columns.map((col) => (
+                  <td key={col} onClick={() => onRowClick?.(row)}>
+                    <CellValue
+                      field={fieldByName(schema, col)}
+                      value={row[col]}
+                      labelMaps={labelMaps}
+                      row={row}
+                    />
+                  </td>
+                ))}
+                <td>
+                  {onRowClick && (
+                    <button type="button" className="secondary" onClick={() => onRowClick(row)}>
+                      Open
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+      {loading && rows.length > 0 && <p className="muted table-loading-hint">Refreshing…</p>}
+    </div>
   );
 }

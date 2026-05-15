@@ -1,10 +1,12 @@
 import { FormEvent, useState } from "react";
 import { Navigate } from "react-router-dom";
-import axios from "axios";
 import { useAuth } from "@/auth/AuthContext";
+import { useToast } from "@/components/ui/ToastProvider";
+import { apiErrorMessage } from "@/api/client";
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth();
+  const { success, error: toastError } = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [tenant, setTenant] = useState("pg-demo");
@@ -19,17 +21,11 @@ export function LoginPage() {
     setError("");
     try {
       await login(username, password, tenant);
+      success("Signed in successfully");
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        const detail = err.response?.data?.detail;
-        setError(
-          typeof detail === "string"
-            ? detail
-            : "Login failed. Check credentials and that the API is running."
-        );
-      } else {
-        setError("Login failed. Check credentials and that the API is running.");
-      }
+      const msg = apiErrorMessage(err, "Login failed. Check credentials and that the API is running.");
+      setError(msg);
+      toastError(msg);
     }
   };
 

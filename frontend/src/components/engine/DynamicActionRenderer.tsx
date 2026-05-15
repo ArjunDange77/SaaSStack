@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function DynamicActionRenderer({ schema, recordId, onDone }: Props) {
-  const { runAction } = useResourceMutations(schema.resource);
+  const { runAction } = useResourceMutations(schema.resource, schema);
   const detailActions = schema.actions.filter((a) => a.detail);
   const listActions = schema.actions.filter((a) => !a.detail);
 
@@ -21,6 +21,7 @@ export function DynamicActionRenderer({ schema, recordId, onDone }: Props) {
       id: recordId,
       actionPath: action.url_path,
       method,
+      actionName: action.name,
     });
     onDone?.();
   };
@@ -35,7 +36,7 @@ export function DynamicActionRenderer({ schema, recordId, onDone }: Props) {
           disabled={runAction.isPending}
           onClick={() => fire(action)}
         >
-          {action.name.replace(/_/g, " ")}
+          {action.label ?? action.name.replace(/_/g, " ")}
         </button>
       ))}
     </div>

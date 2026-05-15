@@ -7,11 +7,11 @@ First vertical on the SaaSStack kernel: paying-guest (PG) property operations.
 | Slug | Model | Notes |
 |------|-------|-------|
 | `pg-residents` | Resident | Soft delete, onboarding/active badges |
-| `pg-rooms` | Room | Occupancy counters |
-| `pg-bed-assignments` | BedAssignment | `vacate` action updates room occupancy |
-| `pg-documents` | Document | File upload, `verify` action |
-| `pg-rent-records` | RentRecord | `mark-paid` action |
-| `pg-complaints` | Complaint | `resolve` action |
+| `pg-rooms` | Room | Occupancy display `current/limit` |
+| `pg-bed-assignments` | BedAssignment | `vacate` / `transfer` actions |
+| `pg-documents` | Document | File upload, `verify` / `reject` |
+| `pg-rent-records` | RentRecord | Filters: unpaid, overdue; `mark-paid` |
+| `pg-complaints` | Complaint | Filters: open, in progress; `resolve` |
 
 ## APIs
 
@@ -23,21 +23,28 @@ First vertical on the SaaSStack kernel: paying-guest (PG) property operations.
 
 ```bash
 python manage.py seed_pg --username admin --password admin
+python manage.py seed_pg --demo   # full demo dataset on pg-demo
 ```
 
-Creates tenant `pg-demo`, owner membership, and tenant-scoped nav (including `/dashboard`).
+Creates tenant `pg-demo`, owner membership, nav (including `/dashboard`), sample rooms/residents, overdue rent, and an open complaint.
 
 ## Frontend
 
-- `/dashboard` — PG stats overview
-- `/r/pg-residents` etc. — metadata-driven CRUD
+- `/dashboard` — operational KPIs with deep links to filtered lists
+- `/r/pg-residents` etc. — metadata-driven CRUD with filter chips and toasts
 
 Use header `X-Tenant: pg-demo` with a user that has `TenantMembership`.
 
-## Pilot findings
+## Operator guide (daily loop)
 
-Use this section during real-property pilot (see [docs/PILOT_DEPLOYMENT.md](../../../docs/PILOT_DEPLOYMENT.md)):
+1. **Sign in** — tenant slug `pg-demo` (or your property slug).
+2. **Dashboard** — check occupancy, overdue rent, open complaints.
+3. **Residents** — add new resident; note onboarding vs active status.
+4. **Assignments** — assign room; use **Vacate** when they leave.
+5. **Documents** — upload ID; **Verify** when checked.
+6. **Rent** — use **Unpaid** / **Overdue** filters; **Mark paid** when collected.
+7. **Complaints** — filter **Open**; **Mark in progress** → **Resolve**.
 
-| Date | Observation | Kernel vs product |
-|------|-------------|-------------------|
-| | | |
+## Local docs (not in git)
+
+Pilot log, deployment checklist, and demo script live under repo `docs/` (gitignored): `pilot-findings.md`, `PILOT_DEPLOYMENT.md`, `pg-demo-script.md`, `pg-overview.md`.

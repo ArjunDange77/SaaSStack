@@ -78,4 +78,5 @@ def dashboard_stats(tenant):
         ).count(),
         "rent_due_unpaid": rent_qs.filter(paid_status="unpaid").count(),
         "rent_overdue": rent_qs.filter(paid_status="unpaid", due_date__lt=today).count(),
+        "as_of": today.isoformat(),
     }

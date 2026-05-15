@@ -68,7 +68,7 @@ See `backend/apps/products/pg_management/README.md`. Use `X-Tenant: pg-demo` aft
 
 ## Project layout
 
-- `docs/contracts/` — **platform contracts** (metadata, fields, actions, tenant rules, rendering)
+- `docs/` — **local documentation** (gitignored; contracts, pilot notes, demo scripts)
 - `backend/apps/registry/` — registry, metadata engine, kernel base ViewSet  
 - `backend/apps/demo/` — validation resource (`demo-items`)  
 - `backend/apps/cosmetix/` — shell (branding, nav)  
@@ -76,7 +76,7 @@ See `backend/apps/products/pg_management/README.md`. Use `X-Tenant: pg-demo` aft
 
 ## Contracts and versioning
 
-All kernel payloads include `schema_version` (currently **`1.0`**). See [docs/contracts/README.md](docs/contracts/README.md) before changing APIs or UI behavior.
+All kernel payloads include `schema_version` (currently **`1.0`**). See `docs/contracts/README.md` locally before changing APIs or UI behavior.
 
 ## Testing (TDD baseline)
 
@@ -104,11 +104,11 @@ Green `pytest` + `npm run test:run` means:
 - [ ] Tenant-scoped CRUD respects `X-Tenant` (fail closed without tenant)  
 - [ ] `@action` endpoints (e.g. `archive`) work via metadata  
 - [ ] `seed_kernel` creates demo tenant + nav + branding  
-- [ ] React engine renders field types per [rendering-expectations.md](docs/contracts/rendering-expectations.md)  
+- [ ] React engine renders field types per `docs/contracts/rendering-expectations.md` (local)
 
 ### TDD workflow for a new resource
 
-1. Update [docs/contracts/](docs/contracts/) if the contract changes.  
+1. Update `docs/contracts/` locally if the contract changes.  
 2. Copy `backend/apps/demo/tests/` patterns; add tests for your slug.  
 3. Red → implement model + `register_resource` → migrate → green.  
 4. Add optional `NavBarItem` in admin; verify `/r/<slug>` in the app.  

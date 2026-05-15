@@ -87,14 +87,47 @@ export function isAuthError(error: unknown): boolean {
   return status === 401 || status === 403;
 }
 
+function formatValidationErrors(data: Record<string, unknown>): string | null {
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(data)) {
+    if (key === "detail" || key === "non_field_errors") continue;
+    if (Array.isArray(value)) {
+      parts.push(`${key.replace(/_/g, " ")}: ${value.join(", ")}`);
+    } else if (typeof value === "string") {
+      parts.push(`${key.replace(/_/g, " ")}: ${value}`);
+    }
+  }
+  return parts.length ? parts.join("; ") : null;
+}
+
 export function apiErrorMessage(error: unknown, fallback: string): string {
-  if (!axios.isAxiosError(error)) return fallback;
-  if (error.response?.status === 401) {
+  if (!axios.isAxiosError(error)) {
+    if (error instanceof Error && error.message) return error.message;
+    return fallback;
+  }
+  if (!error.response) {
+    return "Network error. Check your connection and try again.";
+  }
+  const status = error.response.status;
+  if (status === 401) {
     return "Your session expired. Please sign in again.";
   }
-  const detail = error.response?.data as { detail?: string } | undefined;
-  if (typeof detail?.detail === "string") return detail.detail;
-  if (error.response?.status === 404) return fallback;
+  if (status === 413) {
+    return "File is too large to upload.";
+  }
+  const data = error.response.data;
+  if (typeof data === "string" && data.trim()) return data;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const record = data as Record<string, unknown>;
+    if (typeof record.detail === "string") return record.detail;
+    if (Array.isArray(record.detail)) return record.detail.map(String).join("; ");
+    if (Array.isArray(record.non_field_errors)) {
+      return record.non_field_errors.map(String).join("; ");
+    }
+    const validation = formatValidationErrors(record);
+    if (validation) return validation;
+  }
+  if (status === 404) return fallback;
   return fallback;
 }
 

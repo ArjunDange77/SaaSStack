@@ -14,6 +14,14 @@ export interface FieldUiMeta {
   variant?: "badge";
   badge_map?: Record<string, string>;
   help_text?: string;
+  date_highlight?: "past";
+  label_map?: Record<string, string>;
+}
+
+export interface ListFilterMeta {
+  param: string;
+  label: string;
+  value?: string;
 }
 
 export interface FieldMeta {
@@ -31,6 +39,7 @@ export interface FieldMeta {
 
 export interface ActionMeta {
   name: string;
+  label?: string;
   url_path: string;
   detail: boolean;
   methods: string[];
@@ -50,6 +59,8 @@ export interface ResourceSchema {
   ordering: { default: string[] };
   pagination?: { style: string; page_size: number; max_page_size: number };
   actions: ActionMeta[];
+  list_filters?: ListFilterMeta[];
+  empty_state?: string;
   list_path: string;
   detail_path_template: string;
 }

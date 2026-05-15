@@ -94,9 +94,11 @@ def _collect_actions(viewset_class: Type) -> List[Dict[str, Any]]:
                     http_list.append(http_method.lower())
         if not http_list:
             http_list = ["post"]
+        action_labels = getattr(viewset_class, "action_labels", {}) or {}
         actions.append(
             {
                 "name": name,
+                "label": action_labels.get(name, name.replace("_", " ").title()),
                 "url_path": url_path,
                 "detail": bool(detail),
                 "methods": http_list,
@@ -136,7 +138,10 @@ def build_resource_metadata(
     if pagination_class is not None:
         page_size = getattr(pagination_class, "page_size", 25)
 
-    return {
+    list_filters = list(getattr(viewset_class, "list_filters", ()) or ())
+    empty_state = getattr(viewset_class, "empty_state", "") or ""
+
+    meta = {
         "schema_version": REGISTRY_SCHEMA_VERSION,
         "resource": slug,
         "title": title or slug.replace("-", " ").title(),
@@ -151,3 +156,8 @@ def build_resource_metadata(
         "list_path": f"/api/meta/resources/{slug}/",
         "detail_path_template": f"/api/meta/resources/{slug}/{{id}}/",
     }
+    if list_filters:
+        meta["list_filters"] = list_filters
+    if empty_state:
+        meta["empty_state"] = empty_state
+    return meta

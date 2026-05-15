@@ -75,10 +75,28 @@ class ResidentViewSet(PGViewSet):
         "onboarding_status",
         "active_status",
     )
+    empty_state = "No residents yet. Add your first resident to get started."
+    list_filters = (
+        {"param": "active_status", "label": "Active", "value": "active"},
+        {"param": "active_status", "label": "Inactive", "value": "inactive"},
+    )
     field_ui_overrides = {
-        "onboarding_status": BADGE_STATUS,
-        "active_status": BADGE_STATUS,
+        "onboarding_status": {
+            **BADGE_STATUS,
+            "help_text": "Pending = new; In progress = onboarding; Completed = ready.",
+        },
+        "active_status": {
+            **BADGE_STATUS,
+            "help_text": "Active = currently staying; Inactive = vacated or not assigned.",
+        },
     }
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        active_status = self.request.query_params.get("active_status")
+        if active_status:
+            qs = qs.filter(active_status=active_status)
+        return qs
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
@@ -98,11 +116,23 @@ class RoomViewSet(PGViewSet):
         "id",
         "room_number",
         "floor",
-        "current_occupancy",
-        "occupancy_limit",
+        "occupancy_display",
         "room_status",
     )
+    empty_state = "No rooms configured. Add rooms to track occupancy."
+    list_filters = (
+        {"param": "room_status", "label": "Occupied", "value": "occupied"},
+        {"param": "room_status", "label": "Available", "value": "available"},
+        {"param": "room_status", "label": "Maintenance", "value": "maintenance"},
+    )
     field_ui_overrides = {"room_status": BADGE_STATUS}
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        room_status = self.request.query_params.get("room_status")
+        if room_status:
+            qs = qs.filter(room_status=room_status)
+        return qs
 
 
 class BedAssignmentViewSet(PGViewSet):
@@ -116,6 +146,7 @@ class BedAssignmentViewSet(PGViewSet):
     resource_list_display = ("id", "resident", "room", "assigned_date", "status")
     relation_display_fields = {"resident": "full_name", "room": "room_number"}
     field_ui_overrides = {"status": BADGE_STATUS}
+    action_labels = {"vacate": "Vacate room", "transfer": "Transfer room"}
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
@@ -198,6 +229,7 @@ class DocumentViewSet(PGViewSet):
     resource_list_display = ("id", "resident", "document_type", "verification_status")
     relation_display_fields = {"resident": "full_name"}
     field_ui_overrides = {"verification_status": BADGE_STATUS}
+    action_labels = {"verify": "Verify document", "reject": "Reject document"}
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
@@ -232,13 +264,24 @@ class RentRecordViewSet(PGViewSet):
     filter_backends = (SearchFilter, OrderingFilter)
     resource_list_display = ("id", "resident", "amount", "due_date", "paid_status")
     relation_display_fields = {"resident": "full_name"}
-    field_ui_overrides = {"paid_status": BADGE_STATUS}
+    empty_state = "No rent records. Create rent entries to track payments."
+    list_filters = (
+        {"param": "paid_status", "label": "Unpaid", "value": "unpaid"},
+        {"param": "overdue", "label": "Overdue", "value": "true"},
+    )
+    action_labels = {"mark_paid": "Mark paid"}
+    field_ui_overrides = {
+        "paid_status": BADGE_STATUS,
+        "due_date": {"date_highlight": "past"},
+    }
 
     def get_queryset(self):
         qs = super().get_queryset()
         paid_status = self.request.query_params.get("paid_status")
         if paid_status:
             qs = qs.filter(paid_status=paid_status)
+        if self.request.query_params.get("overdue") == "true":
+            qs = qs.filter(paid_status="unpaid", due_date__lt=timezone.now().date())
         return qs
 
     @action(detail=True, methods=["post"], url_path="mark-paid")
@@ -266,7 +309,23 @@ class ComplaintViewSet(PGViewSet):
     filter_backends = (SearchFilter, OrderingFilter)
     resource_list_display = ("id", "title", "resident", "status", "priority")
     relation_display_fields = {"resident": "full_name", "resolved_by": "username"}
+    empty_state = "No complaints. Residents can raise issues here when needed."
+    list_filters = (
+        {"param": "status", "label": "Open", "value": "open"},
+        {"param": "status", "label": "In progress", "value": "in_progress"},
+    )
+    action_labels = {
+        "in_progress": "Mark in progress",
+        "resolve": "Resolve",
+    }
     field_ui_overrides = {"status": BADGE_STATUS, "priority": BADGE_STATUS}
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status = self.request.query_params.get("status")
+        if status:
+            qs = qs.filter(status=status)
+        return qs
 
     def perform_create(self, serializer):
         super().perform_create(serializer)

@@ -63,7 +63,9 @@ export function ResourceForm({ schema, initial, onSubmit, onCancel, submitting }
         </div>
       ))}
       <div className="toolbar">
-        <button type="submit" disabled={submitting}>Save</button>
+        <button type="submit" disabled={submitting}>
+          {submitting ? "Saving…" : "Save"}
+        </button>
         <button type="button" className="secondary" onClick={onCancel}>Cancel</button>
       </div>
     </form>

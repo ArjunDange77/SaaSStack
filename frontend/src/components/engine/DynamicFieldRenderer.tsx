@@ -27,16 +27,25 @@ function RelationSelect({
   value: unknown;
   onChange: (name: string, value: unknown) => void;
 }) {
-  const { data: options = [], isLoading } = useRelatedResourceOptions(field.related_resource);
+  const { data: options = [], isLoading, isError, error } = useRelatedResourceOptions(
+    field.related_resource
+  );
   const displayField = field.relation_display_field ?? "id";
 
   return (
     <>
+      {isLoading && <p className="muted">Loading options…</p>}
+      {isError && (
+        <p className="error">
+          Could not load options.{" "}
+          {error instanceof Error ? error.message : "Try again later."}
+        </p>
+      )}
       <select
         id={`field-${field.name}`}
         value={value === null || value === undefined ? "" : String(value)}
         onChange={(e) => onChange(field.name, coerceRelationPk(e.target.value))}
-        disabled={isLoading}
+        disabled={isLoading || isError}
       >
         <option value="">—</option>
         {options.map((row) => (

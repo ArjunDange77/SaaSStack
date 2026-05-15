@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.cosmetix.models import NavBarItem
-from apps.products.pg_management.models import BedAssignment, RentRecord, Resident, Room
+from apps.products.pg_management.models import BedAssignment, Complaint, RentRecord, Resident, Room
 from apps.tenancy.models import Tenant, TenantMembership
 
 User = get_user_model()
@@ -18,6 +18,11 @@ class Command(BaseCommand):
         parser.add_argument("--username", default="admin", help="User to grant PG membership")
         parser.add_argument("--password", default="admin", help="Password when creating user")
         parser.add_argument("--no-sample-data", action="store_true", help="Skip sample residents/rooms")
+        parser.add_argument(
+            "--demo",
+            action="store_true",
+            help="Alias for full demo dataset (sample data on pg-demo tenant)",
+        )
 
     def handle(self, *args, **options):
         tenant, _ = Tenant.objects.get_or_create(
@@ -63,7 +68,7 @@ class Command(BaseCommand):
                 },
             )
 
-        if not options["no_sample_data"]:
+        if options["demo"] or not options["no_sample_data"]:
             self._seed_sample_data(tenant, user)
 
         self.stdout.write(
@@ -157,4 +162,22 @@ class Command(BaseCommand):
                 },
             )
 
-        self.stdout.write(self.style.SUCCESS("Sample residents, rooms, assignment, and rent seeded."))
+        if len(residents) >= 1:
+            Complaint.objects.get_or_create(
+                tenant=tenant,
+                resident=residents[0],
+                title="Water heater not working",
+                defaults={
+                    "description": "No hot water on floor 1 since morning.",
+                    "priority": "high",
+                    "status": "open",
+                    "created_by": user,
+                    "updated_by": user,
+                },
+            )
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                "Demo data: rooms, residents, assignment, overdue rent, open complaint."
+            )
+        )

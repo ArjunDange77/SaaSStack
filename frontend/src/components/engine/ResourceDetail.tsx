@@ -29,7 +29,7 @@ export function ResourceDetail({ slug, id, schema }: Props) {
   const navigate = useNavigate();
   const { data: record, isLoading, refetch } = useResourceDetail(slug, id);
   const { data: timeline = [] } = useResourceTimeline(slug, id);
-  const { update, remove } = useResourceMutations(slug);
+  const { update, remove } = useResourceMutations(slug, schema);
   const labelMaps = useRelationLabelMaps(schema);
   const [editing, setEditing] = useState(false);
 
@@ -92,15 +92,19 @@ export function ResourceDetail({ slug, id, schema }: Props) {
         <section className="timeline">
           <h3>Activity</h3>
           <ul>
-            {timeline.map((entry) => (
-              <li key={String(entry.id)}>
-                <strong>{String(entry.verb)}</strong> — {String(entry.message)}
-                {entry.actor_username ? (
-                  <span className="muted"> · {String(entry.actor_username)}</span>
-                ) : null}
-                <span className="muted"> · {formatRelativeTime(String(entry.created_at))}</span>
-              </li>
-            ))}
+            {timeline.map((entry) => {
+              const createdAt = String(entry.created_at);
+              const absolute = new Date(createdAt).toLocaleString();
+              return (
+                <li key={String(entry.id)} title={absolute}>
+                  <strong>{String(entry.message || entry.verb)}</strong>
+                  {entry.actor_username ? (
+                    <span className="muted"> · {String(entry.actor_username)}</span>
+                  ) : null}
+                  <span className="muted"> · {formatRelativeTime(createdAt)}</span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

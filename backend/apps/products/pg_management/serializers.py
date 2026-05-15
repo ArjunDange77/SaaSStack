@@ -40,6 +40,8 @@ class ResidentSerializer(serializers.ModelSerializer):
 
 
 class RoomSerializer(serializers.ModelSerializer):
+    occupancy_display = serializers.SerializerMethodField()
+
     class Meta:
         model = Room
         fields = (
@@ -49,6 +51,7 @@ class RoomSerializer(serializers.ModelSerializer):
             "floor",
             "occupancy_limit",
             "current_occupancy",
+            "occupancy_display",
             "room_status",
             "created_at",
             "updated_at",
@@ -59,11 +62,15 @@ class RoomSerializer(serializers.ModelSerializer):
             "id",
             "tenant",
             "current_occupancy",
+            "occupancy_display",
             "created_at",
             "updated_at",
             "created_by",
             "updated_by",
         )
+
+    def get_occupancy_display(self, obj):
+        return f"{obj.current_occupancy}/{obj.occupancy_limit}"
 
 
 class BedAssignmentSerializer(serializers.ModelSerializer):
