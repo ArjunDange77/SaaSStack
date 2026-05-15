@@ -24,11 +24,15 @@ export function PgDashboard() {
   const rentOverdue = data?.rent_overdue ?? 0;
   const rentUnpaid = data?.rent_due_unpaid ?? 0;
   const openComplaints = data?.open_complaints ?? 0;
+  const pendingBookings = data?.pending_bookings ?? 0;
+  const roomsAvailable = data?.rooms_available ?? 0;
+  const roomsFull = data?.rooms_full ?? 0;
+  const roomsMaintenance = data?.rooms_maintenance ?? 0;
   const asOf = data?.as_of;
 
   return (
     <div className="pg-dashboard">
-      <header className="dashboard-header">
+      <header className="dashboard-header page-title-block">
         <h1>PG Management</h1>
         <p className="muted">Operational overview for your property</p>
         {asOf && <p className="muted dashboard-as-of">As of {asOf}</p>}
@@ -48,8 +52,14 @@ export function PgDashboard() {
         </Link>
       </section>
 
-      {(rentOverdue > 0 || openComplaints > 0) && (
+      {(rentOverdue > 0 || openComplaints > 0 || pendingBookings > 0) && (
         <section className="dashboard-alerts" aria-label="Attention needed">
+          {pendingBookings > 0 && (
+            <Link to="/r/pg-booking-requests?status=pending" className="alert-card alert-warning">
+              <strong>{pendingBookings}</strong> pending booking{" "}
+              {pendingBookings === 1 ? "request" : "requests"} — review
+            </Link>
+          )}
           {rentOverdue > 0 && (
             <Link to="/r/pg-rent-records?overdue=true" className="alert-card alert-danger">
               <strong>{rentOverdue}</strong> overdue rent {rentOverdue === 1 ? "record" : "records"} — review now
@@ -84,6 +94,18 @@ export function PgDashboard() {
           <Link to="/r/pg-rooms?room_status=occupied" className="stat-card">
             <span className="stat-value">{data?.occupied_rooms ?? 0}</span>
             <span className="stat-label">Occupied rooms</span>
+          </Link>
+          <Link to="/r/pg-rooms?room_status=available" className="stat-card">
+            <span className="stat-value">{roomsAvailable}</span>
+            <span className="stat-label">Available</span>
+          </Link>
+          <Link to="/r/pg-rooms?full=1" className="stat-card">
+            <span className="stat-value">{roomsFull}</span>
+            <span className="stat-label">Full</span>
+          </Link>
+          <Link to="/r/pg-rooms?room_status=maintenance" className="stat-card">
+            <span className="stat-value">{roomsMaintenance}</span>
+            <span className="stat-label">Maintenance</span>
           </Link>
         </div>
       </section>

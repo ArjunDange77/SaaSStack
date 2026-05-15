@@ -62,7 +62,7 @@ export function ResourceForm({ schema, initial, onSubmit, onCancel, submitting }
           />
         </div>
       ))}
-      <div className="toolbar">
+      <div className="toolbar toolbar-actions-responsive">
         <button type="submit" disabled={submitting}>
           {submitting ? "Saving…" : "Save"}
         </button>

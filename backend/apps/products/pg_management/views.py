@@ -1,32 +1,46 @@
+from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from apps.registry.base import KernelModelViewSet
-from apps.registry.permissions import TenantMembershipPermission
+from apps.registry.permissions import get_membership, get_resident_id_for_user, get_tenant_role
 
-from .models import BedAssignment, Complaint, Document, RentRecord, Resident, Room
+from .models import BedAssignment, BookingRequest, Complaint, Document, RentRecord, Resident, Room
+from .permissions import PGOperatorPermission, PGRolePermission, PGResidentOnlyPermission
+from .rbac import build_capabilities, is_operator, is_resident, resident_queryset_filter
 from .serializers import (
     BedAssignmentSerializer,
+    BookingRequestSerializer,
     ComplaintSerializer,
     DocumentSerializer,
+    PublicBookingSerializer,
+    PublicRoomSerializer,
     RentRecordSerializer,
     ResidentSerializer,
     RoomSerializer,
+    StaffInviteSerializer,
 )
 from .services import (
+    approve_booking,
+    create_resident_account,
     dashboard_stats,
     recalculate_room_occupancy,
+    resident_portal_bundle,
     sync_resident_on_assign,
     sync_resident_on_vacate,
     validate_assignment,
 )
 
-PG_PERMISSIONS = (TenantMembershipPermission,)
+User = get_user_model()
+PG_PERMISSIONS = (PGRolePermission,)
 
 BADGE_STATUS = {
     "variant": "badge",
@@ -45,6 +59,7 @@ BADGE_STATUS = {
         "occupied": "neutral",
         "vacated": "neutral",
         "rejected": "danger",
+        "approved": "success",
         "closed": "neutral",
         "inactive": "neutral",
         "maintenance": "warning",
@@ -58,6 +73,15 @@ BADGE_STATUS = {
 class PGViewSet(KernelModelViewSet):
     auto_activity_log = False
     permission_classes = PG_PERMISSIONS
+
+    @classmethod
+    def get_metadata_capabilities(cls, request):
+        return build_capabilities(request, cls)
+
+    def _scope_resident(self, qs):
+        if is_resident(self.request):
+            return resident_queryset_filter(self.request, qs)
+        return qs
 
 
 class ResidentViewSet(PGViewSet):
@@ -93,6 +117,8 @@ class ResidentViewSet(PGViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        if not is_operator(self.request):
+            return qs.none()
         active_status = self.request.query_params.get("active_status")
         if active_status:
             qs = qs.filter(active_status=active_status)
@@ -101,6 +127,11 @@ class ResidentViewSet(PGViewSet):
     def perform_create(self, serializer):
         super().perform_create(serializer)
         obj = serializer.instance
+        create_login = self.request.data.get("create_login") in (True, "true", "1")
+        username = self.request.data.get("username", "")
+        password = self.request.data.get("password", "")
+        if create_login and username and password:
+            create_resident_account(resident=obj, username=username, password=password)
         self._log("resident.created", f"Resident {obj.full_name} created", obj.pk)
 
 
@@ -117,6 +148,7 @@ class RoomViewSet(PGViewSet):
         "room_number",
         "floor",
         "occupancy_display",
+        "availability_label",
         "room_status",
     )
     empty_state = "No rooms configured. Add rooms to track occupancy."
@@ -124,14 +156,21 @@ class RoomViewSet(PGViewSet):
         {"param": "room_status", "label": "Occupied", "value": "occupied"},
         {"param": "room_status", "label": "Available", "value": "available"},
         {"param": "room_status", "label": "Maintenance", "value": "maintenance"},
+        {"param": "full", "label": "Full", "value": "1"},
     )
     field_ui_overrides = {"room_status": BADGE_STATUS}
 
     def get_queryset(self):
         qs = super().get_queryset()
+        if not is_operator(self.request):
+            return qs.none()
         room_status = self.request.query_params.get("room_status")
         if room_status:
             qs = qs.filter(room_status=room_status)
+        if self.request.query_params.get("full") == "1":
+            qs = qs.filter(room_status="occupied").extra(
+                where=["current_occupancy >= occupancy_limit"]
+            )
         return qs
 
 
@@ -147,6 +186,13 @@ class BedAssignmentViewSet(PGViewSet):
     relation_display_fields = {"resident": "full_name", "room": "room_number"}
     field_ui_overrides = {"status": BADGE_STATUS}
     action_labels = {"vacate": "Vacate room", "transfer": "Transfer room"}
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = self._scope_resident(qs)
+        if is_resident(self.request):
+            qs = qs.filter(status="active", vacated_date__isnull=True)
+        return qs
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
@@ -231,8 +277,20 @@ class DocumentViewSet(PGViewSet):
     field_ui_overrides = {"verification_status": BADGE_STATUS}
     action_labels = {"verify": "Verify document", "reject": "Reject document"}
 
+    def get_queryset(self):
+        return self._scope_resident(super().get_queryset())
+
     def perform_create(self, serializer):
-        super().perform_create(serializer)
+        if is_resident(self.request):
+            tenant = getattr(self.request, "tenant", None)
+            serializer.save(
+                resident_id=get_resident_id_for_user(self.request),
+                tenant=tenant,
+                created_by=self.request.user,
+                updated_by=self.request.user,
+            )
+        else:
+            super().perform_create(serializer)
         obj = serializer.instance
         self._log("document.created", f"Document {obj.document_type} uploaded", obj.pk)
 
@@ -276,7 +334,9 @@ class RentRecordViewSet(PGViewSet):
     }
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = self._scope_resident(super().get_queryset())
+        if not is_operator(self.request):
+            return qs
         paid_status = self.request.query_params.get("paid_status")
         if paid_status:
             qs = qs.filter(paid_status=paid_status)
@@ -321,14 +381,23 @@ class ComplaintViewSet(PGViewSet):
     field_ui_overrides = {"status": BADGE_STATUS, "priority": BADGE_STATUS}
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        status = self.request.query_params.get("status")
-        if status:
-            qs = qs.filter(status=status)
+        qs = self._scope_resident(super().get_queryset())
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            qs = qs.filter(status=status_param)
         return qs
 
     def perform_create(self, serializer):
-        super().perform_create(serializer)
+        if is_resident(self.request):
+            tenant = getattr(self.request, "tenant", None)
+            serializer.save(
+                resident_id=get_resident_id_for_user(self.request),
+                tenant=tenant,
+                created_by=self.request.user,
+                updated_by=self.request.user,
+            )
+        else:
+            super().perform_create(serializer)
         obj = serializer.instance
         self._log("complaint.created", f"Complaint opened: {obj.title}", obj.pk)
 
@@ -351,11 +420,166 @@ class ComplaintViewSet(PGViewSet):
         return Response(ComplaintSerializer(obj).data)
 
 
+class BookingRequestViewSet(PGViewSet):
+    resource_slug = "pg-booking-requests"
+    queryset = BookingRequest.objects.select_related("preferred_room")
+    serializer_class = BookingRequestSerializer
+    search_fields = ("full_name", "phone")
+    ordering = ("-created_at",)
+    filter_backends = (SearchFilter, OrderingFilter)
+    resource_list_display = ("id", "full_name", "phone", "status", "preferred_room")
+    relation_display_fields = {"preferred_room": "room_number"}
+    field_ui_overrides = {"status": BADGE_STATUS}
+    action_labels = {"approve": "Approve", "reject": "Reject"}
+    list_filters = ({"param": "status", "label": "Pending", "value": "pending"},)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not is_operator(self.request):
+            return qs.none()
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            qs = qs.filter(status=status_param)
+        return qs
+
+    @action(detail=True, methods=["post"], url_path="approve")
+    def approve(self, request, pk=None):
+        booking = self.get_object()
+        create_login = request.data.get("create_login") in (True, "true", "1")
+        username = request.data.get("username", "")
+        password = request.data.get("password", "")
+        try:
+            resident = approve_booking(
+                booking,
+                actor=request.user,
+                create_login=create_login,
+                username=username,
+                password=password,
+            )
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        self._log("booking.approved", f"Booking approved for {booking.full_name}", booking.pk)
+        return Response(
+            {
+                "booking": BookingRequestSerializer(booking).data,
+                "resident_id": resident.id,
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, pk=None):
+        booking = self.get_object()
+        if booking.status != "pending":
+            return Response({"detail": "Only pending bookings can be rejected."}, status=400)
+        booking.status = "rejected"
+        booking.remarks = request.data.get("remarks", booking.remarks)
+        booking.save(update_fields=["status", "remarks"])
+        self._log("booking.rejected", f"Booking rejected for {booking.full_name}", booking.pk)
+        return Response(BookingRequestSerializer(booking).data)
+
+
 class PGDashboardView(APIView):
-    permission_classes = [IsAuthenticated, TenantMembershipPermission]
+    permission_classes = [IsAuthenticated, PGOperatorPermission]
 
     def get(self, request):
         tenant = getattr(request, "tenant", None)
         if tenant is None:
             return Response({"detail": "tenant_required"}, status=400)
         return Response(dashboard_stats(tenant))
+
+
+class ResidentMeView(APIView):
+    permission_classes = [IsAuthenticated, PGResidentOnlyPermission]
+
+    def get(self, request):
+        tenant = getattr(request, "tenant", None)
+        resident_id = get_resident_id_for_user(request)
+        if tenant is None or resident_id is None:
+            return Response({"detail": "resident_profile_not_found"}, status=404)
+        resident = Resident.objects.filter(
+            tenant=tenant, pk=resident_id, deleted_at__isnull=True
+        ).first()
+        if not resident:
+            return Response({"detail": "resident_profile_not_found"}, status=404)
+        return Response(resident_portal_bundle(tenant=tenant, resident=resident))
+
+
+class StaffInviteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if get_tenant_role(request) != "owner":
+            return Response({"detail": "Only owners can invite staff."}, status=403)
+        tenant = getattr(request, "tenant", None)
+        if tenant is None:
+            return Response({"detail": "tenant_required"}, status=400)
+        ser = StaffInviteSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        if User.objects.filter(username=data["username"]).exists():
+            return Response({"detail": "Username already taken."}, status=400)
+        user = User.objects.create_user(
+            username=data["username"],
+            email=data.get("email", ""),
+            password=data["password"],
+        )
+        from apps.tenancy.models import TenantMembership
+
+        TenantMembership.objects.create(
+            user=user,
+            tenant=tenant,
+            role=TenantMembership.ROLE_STAFF,
+            is_active=True,
+        )
+        return Response({"id": user.id, "username": user.username}, status=status.HTTP_201_CREATED)
+
+
+class PublicBookingThrottle(AnonRateThrottle):
+    rate = "30/hour"
+
+
+@method_decorator(never_cache, name="dispatch")
+class PublicAvailableRoomsView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [PublicBookingThrottle]
+
+    def get(self, request, tenant_slug):
+        from apps.tenancy.models import Tenant
+
+        tenant = Tenant.objects.filter(slug=tenant_slug, is_active=True).first()
+        if not tenant:
+            return Response({"detail": "tenant_not_found"}, status=404)
+        rooms = Room.objects.filter(
+            tenant=tenant,
+            room_status="available",
+        ).extra(where=["current_occupancy < occupancy_limit"])
+        return Response(PublicRoomSerializer(rooms, many=True).data)
+
+
+@method_decorator(never_cache, name="dispatch")
+class PublicBookingCreateView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [PublicBookingThrottle]
+
+    def post(self, request, tenant_slug):
+        from apps.tenancy.models import Tenant
+
+        tenant = Tenant.objects.filter(slug=tenant_slug, is_active=True).first()
+        if not tenant:
+            return Response({"detail": "tenant_not_found"}, status=404)
+        ser = PublicBookingSerializer(data=request.data, context={"tenant": tenant})
+        ser.is_valid(raise_exception=True)
+        booking = BookingRequest.objects.create(
+            tenant=tenant,
+            full_name=ser.validated_data["full_name"],
+            phone=ser.validated_data["phone"],
+            preferred_room=ser.validated_data.get("preferred_room"),
+            duration=ser.validated_data.get("duration", ""),
+            remarks=ser.validated_data.get("remarks", ""),
+            status="pending",
+            is_active=True,
+        )
+        return Response(
+            {"id": booking.id, "status": booking.status, "message": "Booking request submitted."},
+            status=status.HTTP_201_CREATED,
+        )

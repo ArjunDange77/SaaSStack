@@ -84,9 +84,9 @@ export function ResourceList({ slug, schema }: Props) {
 
   return (
     <div>
-      <h2>{schema.title}</h2>
+      <h2 className="resource-list-title">{schema.title}</h2>
       {schema.description && <p className="muted">{schema.description}</p>}
-      <div className="toolbar">
+      <div className="toolbar toolbar-responsive">
         <input
           placeholder="Search"
           value={search}
@@ -104,7 +104,9 @@ export function ResourceList({ slug, schema }: Props) {
             <option value={`-${sortField}`}>{sortField} ↓</option>
           </select>
         )}
-        <button type="button" onClick={() => setShowCreate(true)}>New</button>
+        {schema.capabilities?.create !== false && (
+          <button type="button" onClick={() => setShowCreate(true)}>New</button>
+        )}
       </div>
 
       {listFilters.length > 0 && (

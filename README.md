@@ -26,6 +26,12 @@ docker compose up --build
 
 After first boot, the entrypoint runs migrations and `seed_kernel` (demo tenant + nav).
 
+If you see `relation "registry_activitylog" does not exist` when creating records, apply pending migrations:
+
+```bash
+docker compose exec backend python manage.py migrate
+```
+
 ### API headers
 
 - `Authorization: Bearer <access_token>` (from `POST /api/auth/login/`)
@@ -77,6 +83,12 @@ See `backend/apps/products/pg_management/README.md`. Use `X-Tenant: pg-demo` aft
 ## Contracts and versioning
 
 All kernel payloads include `schema_version` (currently **`1.0`**). See `docs/contracts/README.md` locally before changing APIs or UI behavior.
+
+## Responsive UI (mobile-first)
+
+Most operators use phones. The app uses a **hamburger drawer** below 768px, **card lists** on mobile (tables on desktop), bottom-sheet modals, and thumb-friendly toasts.
+
+Before shipping UI changes, check **375px**, **768px**, and **1280px** in browser DevTools. See [`.cursor/rules/responsive-ui.mdc`](.cursor/rules/responsive-ui.mdc) for agent/author guidelines.
 
 ## Testing (TDD baseline)
 

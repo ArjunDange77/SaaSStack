@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { apiErrorMessage } from "@/api/client";
 import type { ResourceSchema } from "@/types/metadata";
 import { useResourceDetail, useResourceMutations, useResourceTimeline } from "@/hooks/useResource";
 import { useRelationLabelMaps } from "@/hooks/useRelationLabels";
@@ -28,10 +29,17 @@ function formatRelativeTime(iso: string): string {
 export function ResourceDetail({ slug, id, schema }: Props) {
   const navigate = useNavigate();
   const { data: record, isLoading, refetch } = useResourceDetail(slug, id);
-  const { data: timeline = [] } = useResourceTimeline(slug, id);
+  const {
+    data: timeline = [],
+    isLoading: timelineLoading,
+    isError: timelineError,
+    error: timelineErr,
+    refetch: refetchTimeline,
+  } = useResourceTimeline(slug, id);
   const { update, remove } = useResourceMutations(slug, schema);
   const labelMaps = useRelationLabelMaps(schema);
   const [editing, setEditing] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(true);
 
   if (isLoading || !record) return <p>Loading…</p>;
 
@@ -46,15 +54,23 @@ export function ResourceDetail({ slug, id, schema }: Props) {
   };
 
   return (
-    <div>
+    <div className="resource-detail">
       <p>
         <Link to={`/r/${slug}`}>← Back to {schema.title}</Link>
       </p>
-      <h2>
+      <h2 className="resource-list-title">
         {schema.title} #{id}
       </h2>
 
-      <DynamicActionRenderer schema={schema} recordId={id} onDone={() => refetch()} />
+      <DynamicActionRenderer
+        schema={schema}
+        recordId={id}
+        onDone={() => {
+          refetch();
+          refetchTimeline();
+        }}
+        className="toolbar-actions-responsive"
+      />
 
       {!editing ? (
         <>
@@ -67,11 +83,15 @@ export function ResourceDetail({ slug, id, schema }: Props) {
               )}
             </div>
           ))}
-          <div className="toolbar">
-            <button type="button" onClick={() => setEditing(true)}>Edit</button>
-            <button type="button" className="secondary danger" onClick={handleDelete}>
-              Delete
-            </button>
+          <div className="toolbar toolbar-actions-responsive">
+            {schema.capabilities?.update !== false && (
+              <button type="button" onClick={() => setEditing(true)}>Edit</button>
+            )}
+            {schema.capabilities?.delete !== false && (
+              <button type="button" className="secondary danger" onClick={handleDelete}>
+                Delete
+              </button>
+            )}
           </div>
         </>
       ) : (
@@ -84,30 +104,52 @@ export function ResourceDetail({ slug, id, schema }: Props) {
             await update.mutateAsync({ id, body, initial: record });
             setEditing(false);
             refetch();
+            refetchTimeline();
           }}
         />
       )}
 
-      {timeline.length > 0 && (
-        <section className="timeline">
-          <h3>Activity</h3>
-          <ul>
-            {timeline.map((entry) => {
-              const createdAt = String(entry.created_at);
-              const absolute = new Date(createdAt).toLocaleString();
-              return (
-                <li key={String(entry.id)} title={absolute}>
-                  <strong>{String(entry.message || entry.verb)}</strong>
-                  {entry.actor_username ? (
-                    <span className="muted"> · {String(entry.actor_username)}</span>
-                  ) : null}
-                  <span className="muted"> · {formatRelativeTime(createdAt)}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
+      <section className="timeline" aria-labelledby="activity-heading">
+        <button
+          type="button"
+          className="timeline-toggle secondary"
+          id="activity-heading"
+          aria-expanded={activityOpen}
+          onClick={() => setActivityOpen((o) => !o)}
+        >
+          Activity {activityOpen ? "▾" : "▸"}
+        </button>
+        {activityOpen && (
+          <div className="timeline-body">
+            {timelineLoading && <p className="muted">Loading activity…</p>}
+            {timelineError && (
+              <p className="error">
+                {apiErrorMessage(timelineErr, "Could not load activity.")}
+              </p>
+            )}
+            {!timelineLoading && !timelineError && timeline.length === 0 && (
+              <p className="muted">No activity recorded yet.</p>
+            )}
+            {timeline.length > 0 && (
+              <ul>
+                {timeline.map((entry) => {
+                  const createdAt = String(entry.created_at);
+                  const absolute = new Date(createdAt).toLocaleString();
+                  return (
+                    <li key={String(entry.id)} title={absolute}>
+                      <strong>{String(entry.message || entry.verb)}</strong>
+                      {entry.actor_username ? (
+                        <span className="muted"> · {String(entry.actor_username)}</span>
+                      ) : null}
+                      <span className="muted"> · {formatRelativeTime(createdAt)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -63,6 +63,12 @@ class KernelModelViewSet(
     field_ui_overrides: dict = {}
     relation_display_fields: dict = {}
 
+    @classmethod
+    def get_metadata_capabilities(cls, request):
+        from apps.registry.metadata import _collect_actions, _default_capabilities
+
+        return _default_capabilities(cls)
+
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
         ctx["tenant"] = getattr(self.request, "tenant", None)
@@ -73,18 +79,23 @@ class KernelModelViewSet(
         tenant = getattr(request, "tenant", None)
         if tenant is None:
             return Response([])
+        from django.db import DatabaseError
+
         from apps.registry.models import ActivityLog
         from apps.registry.serializers import ActivityLogSerializer
 
-        logs = (
-            ActivityLog.objects.filter(
-                tenant=tenant,
-                resource_slug=self.resource_slug,
-                object_id=str(pk),
+        try:
+            logs = (
+                ActivityLog.objects.filter(
+                    tenant=tenant,
+                    resource_slug=self.resource_slug,
+                    object_id=str(pk),
+                )
+                .select_related("actor")[:50]
             )
-            .select_related("actor")[:50]
-        )
-        return Response(ActivityLogSerializer(logs, many=True).data)
+            return Response(ActivityLogSerializer(logs, many=True).data)
+        except DatabaseError:
+            return Response([])
 
     def _log(self, verb: str, message: str, object_id, metadata=None):
         tenant = getattr(self.request, "tenant", None)

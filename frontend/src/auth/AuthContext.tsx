@@ -1,10 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AUTH_EXPIRED_EVENT, clearAuthStorage, fetchMe, login as apiLogin } from "@/api/client";
 
+export type AppRole = "owner" | "staff" | "resident" | null;
+
 interface AuthState {
   accessToken: string | null;
   user: Record<string, unknown> | null;
   tenantSlug: string;
+  role: AppRole;
+  residentId: number | null;
 }
 
 interface AuthContextValue extends AuthState {
@@ -12,6 +16,7 @@ interface AuthContextValue extends AuthState {
   login: (username: string, password: string, tenantSlug?: string) => Promise<void>;
   logout: () => void;
   setTenantSlug: (slug: string) => void;
+  refreshMe: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -27,11 +32,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [tenantSlug, setTenantSlugState] = useState(
     () => localStorage.getItem("tenant_slug") || "demo"
   );
+  const [role, setRole] = useState<AppRole>(() => {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    try {
+      const u = JSON.parse(raw) as { role?: AppRole };
+      return u.role ?? null;
+    } catch {
+      return null;
+    }
+  });
+  const [residentId, setResidentId] = useState<number | null>(() => {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    try {
+      const u = JSON.parse(raw) as { resident_id?: number };
+      return u.resident_id ?? null;
+    } catch {
+      return null;
+    }
+  });
+
+  const applyMe = useCallback((me: Record<string, unknown>) => {
+    setUser(me);
+    setRole((me.role as AppRole) ?? null);
+    setResidentId(typeof me.resident_id === "number" ? me.resident_id : null);
+    localStorage.setItem("user", JSON.stringify(me));
+  }, []);
+
+  const refreshMe = useCallback(async () => {
+    const me = await fetchMe();
+    applyMe(me);
+  }, [applyMe]);
 
   useEffect(() => {
     const onExpired = () => {
       setAccessToken(null);
       setUser(null);
+      setRole(null);
+      setResidentId(null);
     };
     window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
@@ -49,19 +88,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTenantSlug(tenant);
       try {
         const me = await fetchMe();
-        setUser(me);
-        localStorage.setItem("user", JSON.stringify(me));
+        applyMe(me);
       } catch {
         setUser({ username });
       }
     },
-    [setTenantSlug]
+    [setTenantSlug, applyMe]
   );
 
   const logout = useCallback(() => {
     clearAuthStorage();
     setAccessToken(null);
     setUser(null);
+    setRole(null);
+    setResidentId(null);
   }, []);
 
   const value = useMemo(
@@ -69,12 +109,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       accessToken,
       user,
       tenantSlug,
+      role,
+      residentId,
       isAuthenticated: Boolean(accessToken),
       login,
       logout,
       setTenantSlug,
+      refreshMe,
     }),
-    [accessToken, user, tenantSlug, login, logout, setTenantSlug]
+    [accessToken, user, tenantSlug, role, residentId, login, logout, setTenantSlug, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

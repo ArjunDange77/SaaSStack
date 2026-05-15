@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from apps.registry.constants import REGISTRY_SCHEMA_VERSION
 from apps.registry.metadata import build_resource_metadata
 from apps.registry.models import ActivityLog
+from apps.registry.permissions import get_tenant_role
 from apps.registry.registry import get_resource, iter_resources
 from apps.registry.serializers import ActivityLogSerializer
 
@@ -15,15 +16,19 @@ class ResourceListMetaView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        data = [
-            {
-                "slug": e.slug,
-                "title": e.resolved_title(),
-                "description": e.description,
-                "schema_version": REGISTRY_SCHEMA_VERSION,
-            }
-            for e in iter_resources()
-        ]
+        role = get_tenant_role(request)
+        data = []
+        for e in iter_resources():
+            if e.catalog_roles and (not role or role not in e.catalog_roles):
+                continue
+            data.append(
+                {
+                    "slug": e.slug,
+                    "title": e.resolved_title(),
+                    "description": e.description,
+                    "schema_version": REGISTRY_SCHEMA_VERSION,
+                }
+            )
         return Response(data)
 
 
@@ -41,6 +46,7 @@ class ResourceSchemaView(APIView):
             entry.viewset_class,
             title=entry.resolved_title(),
             description=entry.description,
+            request=request,
         )
         return Response(payload)
 

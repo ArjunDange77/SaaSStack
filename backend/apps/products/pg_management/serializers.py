@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import BedAssignment, Complaint, Document, RentRecord, Resident, Room
+from .models import BedAssignment, BookingRequest, Complaint, Document, RentRecord, Resident, Room
 from .services import validate_assignment
 
 
@@ -41,6 +41,7 @@ class ResidentSerializer(serializers.ModelSerializer):
 
 class RoomSerializer(serializers.ModelSerializer):
     occupancy_display = serializers.SerializerMethodField()
+    availability_label = serializers.SerializerMethodField()
 
     class Meta:
         model = Room
@@ -52,6 +53,7 @@ class RoomSerializer(serializers.ModelSerializer):
             "occupancy_limit",
             "current_occupancy",
             "occupancy_display",
+            "availability_label",
             "room_status",
             "created_at",
             "updated_at",
@@ -63,6 +65,7 @@ class RoomSerializer(serializers.ModelSerializer):
             "tenant",
             "current_occupancy",
             "occupancy_display",
+            "availability_label",
             "created_at",
             "updated_at",
             "created_by",
@@ -71,6 +74,15 @@ class RoomSerializer(serializers.ModelSerializer):
 
     def get_occupancy_display(self, obj):
         return f"{obj.current_occupancy}/{obj.occupancy_limit}"
+
+    def get_availability_label(self, obj):
+        if obj.room_status == "maintenance":
+            return "Maintenance"
+        if obj.current_occupancy >= obj.occupancy_limit:
+            return "Full"
+        if obj.room_status == "available":
+            return "Available"
+        return "Occupied"
 
 
 class BedAssignmentSerializer(serializers.ModelSerializer):
@@ -178,3 +190,51 @@ class ComplaintSerializer(serializers.ModelSerializer):
             "created_by",
             "updated_by",
         )
+
+
+class BookingRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BookingRequest
+        fields = (
+            "id",
+            "tenant",
+            "full_name",
+            "phone",
+            "preferred_room",
+            "duration",
+            "status",
+            "remarks",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "tenant", "status", "created_at", "updated_at")
+
+
+class PublicRoomSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Room
+        fields = ("id", "room_number", "floor", "occupancy_limit", "current_occupancy", "room_status")
+
+
+class PublicBookingSerializer(serializers.Serializer):
+    full_name = serializers.CharField(max_length=200)
+    phone = serializers.CharField(max_length=20)
+    preferred_room = serializers.PrimaryKeyRelatedField(
+        queryset=Room.objects.none(),
+        required=False,
+        allow_null=True,
+    )
+    duration = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    remarks = serializers.CharField(required=False, allow_blank=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        tenant = self.context.get("tenant")
+        if tenant is not None:
+            self.fields["preferred_room"].queryset = Room.objects.filter(tenant=tenant)
+
+
+class StaffInviteSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(write_only=True)
+    email = serializers.EmailField(required=False, allow_blank=True)

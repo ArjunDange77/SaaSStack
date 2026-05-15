@@ -62,3 +62,63 @@ def pg_member(auth_client, user, pg_tenant):
     )
     auth_client.credentials(HTTP_X_TENANT=pg_tenant.slug)
     return auth_client
+
+
+@pytest.fixture
+def pg_staff_user(db):
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    return User.objects.create_user(username="pgstaff", password="testpass123")
+
+
+@pytest.fixture
+def pg_staff_client(pg_staff_user, pg_tenant):
+    from rest_framework.test import APIClient
+
+    from apps.tenancy.models import TenantMembership
+
+    client = APIClient()
+    TenantMembership.objects.create(
+        user=pg_staff_user,
+        tenant=pg_tenant,
+        role=TenantMembership.ROLE_STAFF,
+        is_active=True,
+    )
+    client.force_authenticate(user=pg_staff_user)
+    client.credentials(HTTP_X_TENANT=pg_tenant.slug)
+    return client
+
+
+@pytest.fixture
+def pg_resident_user(db):
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    return User.objects.create_user(username="pgresident", password="testpass123")
+
+
+@pytest.fixture
+def pg_resident_client(pg_resident_user, pg_tenant):
+    from rest_framework.test import APIClient
+
+    from apps.products.pg_management.models import Resident
+    from apps.tenancy.models import TenantMembership
+
+    client = APIClient()
+    resident = Resident.objects.create(
+        tenant=pg_tenant,
+        full_name="Test Resident",
+        phone="9999999999",
+        user=pg_resident_user,
+    )
+    TenantMembership.objects.create(
+        user=pg_resident_user,
+        tenant=pg_tenant,
+        role=TenantMembership.ROLE_RESIDENT,
+        is_active=True,
+    )
+    client.force_authenticate(user=pg_resident_user)
+    client.credentials(HTTP_X_TENANT=pg_tenant.slug)
+    client.resident = resident
+    return client

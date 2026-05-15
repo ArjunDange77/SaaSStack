@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { apiErrorMessage } from "@/api/client";
 
 export function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, role } = useAuth();
   const { success, error: toastError } = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -13,7 +13,7 @@ export function LoginPage() {
   const [error, setError] = useState("");
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={role === "resident" ? "/resident" : "/dashboard"} replace />;
   }
 
   const onSubmit = async (e: FormEvent) => {

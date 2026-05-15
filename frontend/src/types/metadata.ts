@@ -47,6 +47,13 @@ export interface ActionMeta {
 
 export const SUPPORTED_SCHEMA_MAJOR = 1;
 
+export interface ResourceCapabilities {
+  create: boolean;
+  update: boolean;
+  delete: boolean;
+  actions: string[];
+}
+
 export interface ResourceSchema {
   schema_version: string;
   resource: string;
@@ -59,6 +66,7 @@ export interface ResourceSchema {
   ordering: { default: string[] };
   pagination?: { style: string; page_size: number; max_page_size: number };
   actions: ActionMeta[];
+  capabilities?: ResourceCapabilities;
   list_filters?: ListFilterMeta[];
   empty_state?: string;
   list_path: string;

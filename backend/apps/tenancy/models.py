@@ -25,7 +25,12 @@ class TenantMembership(models.Model):
 
     ROLE_OWNER = "owner"
     ROLE_STAFF = "staff"
-    ROLE_CHOICES = [(ROLE_OWNER, "Owner"), (ROLE_STAFF, "Staff")]
+    ROLE_RESIDENT = "resident"
+    ROLE_CHOICES = [
+        (ROLE_OWNER, "Owner"),
+        (ROLE_STAFF, "Staff"),
+        (ROLE_RESIDENT, "Resident"),
+    ]
 
     user = models.ForeignKey(
         "accounts.User",

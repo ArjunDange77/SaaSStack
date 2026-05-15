@@ -1,0 +1,133 @@
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { api } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
+
+interface PortalData {
+  profile: {
+    id: number;
+    full_name: string;
+    phone: string;
+    email: string;
+    onboarding_status: string;
+    active_status: string;
+  };
+  assignment: {
+    id: number;
+    room_number: string;
+    floor: string;
+    assigned_date: string;
+  } | null;
+  documents: { id: number; document_type: string; verification_status: string }[];
+  latest_rent: {
+    id: number;
+    amount: string;
+    due_date: string;
+    paid_status: string;
+  } | null;
+  open_complaints: { id: number; title: string; status: string; priority: string }[];
+  recent_activity: { verb: string; message: string; created_at: string }[];
+}
+
+export function ResidentPortal() {
+  const { logout } = useAuth();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["resident-me"],
+    queryFn: async () => {
+      const { data: body } = await api.get<PortalData>("/pg/resident/me/");
+      return body;
+    },
+  });
+
+  if (isLoading) return <p className="portal-page">Loading your portal…</p>;
+  if (error || !data) {
+    return (
+      <div className="portal-page">
+        <p className="error">Could not load resident profile.</p>
+        <button type="button" onClick={logout}>Sign out</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="portal-page">
+      <header className="portal-header">
+        <div>
+          <h1>My PG</h1>
+          <p className="muted">{data.profile.full_name}</p>
+        </div>
+        <button type="button" className="secondary" onClick={logout}>Sign out</button>
+      </header>
+
+      <section className="portal-card">
+        <h2>My room</h2>
+        {data.assignment ? (
+          <p>
+            Room <strong>{data.assignment.room_number}</strong> · Floor {data.assignment.floor}
+            <br />
+            <span className="muted">Since {data.assignment.assigned_date}</span>
+          </p>
+        ) : (
+          <p className="muted">No active room assignment.</p>
+        )}
+      </section>
+
+      <section className="portal-card">
+        <h2>Rent</h2>
+        {data.latest_rent ? (
+          <p>
+            ₹{data.latest_rent.amount} due {data.latest_rent.due_date} ·{" "}
+            <span className={`badge badge-${data.latest_rent.paid_status === "paid" ? "success" : "warning"}`}>
+              {data.latest_rent.paid_status}
+            </span>
+          </p>
+        ) : (
+          <p className="muted">No rent records yet.</p>
+        )}
+      </section>
+
+      <section className="portal-card">
+        <h2>Documents</h2>
+        {data.documents.length === 0 ? (
+          <p className="muted">No documents uploaded.</p>
+        ) : (
+          <ul className="portal-list">
+            {data.documents.map((d) => (
+              <li key={d.id}>
+                {d.document_type} · {d.verification_status}
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link to="/r/pg-documents" className="portal-link">Manage documents</Link>
+      </section>
+
+      <section className="portal-card">
+        <h2>Complaints</h2>
+        {data.open_complaints.length === 0 ? (
+          <p className="muted">No open complaints.</p>
+        ) : (
+          <ul className="portal-list">
+            {data.open_complaints.map((c) => (
+              <li key={c.id}>
+                <strong>{c.title}</strong> · {c.status}
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link to="/r/pg-complaints" className="portal-link">View all / raise complaint</Link>
+      </section>
+
+      {data.recent_activity.length > 0 && (
+        <section className="portal-card">
+          <h2>Recent activity</h2>
+          <ul className="portal-list muted">
+            {data.recent_activity.map((a, i) => (
+              <li key={`${a.created_at}-${i}`}>{a.message || a.verb}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}

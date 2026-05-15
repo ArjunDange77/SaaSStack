@@ -8,7 +8,12 @@ function resolveHref(item: NavItem): string {
   if (item.resource_slug) {
     return `/r/${item.resource_slug}`;
   }
-  return item.href || "/";
+  const href = item.href || "/";
+  // Never route the SPA to raw API paths (causes full-page Django HTML on mobile).
+  if (href.startsWith("/api")) {
+    return "/";
+  }
+  return href;
 }
 
 export function NavBar() {

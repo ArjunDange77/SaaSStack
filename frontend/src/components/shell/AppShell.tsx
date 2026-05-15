@@ -1,13 +1,39 @@
-import { Outlet } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useMyTenants } from "@/hooks/useResource";
+import { MobileHeader } from "./MobileHeader";
 import { NavBar } from "./NavBar";
 
 export function AppShell() {
   const { user, logout, tenantSlug, setTenantSlug } = useAuth();
   const { data: myTenants } = useMyTenants(true);
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
+
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const toggleMenu = useCallback(() => setMenuOpen((o) => !o), []);
+
+  useEffect(() => {
+    closeMenu();
+  }, [location.pathname, closeMenu]);
+
+  useEffect(() => {
+    document.body.classList.toggle("sidebar-open", menuOpen);
+    return () => document.body.classList.remove("sidebar-open");
+  }, [menuOpen]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeMenu();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [closeMenu]);
 
   const { data: branding } = useQuery({
     queryKey: ["branding", tenantSlug],
@@ -28,19 +54,23 @@ export function AppShell() {
     }
   }
 
+  const headerTitle = branding?.name ?? "SaaSStack";
+  const tenantLabel =
+    myTenants?.find((t) => t.slug === tenantSlug)?.name ?? tenantSlug;
+
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <h1 style={{ fontSize: "1.1rem", marginTop: 0 }}>SaaSStack</h1>
-        {branding?.name && <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{branding.name}</p>}
+    <div className={`app-shell${menuOpen ? " menu-open" : ""}`}>
+      <aside id="app-sidebar" className="sidebar" aria-hidden={isMobile ? !menuOpen : false}>
+        <h1 className="sidebar-brand">SaaSStack</h1>
+        {branding?.name && <p className="sidebar-tagline">{branding.name}</p>}
         <NavBar />
-        <hr style={{ borderColor: "var(--border)", margin: "1rem 0" }} />
-        <label style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Tenant</label>
+        <hr className="sidebar-divider" />
+        <label className="sidebar-label">Tenant</label>
         {myTenants && myTenants.length > 0 ? (
           <select
+            className="sidebar-tenant-select"
             value={tenantSlug}
             onChange={(e) => setTenantSlug(e.target.value)}
-            style={{ width: "100%", marginBottom: "0.5rem" }}
           >
             {myTenants.map((t) => (
               <option key={t.slug} value={t.slug}>
@@ -50,21 +80,36 @@ export function AppShell() {
           </select>
         ) : (
           <input
+            className="sidebar-tenant-select"
             value={tenantSlug}
             onChange={(e) => setTenantSlug(e.target.value)}
-            style={{ width: "100%", marginBottom: "0.5rem" }}
           />
         )}
-        <p style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
+        <p className="sidebar-user">
           {user && "username" in user ? String(user.username) : "Signed in"}
         </p>
-        <button type="button" className="secondary" onClick={logout}>
+        <button type="button" className="secondary sidebar-logout" onClick={logout}>
           Logout
         </button>
       </aside>
-      <main className="main">
-        <Outlet />
-      </main>
+      <button
+        type="button"
+        className="sidebar-backdrop mobile-only"
+        aria-label="Close menu"
+        onClick={closeMenu}
+        tabIndex={menuOpen ? 0 : -1}
+      />
+      <div className="app-content">
+        <MobileHeader
+          title={headerTitle}
+          subtitle={tenantLabel}
+          menuOpen={menuOpen}
+          onMenuToggle={toggleMenu}
+        />
+        <main className="main content-max">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

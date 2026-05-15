@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, within } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DynamicTable } from "../DynamicTable";
@@ -32,13 +32,15 @@ function wrap(ui: React.ReactNode) {
 
 describe("DynamicTable", () => {
   it("renders badge for status fields with ui metadata", () => {
-    wrap(
+    const { container } = wrap(
       <DynamicTable
         schema={schema}
         rows={[{ id: 1, full_name: "Alex", active_status: "active" }]}
       />
     );
-    const badge = screen.getByText("active");
+    const table = container.querySelector(".table-wrap");
+    expect(table).toBeTruthy();
+    const badge = within(table as HTMLElement).getByText("active");
     expect(badge.className).toContain("badge-success");
   });
 });

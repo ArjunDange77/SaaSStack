@@ -28,6 +28,13 @@ class Resident(TenantAuditedModel, SoftDeleteMixin):
     id_proof_number = models.CharField(max_length=64, blank=True)
     onboarding_status = models.CharField(max_length=32, choices=ONBOARDING_CHOICES, default="pending")
     active_status = models.CharField(max_length=16, choices=ACTIVE_CHOICES, default="active")
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="pg_resident_profile",
+    )
 
     class Meta:
         ordering = ["full_name"]
@@ -161,3 +168,30 @@ class Complaint(TenantAuditedModel, SoftDeleteMixin):
 
     def __str__(self):
         return self.title
+
+
+class BookingRequest(TenantAuditedModel, SoftDeleteMixin):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    full_name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=20)
+    preferred_room = models.ForeignKey(
+        Room,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="booking_requests",
+    )
+    duration = models.CharField(max_length=120, blank=True, help_text="e.g. 3 months")
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default="pending")
+    remarks = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.full_name} ({self.status})"

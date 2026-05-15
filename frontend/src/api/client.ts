@@ -4,7 +4,10 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 export const api = axios.create({
   baseURL: `${API_BASE}/api`,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
 });
 
 export const AUTH_EXPIRED_EVENT = "saasstack:auth-expired";

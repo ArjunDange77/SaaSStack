@@ -79,13 +79,21 @@ def _serializer_field_to_meta(
     return meta
 
 
+# Kernel read-only endpoints — not operator-facing action buttons in the UI.
+_DEFAULT_EXCLUDED_ACTION_PATHS = frozenset({"timeline"})
+
+
 def _collect_actions(viewset_class: Type) -> List[Dict[str, Any]]:
+    excluded = set(_DEFAULT_EXCLUDED_ACTION_PATHS)
+    excluded.update(getattr(viewset_class, "metadata_excluded_actions", ()) or ())
     actions: List[Dict[str, Any]] = []
     for name, method in inspect.getmembers(viewset_class, predicate=inspect.isfunction):
         detail = getattr(method, "detail", None)
         url_path = getattr(method, "url_path", None)
         mapping = getattr(method, "mapping", None)
         if detail is None or url_path is None:
+            continue
+        if url_path in excluded or name in excluded:
             continue
         http_list = []
         if mapping:
@@ -107,12 +115,23 @@ def _collect_actions(viewset_class: Type) -> List[Dict[str, Any]]:
     return actions
 
 
+def _default_capabilities(viewset_class: Type) -> Dict[str, Any]:
+    actions = _collect_actions(viewset_class)
+    return {
+        "create": True,
+        "update": True,
+        "delete": True,
+        "actions": [a["name"] for a in actions],
+    }
+
+
 def build_resource_metadata(
     slug: str,
     viewset_class: Type,
     *,
     title: str = "",
     description: str = "",
+    request=None,
 ) -> Dict[str, Any]:
     serializer_class = getattr(viewset_class, "serializer_class", None)
     if serializer_class is None:
@@ -160,4 +179,12 @@ def build_resource_metadata(
         meta["list_filters"] = list_filters
     if empty_state:
         meta["empty_state"] = empty_state
+    if request is not None and hasattr(viewset_class, "get_metadata_capabilities"):
+        caps = viewset_class.get_metadata_capabilities(request)
+    elif request is not None:
+        caps = _default_capabilities(viewset_class)
+    else:
+        caps = None
+    if caps is not None:
+        meta["capabilities"] = caps
     return meta
