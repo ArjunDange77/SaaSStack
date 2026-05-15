@@ -1,5 +1,5 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { fetchMe, login as apiLogin } from "@/api/client";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AUTH_EXPIRED_EVENT, clearAuthStorage, fetchMe, login as apiLogin } from "@/api/client";
 
 interface AuthState {
   accessToken: string | null;
@@ -28,6 +28,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => localStorage.getItem("tenant_slug") || "demo"
   );
 
+  useEffect(() => {
+    const onExpired = () => {
+      setAccessToken(null);
+      setUser(null);
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+  }, []);
+
   const setTenantSlug = useCallback((slug: string) => {
     localStorage.setItem("tenant_slug", slug);
     setTenantSlugState(slug);
@@ -50,8 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("user");
+    clearAuthStorage();
     setAccessToken(null);
     setUser(null);
   }, []);

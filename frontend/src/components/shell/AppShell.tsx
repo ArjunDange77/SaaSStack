@@ -2,10 +2,12 @@ import { Outlet } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
+import { useMyTenants } from "@/hooks/useResource";
 import { NavBar } from "./NavBar";
 
 export function AppShell() {
   const { user, logout, tenantSlug, setTenantSlug } = useAuth();
+  const { data: myTenants } = useMyTenants(true);
 
   const { data: branding } = useQuery({
     queryKey: ["branding", tenantSlug],
@@ -34,11 +36,25 @@ export function AppShell() {
         <NavBar />
         <hr style={{ borderColor: "var(--border)", margin: "1rem 0" }} />
         <label style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Tenant</label>
-        <input
-          value={tenantSlug}
-          onChange={(e) => setTenantSlug(e.target.value)}
-          style={{ width: "100%", marginBottom: "0.5rem" }}
-        />
+        {myTenants && myTenants.length > 0 ? (
+          <select
+            value={tenantSlug}
+            onChange={(e) => setTenantSlug(e.target.value)}
+            style={{ width: "100%", marginBottom: "0.5rem" }}
+          >
+            {myTenants.map((t) => (
+              <option key={t.slug} value={t.slug}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            value={tenantSlug}
+            onChange={(e) => setTenantSlug(e.target.value)}
+            style={{ width: "100%", marginBottom: "0.5rem" }}
+          />
+        )}
         <p style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
           {user && "username" in user ? String(user.username) : "Signed in"}
         </p>

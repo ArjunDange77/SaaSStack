@@ -41,3 +41,24 @@ def demo_tenant(db):
     from apps.tenancy.models import Tenant
 
     return Tenant.objects.create(name="Demo Tenant", slug="demo", is_active=True)
+
+
+@pytest.fixture
+def pg_tenant(db):
+    from apps.tenancy.models import Tenant
+
+    return Tenant.objects.create(name="PG Demo", slug="pg-demo", is_active=True)
+
+
+@pytest.fixture
+def pg_member(auth_client, user, pg_tenant):
+    from apps.tenancy.models import TenantMembership
+
+    TenantMembership.objects.create(
+        user=user,
+        tenant=pg_tenant,
+        role=TenantMembership.ROLE_OWNER,
+        is_active=True,
+    )
+    auth_client.credentials(HTTP_X_TENANT=pg_tenant.slug)
+    return auth_client

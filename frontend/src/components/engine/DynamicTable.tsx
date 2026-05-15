@@ -1,4 +1,7 @@
 import type { ResourceSchema } from "@/types/metadata";
+import { fieldByName } from "@/types/metadata";
+import { useRelationLabelMaps } from "@/hooks/useRelationLabels";
+import { CellValue } from "./CellValue";
 
 interface Props {
   schema: ResourceSchema;
@@ -7,6 +10,7 @@ interface Props {
 }
 
 export function DynamicTable({ schema, rows, onRowClick }: Props) {
+  const labelMaps = useRelationLabelMaps(schema);
   const columns = schema.list_display.length ? schema.list_display : ["id"];
 
   return (
@@ -22,14 +26,20 @@ export function DynamicTable({ schema, rows, onRowClick }: Props) {
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={columns.length + 1}>No records</td>
+            <td colSpan={columns.length + 1} className="empty-state">
+              No records yet. Create one to get started.
+            </td>
           </tr>
         ) : (
           rows.map((row) => (
             <tr key={String(row.id)} style={{ cursor: onRowClick ? "pointer" : undefined }}>
               {columns.map((col) => (
                 <td key={col} onClick={() => onRowClick?.(row)}>
-                  {String(row[col] ?? "")}
+                  <CellValue
+                    field={fieldByName(schema, col)}
+                    value={row[col]}
+                    labelMaps={labelMaps}
+                  />
                 </td>
               ))}
               <td>

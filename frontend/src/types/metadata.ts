@@ -7,7 +7,14 @@ export type FieldType =
   | "choice"
   | "datetime"
   | "date"
-  | "relation";
+  | "relation"
+  | "file";
+
+export interface FieldUiMeta {
+  variant?: "badge";
+  badge_map?: Record<string, string>;
+  help_text?: string;
+}
 
 export interface FieldMeta {
   name: string;
@@ -18,6 +25,8 @@ export interface FieldMeta {
   help_text?: string;
   choices?: (string | number)[];
   related_resource?: string | null;
+  relation_display_field?: string;
+  ui?: FieldUiMeta;
 }
 
 export interface ActionMeta {
@@ -39,6 +48,7 @@ export interface ResourceSchema {
   search: { fields: string[] };
   filters: { backends: string[] };
   ordering: { default: string[] };
+  pagination?: { style: string; page_size: number; max_page_size: number };
   actions: ActionMeta[];
   list_path: string;
   detail_path_template: string;
@@ -61,6 +71,13 @@ export interface ResourceCatalogEntry {
   schema_version: string;
 }
 
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 export function assertSupportedSchemaVersion(schema: ResourceSchema): void {
   const major = parseInt(schema.schema_version.split(".")[0], 10);
   if (major !== SUPPORTED_SCHEMA_MAJOR) {
@@ -68,4 +85,8 @@ export function assertSupportedSchemaVersion(schema: ResourceSchema): void {
       `Unsupported schema_version ${schema.schema_version}; engine supports major ${SUPPORTED_SCHEMA_MAJOR}`
     );
   }
+}
+
+export function fieldByName(schema: ResourceSchema, name: string): FieldMeta | undefined {
+  return schema.fields.find((f) => f.name === name);
 }

@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.tenancy",
     "apps.registry",
     "apps.demo",
+    "apps.products.pg_management",
     "apps.cosmetix",
 ]
 
@@ -97,6 +98,9 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # DRF + SimpleJWT config (simple defaults)
@@ -109,10 +113,28 @@ REST_FRAMEWORK = {
     ),
 }
 
-from datetime import timedelta
+def _jwt_access_lifetime() -> timedelta:
+    """Dev: long-lived access tokens so the UI does not log out every 15 minutes."""
+    raw = os.getenv("SIMPLE_JWT_ACCESS_MINUTES") or os.getenv(
+        "SIMPLE_JWT_ACCESS_TOKEN_LIFETIME_MINUTES"
+    )
+    if raw:
+        return timedelta(minutes=int(raw))
+    if DEBUG:
+        return timedelta(days=7)
+    return timedelta(minutes=15)
+
+
+def _jwt_refresh_lifetime() -> timedelta:
+    raw = os.getenv("SIMPLE_JWT_REFRESH_DAYS") or os.getenv(
+        "SIMPLE_JWT_REFRESH_TOKEN_LIFETIME_DAYS"
+    )
+    return timedelta(days=int(raw or 30))
+
+
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("SIMPLE_JWT_ACCESS_MINUTES", 15))),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("SIMPLE_JWT_REFRESH_DAYS", 7))),
+    "ACCESS_TOKEN_LIFETIME": _jwt_access_lifetime(),
+    "REFRESH_TOKEN_LIFETIME": _jwt_refresh_lifetime(),
 }
 
 # CORS

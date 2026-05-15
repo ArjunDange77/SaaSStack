@@ -1,12 +1,13 @@
 import { FormEvent, useState } from "react";
 import { Navigate } from "react-router-dom";
+import axios from "axios";
 import { useAuth } from "@/auth/AuthContext";
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [tenant, setTenant] = useState("demo");
+  const [tenant, setTenant] = useState("pg-demo");
   const [error, setError] = useState("");
 
   if (isAuthenticated) {
@@ -18,8 +19,17 @@ export function LoginPage() {
     setError("");
     try {
       await login(username, password, tenant);
-    } catch {
-      setError("Login failed. Check credentials and that the API is running.");
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail;
+        setError(
+          typeof detail === "string"
+            ? detail
+            : "Login failed. Check credentials and that the API is running."
+        );
+      } else {
+        setError("Login failed. Check credentials and that the API is running.");
+      }
     }
   };
 
@@ -29,11 +39,15 @@ export function LoginPage() {
       <form onSubmit={onSubmit}>
         <div className="field">
           <label>Tenant slug (X-Tenant)</label>
-          <input value={tenant} onChange={(e) => setTenant(e.target.value)} />
+          <input value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="pg-demo" />
         </div>
         <div className="field">
           <label>Username</label>
-          <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+          />
         </div>
         <div className="field">
           <label>Password</label>

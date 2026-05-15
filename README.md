@@ -54,8 +54,17 @@ After first boot, the entrypoint runs migrations and `seed_kernel` (demo tenant 
 ## Frontend routes
 
 - `/` — home + resource catalog  
-- `/r/:slug` — dynamic list  
-- `/r/:slug/:id` — dynamic detail + `@action` buttons from metadata  
+- `/dashboard` — PG Management dashboard (V1 vertical)  
+- `/r/:slug` — dynamic list (search + pagination)  
+- `/r/:slug/:id` — dynamic detail + `@action` buttons + activity timeline  
+
+## PG Management (V1)
+
+```bash
+python manage.py seed_pg
+```
+
+See `backend/apps/products/pg_management/README.md`. Use `X-Tenant: pg-demo` after seeding.
 
 ## Project layout
 

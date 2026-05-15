@@ -1,6 +1,40 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import type { ResourceSchema } from "@/types/metadata";
+import type { PaginatedResponse, ResourceSchema } from "@/types/metadata";
+import { hasFileValues, toFormData } from "@/utils/formValues";
+
+function stripUnchangedFiles(
+  body: Record<string, unknown>,
+  initial?: Record<string, unknown>
+): Record<string, unknown> {
+  const out = { ...body };
+  for (const [key, value] of Object.entries(out)) {
+    if (value === null && initial?.[key] && !(initial[key] instanceof File)) {
+      delete out[key];
+    }
+  }
+  return out;
+}
+
+async function writeResource(
+  method: "post" | "patch",
+  slug: string,
+  body: Record<string, unknown>,
+  id?: string,
+  initial?: Record<string, unknown>
+) {
+  const payload = method === "patch" ? stripUnchangedFiles(body, initial) : body;
+  const url = id ? `/meta/resources/${slug}/${id}/` : `/meta/resources/${slug}/`;
+  if (hasFileValues(payload)) {
+    const fd = toFormData(payload);
+    const { data } = await api[method](url, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  }
+  const { data } = await api[method](url, payload);
+  return data;
+}
 
 export function useResourceSchema(slug: string | undefined) {
   return useQuery({
@@ -13,16 +47,51 @@ export function useResourceSchema(slug: string | undefined) {
   });
 }
 
-export function useResourceList(slug: string | undefined, search: string) {
+export function useResourceList(
+  slug: string | undefined,
+  search: string,
+  page: number,
+  ordering?: string
+) {
   return useQuery({
-    queryKey: ["resource", slug, "list", search],
+    queryKey: ["resource", slug, "list", search, page, ordering],
     queryFn: async () => {
-      const { data } = await api.get(`/meta/resources/${slug}/`, {
-        params: search ? { search } : {},
-      });
-      return (data.results ?? data) as Record<string, unknown>[];
+      const { data } = await api.get<PaginatedResponse<Record<string, unknown>> | Record<string, unknown>[]>(
+        `/meta/resources/${slug}/`,
+        {
+          params: {
+            ...(search ? { search } : {}),
+            page,
+            ...(ordering ? { ordering } : {}),
+          },
+        }
+      );
+      if (Array.isArray(data)) {
+        return { results: data, count: data.length, next: null, previous: null };
+      }
+      return {
+        results: data.results ?? [],
+        count: data.count ?? data.results?.length ?? 0,
+        next: data.next,
+        previous: data.previous,
+      };
     },
     enabled: Boolean(slug),
+  });
+}
+
+export function useRelatedResourceOptions(relatedSlug: string | null | undefined) {
+  return useQuery({
+    queryKey: ["resource", relatedSlug, "options"],
+    queryFn: async () => {
+      const { data } = await api.get<PaginatedResponse<Record<string, unknown>> | Record<string, unknown>[]>(
+        `/meta/resources/${relatedSlug}/`,
+        { params: { page_size: 200 } }
+      );
+      const rows = Array.isArray(data) ? data : data.results ?? [];
+      return rows;
+    },
+    enabled: Boolean(relatedSlug),
   });
 }
 
@@ -37,25 +106,41 @@ export function useResourceDetail(slug: string | undefined, id: string | undefin
   });
 }
 
+export function useResourceTimeline(slug: string | undefined, id: string | undefined) {
+  return useQuery({
+    queryKey: ["timeline", slug, id],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, unknown>[]>(
+        `/meta/resources/${slug}/${id}/timeline/`
+      );
+      return data;
+    },
+    enabled: Boolean(slug && id),
+  });
+}
+
 export function useResourceMutations(slug: string) {
   const qc = useQueryClient();
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["resource", slug] });
+    qc.invalidateQueries({ queryKey: ["timeline", slug] });
   };
 
   const create = useMutation({
-    mutationFn: async (body: Record<string, unknown>) => {
-      const { data } = await api.post(`/meta/resources/${slug}/`, body);
-      return data;
-    },
+    mutationFn: async (body: Record<string, unknown>) => writeResource("post", slug, body),
     onSuccess: invalidate,
   });
 
   const update = useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: Record<string, unknown> }) => {
-      const { data } = await api.patch(`/meta/resources/${slug}/${id}/`, body);
-      return data;
-    },
+    mutationFn: async ({
+      id,
+      body,
+      initial,
+    }: {
+      id: string;
+      body: Record<string, unknown>;
+      initial?: Record<string, unknown>;
+    }) => writeResource("patch", slug, body, id, initial),
     onSuccess: invalidate,
   });
 
@@ -71,10 +156,12 @@ export function useResourceMutations(slug: string) {
       id,
       actionPath,
       method = "post",
+      body = {},
     }: {
       id?: string;
       actionPath: string;
       method?: string;
+      body?: Record<string, unknown>;
     }) => {
       const base = `/meta/resources/${slug}/`;
       const url = id ? `${base}${id}/${actionPath}/` : `${base}${actionPath}/`;
@@ -83,11 +170,34 @@ export function useResourceMutations(slug: string) {
         const { data } = await api.get(url);
         return data;
       }
-      const { data } = await api.post(url, {});
+      const { data } = await api.post(url, body);
       return data;
     },
     onSuccess: invalidate,
   });
 
   return { create, update, remove, runAction };
+}
+
+export function usePgDashboard() {
+  return useQuery({
+    queryKey: ["pg", "dashboard"],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, number>>("/pg/dashboard/");
+      return data;
+    },
+  });
+}
+
+export function useMyTenants(enabled: boolean) {
+  return useQuery({
+    queryKey: ["tenancy", "my-tenants"],
+    queryFn: async () => {
+      const { data } = await api.get<{ slug: string; name: string; role: string }[]>(
+        "/tenancy/my-tenants/"
+      );
+      return data;
+    },
+    enabled,
+  });
 }

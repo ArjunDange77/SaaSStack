@@ -1,0 +1,3 @@
+from apps.registry.permissions import TenantMembershipPermission
+
+PGTenantPermission = TenantMembershipPermission

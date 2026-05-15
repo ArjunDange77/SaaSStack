@@ -6,9 +6,26 @@ from typing import Any, Dict, List, Optional, Type
 from rest_framework import serializers
 
 from apps.registry.constants import REGISTRY_SCHEMA_VERSION
+from apps.registry.relation_map import model_to_resource_slug
 
 
-def _serializer_field_to_meta(name: str, field: serializers.Field) -> Optional[Dict[str, Any]]:
+def _apply_ui_overrides(meta: Dict[str, Any], viewset_class: Type, field_name: str) -> None:
+    overrides = getattr(viewset_class, "field_ui_overrides", {}) or {}
+    ui = overrides.get(field_name)
+    if ui:
+        meta["ui"] = ui
+    help_text = meta.get("help_text") or ""
+    if help_text and "ui" not in meta:
+        meta["ui"] = {"help_text": help_text}
+    elif help_text and "ui" in meta and "help_text" not in meta["ui"]:
+        meta["ui"]["help_text"] = help_text
+
+
+def _serializer_field_to_meta(
+    name: str,
+    field: serializers.Field,
+    viewset_class: Type,
+) -> Optional[Dict[str, Any]]:
     if getattr(field, "write_only", False) and not getattr(field, "read_only", False):
         return None
     meta: Dict[str, Any] = {
@@ -36,6 +53,8 @@ def _serializer_field_to_meta(name: str, field: serializers.Field) -> Optional[D
             for c in choices:
                 opts.append(c[0] if isinstance(c, (list, tuple)) else c)
         meta["choices"] = opts
+    elif isinstance(field, serializers.FileField):
+        meta["type"] = "file"
     elif isinstance(field, serializers.CharField):
         style = getattr(field, "style", {}) or {}
         if style.get("base_template") == "textarea.html" or internal == "TextField":
@@ -49,10 +68,14 @@ def _serializer_field_to_meta(name: str, field: serializers.Field) -> Optional[D
     elif isinstance(field, serializers.PrimaryKeyRelatedField):
         meta["type"] = "relation"
         qs = getattr(field, "queryset", None)
-        meta["related_resource"] = qs.model._meta.model_name if qs is not None else None
+        slug = model_to_resource_slug(qs.model) if qs is not None else None
+        meta["related_resource"] = slug
+        display_fields = getattr(viewset_class, "relation_display_fields", {}) or {}
+        meta["relation_display_field"] = display_fields.get(name, "id")
     else:
         meta["type"] = "string"
         meta["drf_class"] = internal
+    _apply_ui_overrides(meta, viewset_class, name)
     return meta
 
 
@@ -96,7 +119,7 @@ def build_resource_metadata(
     ser = serializer_class()
     fields_out: List[Dict[str, Any]] = []
     for name, field in ser.fields.items():
-        meta = _serializer_field_to_meta(name, field)
+        meta = _serializer_field_to_meta(name, field, viewset_class)
         if meta:
             fields_out.append(meta)
 
@@ -108,6 +131,11 @@ def build_resource_metadata(
     filter_backends = [cls.__name__ for cls in getattr(viewset_class, "filter_backends", ()) or ()]
     ordering = list(getattr(viewset_class, "ordering", ()) or ())
 
+    pagination_class = getattr(viewset_class, "pagination_class", None)
+    page_size = 25
+    if pagination_class is not None:
+        page_size = getattr(pagination_class, "page_size", 25)
+
     return {
         "schema_version": REGISTRY_SCHEMA_VERSION,
         "resource": slug,
@@ -118,6 +146,7 @@ def build_resource_metadata(
         "search": {"fields": search_fields},
         "filters": {"backends": filter_backends},
         "ordering": {"default": ordering},
+        "pagination": {"style": "page", "page_size": page_size, "max_page_size": 100},
         "actions": _collect_actions(viewset_class),
         "list_path": f"/api/meta/resources/{slug}/",
         "detail_path_template": f"/api/meta/resources/{slug}/{{id}}/",

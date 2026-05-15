@@ -1,4 +1,4 @@
-# Field schema contract (v1.0)
+# Field schema contract (v1.1)
 
 Describes each object in the `fields` array of [metadata-schema.md](metadata-schema.md).
 
@@ -18,7 +18,9 @@ Describes each object in the `fields` array of [metadata-schema.md](metadata-sch
 | Property | Type | When present |
 |----------|------|----------------|
 | `choices` | array | `type === "choice"` |
-| `related_resource` | string \| null | `type === "relation"` |
+| `related_resource` | string \| null | `type === "relation"` — registered resource slug |
+| `relation_display_field` | string | `type === "relation"` — field on related model for labels (default `id`) |
+| `ui` | object | Presentation hints (see below) |
 | `drf_class` | string | Fallback/unmapped DRF types |
 
 ## Field types (`type`)
@@ -33,7 +35,24 @@ Describes each object in the `fields` array of [metadata-schema.md](metadata-sch
 | `choice` | Select from `choices` |
 | `date` | Date (ISO date string) |
 | `datetime` | Date-time (ISO 8601) |
-| `relation` | Foreign key (Phase 1: display as read-only or stub) |
+| `relation` | Foreign key — select from related resource list API |
+| `file` | File upload — multipart create/update |
+
+## UI object (`ui`) — v1.1
+
+```json
+{
+  "ui": {
+    "variant": "badge",
+    "badge_map": { "open": "warning", "resolved": "success" },
+    "help_text": "Shown under the field label",
+    "placeholder": "Optional placeholder",
+    "section": "Personal details"
+  }
+}
+```
+
+Badge tones: `success`, `warning`, `danger`, `neutral`.
 
 ## Example
 

@@ -4,6 +4,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { AppShell } from "@/components/shell/AppShell";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
+import { PgDashboard } from "@/pages/PgDashboard";
 import { ResourceDetailRoute, ResourceListRoute } from "@/pages/ResourceRoute";
 
 function Protected({ children }: { children: ReactNode }) {
@@ -26,6 +27,7 @@ export default function App() {
         }
       >
         <Route index element={<HomePage />} />
+        <Route path="dashboard" element={<PgDashboard />} />
         <Route path="r/:slug" element={<ResourceListRoute />} />
         <Route path="r/:slug/:id" element={<ResourceDetailRoute />} />
       </Route>

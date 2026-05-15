@@ -8,3 +8,5 @@ DATABASES = {
         "NAME": ":memory:",
     }
 }
+
+MEDIA_ROOT = BASE_DIR / "test_media"  # noqa: F405
