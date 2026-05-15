@@ -59,7 +59,47 @@ After first boot, the entrypoint runs migrations and `seed_kernel` (demo tenant 
 
 ## Project layout
 
+- `docs/contracts/` — **platform contracts** (metadata, fields, actions, tenant rules, rendering)
 - `backend/apps/registry/` — registry, metadata engine, kernel base ViewSet  
 - `backend/apps/demo/` — validation resource (`demo-items`)  
 - `backend/apps/cosmetix/` — shell (branding, nav)  
 - `frontend/src/components/engine/` — generic React renderer  
+
+## Contracts and versioning
+
+All kernel payloads include `schema_version` (currently **`1.0`**). See [docs/contracts/README.md](docs/contracts/README.md) before changing APIs or UI behavior.
+
+## Testing (TDD baseline)
+
+**Contracts are the spec; tests prove the code matches.**
+
+```bash
+# Backend (SQLite in-memory for tests)
+cd backend
+pip install -r requirements-dev.txt
+pytest
+
+# Frontend
+cd frontend
+npm install
+npm run test:run
+```
+
+### Kernel validation checklist (automated)
+
+Green `pytest` + `npm run test:run` means:
+
+- [ ] `schema_version` present on catalog and resource metadata  
+- [ ] Registered resource appears in `/api/meta/catalog/`  
+- [ ] `/api/meta/schema/<slug>/` exposes fields, list_display, actions  
+- [ ] Tenant-scoped CRUD respects `X-Tenant` (fail closed without tenant)  
+- [ ] `@action` endpoints (e.g. `archive`) work via metadata  
+- [ ] `seed_kernel` creates demo tenant + nav + branding  
+- [ ] React engine renders field types per [rendering-expectations.md](docs/contracts/rendering-expectations.md)  
+
+### TDD workflow for a new resource
+
+1. Update [docs/contracts/](docs/contracts/) if the contract changes.  
+2. Copy `backend/apps/demo/tests/` patterns; add tests for your slug.  
+3. Red → implement model + `register_resource` → migrate → green.  
+4. Add optional `NavBarItem` in admin; verify `/r/<slug>` in the app.  

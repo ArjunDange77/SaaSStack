@@ -47,6 +47,24 @@ export function DynamicFieldRenderer({ field, value, onChange }: Props) {
           onChange={(e) => onChange(field.name, e.target.value)}
         />
       );
+    case "date":
+      return (
+        <input
+          id={id}
+          type="date"
+          value={String(value ?? "")}
+          onChange={(e) => onChange(field.name, e.target.value)}
+        />
+      );
+    case "datetime":
+      return (
+        <input
+          id={id}
+          type="datetime-local"
+          value={String(value ?? "")}
+          onChange={(e) => onChange(field.name, e.target.value)}
+        />
+      );
     case "integer":
     case "decimal":
       return (

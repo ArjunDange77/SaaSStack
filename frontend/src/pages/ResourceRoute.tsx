@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useResourceSchema } from "@/hooks/useResource";
+import { assertSupportedSchemaVersion } from "@/types/metadata";
 import { ResourceList } from "@/components/engine/ResourceList";
 import { ResourceDetail } from "@/components/engine/ResourceDetail";
 
@@ -10,6 +11,7 @@ export function ResourceListRoute() {
   if (isLoading) return <p>Loading schema…</p>;
   if (error || !schema || !slug) return <p className="error">Unknown resource: {slug}</p>;
 
+  assertSupportedSchemaVersion(schema);
   return <ResourceList slug={slug} schema={schema} />;
 }
 
@@ -20,5 +22,6 @@ export function ResourceDetailRoute() {
   if (isLoading) return <p>Loading schema…</p>;
   if (error || !schema || !slug || !id) return <p className="error">Resource not found</p>;
 
+  assertSupportedSchemaVersion(schema);
   return <ResourceDetail slug={slug} id={id} schema={schema} />;
 }

@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "resource": "demo-items",
+  "title": "Demo catalog",
+  "description": "Kernel validation resource (tenant-scoped).",
+  "list_display": ["id", "name", "sku", "category", "price", "in_stock", "archived"],
+  "search": { "fields": ["name", "sku"] },
+  "filters": { "backends": ["SearchFilter", "OrderingFilter"] },
+  "ordering": { "default": ["-created_at"] },
+  "list_path": "/api/meta/resources/demo-items/",
+  "detail_path_template": "/api/meta/resources/demo-items/{id}/",
+  "actions": [
+    {
+      "name": "archive",
+      "url_path": "archive",
+      "detail": true,
+      "methods": ["post"]
+    }
+  ],
+  "required_top_level_keys": [
+    "schema_version",
+    "resource",
+    "title",
+    "fields",
+    "list_display",
+    "search",
+    "filters",
+    "ordering",
+    "actions",
+    "list_path",
+    "detail_path_template"
+  ]
+}

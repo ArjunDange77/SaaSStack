@@ -27,7 +27,10 @@ export interface ActionMeta {
   methods: string[];
 }
 
+export const SUPPORTED_SCHEMA_MAJOR = 1;
+
 export interface ResourceSchema {
+  schema_version: string;
   resource: string;
   title: string;
   description?: string;
@@ -55,4 +58,14 @@ export interface ResourceCatalogEntry {
   slug: string;
   title: string;
   description?: string;
+  schema_version: string;
+}
+
+export function assertSupportedSchemaVersion(schema: ResourceSchema): void {
+  const major = parseInt(schema.schema_version.split(".")[0], 10);
+  if (major !== SUPPORTED_SCHEMA_MAJOR) {
+    console.warn(
+      `Unsupported schema_version ${schema.schema_version}; engine supports major ${SUPPORTED_SCHEMA_MAJOR}`
+    );
+  }
 }

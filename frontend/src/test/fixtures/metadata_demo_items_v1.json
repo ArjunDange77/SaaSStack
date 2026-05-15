@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "resource": "demo-items",
+  "title": "Demo catalog",
+  "description": "Kernel validation resource (tenant-scoped).",
+  "fields": [
+    { "name": "id", "label": "Id", "type": "integer", "required": false, "read_only": true, "help_text": "" },
+    { "name": "name", "label": "Name", "type": "string", "required": true, "read_only": false, "help_text": "" },
+    { "name": "sku", "label": "Sku", "type": "string", "required": false, "read_only": false, "help_text": "" },
+    {
+      "name": "category",
+      "label": "Category",
+      "type": "choice",
+      "required": true,
+      "read_only": false,
+      "help_text": "",
+      "choices": ["parts", "kits", "services"]
+    },
+    { "name": "price", "label": "Price", "type": "decimal", "required": false, "read_only": false, "help_text": "" },
+    { "name": "in_stock", "label": "In stock", "type": "boolean", "required": false, "read_only": false, "help_text": "" },
+    { "name": "notes", "label": "Notes", "type": "text", "required": false, "read_only": false, "help_text": "" },
+    { "name": "archived", "label": "Archived", "type": "boolean", "required": false, "read_only": true, "help_text": "" }
+  ],
+  "list_display": ["id", "name", "sku", "category", "price", "in_stock", "archived"],
+  "search": { "fields": ["name", "sku"] },
+  "filters": { "backends": ["SearchFilter", "OrderingFilter"] },
+  "ordering": { "default": ["-created_at"] },
+  "actions": [
+    { "name": "archive", "url_path": "archive", "detail": true, "methods": ["post"] }
+  ],
+  "list_path": "/api/meta/resources/demo-items/",
+  "detail_path_template": "/api/meta/resources/demo-items/{id}/"
+}

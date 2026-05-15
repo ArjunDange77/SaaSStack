@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Optional, Type
 
 from rest_framework import serializers
+
+from apps.registry.constants import REGISTRY_SCHEMA_VERSION
 
 
 def _serializer_field_to_meta(name: str, field: serializers.Field) -> Optional[Dict[str, Any]]:
     if getattr(field, "write_only", False) and not getattr(field, "read_only", False):
-        # hide pure write-only from list metadata (e.g. passwords)
         return None
     meta: Dict[str, Any] = {
         "name": name,
@@ -18,7 +19,6 @@ def _serializer_field_to_meta(name: str, field: serializers.Field) -> Optional[D
         "help_text": getattr(field, "help_text", "") or "",
     }
     internal = field.__class__.__name__
-    # map DRF / Django field to engine types
     if isinstance(field, serializers.BooleanField):
         meta["type"] = "boolean"
     elif isinstance(field, serializers.IntegerField):
@@ -106,19 +106,19 @@ def build_resource_metadata(
 
     search_fields = list(getattr(viewset_class, "search_fields", ()) or ())
     filter_backends = [cls.__name__ for cls in getattr(viewset_class, "filter_backends", ()) or ()]
-
     ordering = list(getattr(viewset_class, "ordering", ()) or ())
 
     return {
+        "schema_version": REGISTRY_SCHEMA_VERSION,
         "resource": slug,
         "title": title or slug.replace("-", " ").title(),
         "description": description,
         "fields": fields_out,
-        "list_display": list_display,
+        "list_display": list(list_display),
         "search": {"fields": search_fields},
         "filters": {"backends": filter_backends},
         "ordering": {"default": ordering},
         "actions": _collect_actions(viewset_class),
-        "list_path": f"/api/resources/{slug}/",
-        "detail_path_template": f"/api/resources/{slug}/{{id}}/",
+        "list_path": f"/api/meta/resources/{slug}/",
+        "detail_path_template": f"/api/meta/resources/{slug}/{{id}}/",
     }

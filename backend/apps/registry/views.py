@@ -2,6 +2,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.registry.constants import REGISTRY_SCHEMA_VERSION
 from apps.registry.metadata import build_resource_metadata
 from apps.registry.registry import get_resource, iter_resources
 
@@ -17,6 +18,7 @@ class ResourceListMetaView(APIView):
                 "slug": e.slug,
                 "title": e.resolved_title(),
                 "description": e.description,
+                "schema_version": REGISTRY_SCHEMA_VERSION,
             }
             for e in iter_resources()
         ]
