@@ -1,8 +1,12 @@
 from rest_framework import generics, permissions, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from .models import Branding, Menu
-from .serializers import BrandingSerializer, MenuSerializer
+
+from .models import Branding, Menu, NavBarItem
+from .serializers import BrandingSerializer, MenuSerializer, NavBarItemSerializer
+from .shell import resolve_tenant_scoped_queryset
 
 class BrandingResolveView(generics.RetrieveAPIView):
     """
@@ -47,3 +51,15 @@ class MenuResolveAPIView(generics.GenericAPIView):
         ser = MenuSerializer(menu)
         # return resolved structure (server may also add resolved fields in future)
         return Response(ser.data)
+
+
+class NavBarItemListView(APIView):
+    """GET /api/cosmetix/nav-items/ — API-driven shell navigation."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        tenant = getattr(request, "tenant", None)
+        qs = resolve_tenant_scoped_queryset(NavBarItem, tenant)
+        data = NavBarItemSerializer(qs, many=True).data
+        return Response(data)

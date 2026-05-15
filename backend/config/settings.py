@@ -31,6 +31,8 @@ INSTALLED_APPS = [
     # local apps
     "apps.accounts",
     "apps.tenancy",
+    "apps.registry",
+    "apps.demo",
     "apps.cosmetix",
 ]
 

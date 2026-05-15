@@ -38,6 +38,9 @@ python manage.py makemigrations --noinput || true
 echo "Applying migrations..."
 python manage.py migrate --noinput
 
+echo "Seeding kernel defaults (tenant, nav, branding)..."
+python manage.py seed_kernel || true
+
 # create default superuser if env provided (non-interactive)
 if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] && [ -n "$DJANGO_SUPERUSER_USERNAME" ]; then
   echo "Creating superuser (if not exists)..."

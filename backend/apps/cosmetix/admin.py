@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Branding, Menu
+from .models import Branding, Menu, NavBarItem
 
 @admin.register(Branding)
 class BrandingAdmin(admin.ModelAdmin):
@@ -12,3 +12,10 @@ class MenuAdmin(admin.ModelAdmin):
     list_display = ("id","slug","title","tenant","is_active","version","updated_at")
     list_filter = ("is_active","version")
     search_fields = ("slug","title")
+
+
+@admin.register(NavBarItem)
+class NavBarItemAdmin(admin.ModelAdmin):
+    list_display = ("label", "href", "icon", "resource_slug", "tenant", "sort_order", "is_active")
+    list_filter = ("is_active", "tenant")
+    ordering = ("sort_order",)

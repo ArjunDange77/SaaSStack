@@ -37,3 +37,39 @@ class Menu(models.Model):
 
     def __str__(self):
         return f"{self.slug} (tenant={self.tenant})"
+
+
+class NavBarItem(models.Model):
+    """API-driven shell navigation — maintain via Django admin."""
+
+    tenant = models.ForeignKey(
+        "tenancy.Tenant",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="nav_items",
+    )
+    label = models.CharField(max_length=120)
+    href = models.CharField(
+        max_length=500,
+        help_text="Internal path (e.g. /r/demo-items) or external URL",
+    )
+    icon = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="Icon key for the React icon registry (e.g. home, list, box)",
+    )
+    resource_slug = models.SlugField(
+        max_length=120,
+        blank=True,
+        help_text="Optional registered resource slug for dynamic CRUD routes",
+    )
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    open_in_new_tab = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["sort_order", "label"]
+
+    def __str__(self):
+        return self.label
