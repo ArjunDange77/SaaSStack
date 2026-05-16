@@ -10,9 +10,6 @@ permissions:
   id-token: write
   packages: write
 
-env:
-  IMAGE_NAME: ghcr.io/${{ github.repository }}/backend
-
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
@@ -23,6 +20,9 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set image name (GHCR requires lowercase)
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}/backend" >> "$GITHUB_ENV"
 
       - name: Validate production environment
         env:
