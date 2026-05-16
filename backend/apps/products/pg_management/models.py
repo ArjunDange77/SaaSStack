@@ -1,10 +1,10 @@
 from django.conf import settings
 from django.db import models
 
-from apps.registry.models import SoftDeleteMixin, TenantAuditedModel
+from apps.registry.models import TenantDomainModel
 
 
-class Resident(TenantAuditedModel, SoftDeleteMixin):
+class Resident(TenantDomainModel):
     GENDER_CHOICES = [("male", "Male"), ("female", "Female"), ("other", "Other")]
     ID_PROOF_CHOICES = [
         ("aadhaar", "Aadhaar"),
@@ -43,7 +43,7 @@ class Resident(TenantAuditedModel, SoftDeleteMixin):
         return self.full_name
 
 
-class Room(TenantAuditedModel):
+class Room(TenantDomainModel):
     STATUS_CHOICES = [
         ("available", "Available"),
         ("occupied", "Occupied"),
@@ -68,7 +68,7 @@ class Room(TenantAuditedModel):
         return f"{self.room_number} (floor {self.floor})"
 
 
-class BedAssignment(TenantAuditedModel):
+class BedAssignment(TenantDomainModel):
     STATUS_CHOICES = [
         ("active", "Active"),
         ("vacated", "Vacated"),
@@ -87,7 +87,7 @@ class BedAssignment(TenantAuditedModel):
         return f"{self.resident} -> {self.room}"
 
 
-class Document(TenantAuditedModel):
+class Document(TenantDomainModel):
     TYPE_CHOICES = [
         ("id_proof", "ID proof"),
         ("agreement", "Agreement"),
@@ -113,7 +113,7 @@ class Document(TenantAuditedModel):
         return f"{self.document_type} for {self.resident}"
 
 
-class RentRecord(TenantAuditedModel, SoftDeleteMixin):
+class RentRecord(TenantDomainModel):
     PAID_CHOICES = [
         ("unpaid", "Unpaid"),
         ("paid", "Paid"),
@@ -140,7 +140,7 @@ class RentRecord(TenantAuditedModel, SoftDeleteMixin):
         return f"Rent {self.amount} for {self.resident}"
 
 
-class Complaint(TenantAuditedModel, SoftDeleteMixin):
+class Complaint(TenantDomainModel):
     STATUS_CHOICES = [
         ("open", "Open"),
         ("in_progress", "In progress"),
@@ -174,7 +174,7 @@ class Complaint(TenantAuditedModel, SoftDeleteMixin):
         return self.title
 
 
-class BookingRequest(TenantAuditedModel, SoftDeleteMixin):
+class BookingRequest(TenantDomainModel):
     STATUS_CHOICES = [
         ("pending", "Pending"),
         ("approved", "Approved"),

@@ -14,7 +14,7 @@ User = get_user_model()
 
 
 def recalculate_room_occupancy(room: Room) -> None:
-    active = BedAssignment.objects.filter(
+    active = BedAssignment.objects.alive().filter(
         room=room, status="active", vacated_date__isnull=True
     ).count()
     room.current_occupancy = active
@@ -28,7 +28,7 @@ def recalculate_room_occupancy(room: Room) -> None:
 def validate_assignment(*, tenant, resident, room, exclude_pk=None) -> None:
     if room.room_status == "maintenance":
         raise ValidationError("Room is under maintenance and cannot accept assignments.")
-    active_on_room = BedAssignment.objects.filter(
+    active_on_room = BedAssignment.objects.alive().filter(
         room=room,
         status="active",
         vacated_date__isnull=True,
@@ -37,7 +37,7 @@ def validate_assignment(*, tenant, resident, room, exclude_pk=None) -> None:
         active_on_room = active_on_room.exclude(pk=exclude_pk)
     if active_on_room.count() >= room.occupancy_limit:
         raise ValidationError("Room is at full occupancy.")
-    active_for_resident = BedAssignment.objects.filter(
+    active_for_resident = BedAssignment.objects.alive().filter(
         tenant=tenant,
         resident=resident,
         status="active",
@@ -57,7 +57,7 @@ def sync_resident_on_assign(resident: Resident) -> None:
 
 
 def sync_resident_on_vacate(resident: Resident) -> None:
-    still_assigned = BedAssignment.objects.filter(
+    still_assigned = BedAssignment.objects.alive().filter(
         resident=resident,
         status="active",
         vacated_date__isnull=True,
@@ -142,8 +142,8 @@ def dashboard_stats(tenant):
     today = timezone.now().date()
     week_start = today - timedelta(days=7)
     prev_week_start = today - timedelta(days=14)
-    residents_qs = Resident.objects.filter(tenant=tenant, deleted_at__isnull=True)
-    rooms_qs = Room.objects.filter(tenant=tenant)
+    residents_qs = Resident.objects.alive().filter(tenant=tenant)
+    rooms_qs = Room.objects.alive().filter(tenant=tenant)
     total_rooms = rooms_qs.count()
     occupied_rooms = rooms_qs.filter(room_status="occupied").count()
     rooms_available = rooms_qs.filter(room_status="available").count()
@@ -157,12 +157,12 @@ def dashboard_stats(tenant):
         else 0
     )
     occupancy_rate = round((occupied_rooms / total_rooms) * 100, 1) if total_rooms else 0.0
-    rent_qs = RentRecord.objects.filter(tenant=tenant, deleted_at__isnull=True)
-    pending_bookings = BookingRequest.objects.filter(
-        tenant=tenant, status="pending", deleted_at__isnull=True
+    rent_qs = RentRecord.objects.alive().filter(tenant=tenant)
+    pending_bookings = BookingRequest.objects.alive().filter(
+        tenant=tenant, status="pending"
     ).count()
-    booking_qs = BookingRequest.objects.filter(tenant=tenant, deleted_at__isnull=True)
-    complaint_qs = Complaint.objects.filter(tenant=tenant, deleted_at__isnull=True)
+    booking_qs = BookingRequest.objects.alive().filter(tenant=tenant)
+    complaint_qs = Complaint.objects.alive().filter(tenant=tenant)
     bookings_this_week = _count_in_window(booking_qs, "created_at", week_start, today + timedelta(days=1))
     bookings_prev_week = _count_in_window(booking_qs, "created_at", prev_week_start, week_start)
     complaints_this_week = _count_in_window(complaint_qs, "created_at", week_start, today + timedelta(days=1))
@@ -187,8 +187,8 @@ def dashboard_stats(tenant):
         "rooms_maintenance": rooms_maintenance,
         "rooms_full": rooms_full,
         "occupancy_rate": occupancy_rate,
-        "open_complaints": Complaint.objects.filter(
-            tenant=tenant, deleted_at__isnull=True, status__in=["open", "in_progress"]
+        "open_complaints": Complaint.objects.alive().filter(
+            tenant=tenant, status__in=["open", "in_progress"]
         ).count(),
         "rent_due_unpaid": rent_qs.filter(paid_status="unpaid").count(),
         "rent_overdue": rent_qs.filter(paid_status="unpaid", due_date__lt=today).count(),
@@ -200,7 +200,8 @@ def dashboard_stats(tenant):
 
 def resident_portal_bundle(*, tenant, resident: Resident) -> dict:
     assignment = (
-        BedAssignment.objects.filter(
+        BedAssignment.objects.alive()
+        .filter(
             tenant=tenant,
             resident=resident,
             status="active",
@@ -209,20 +210,26 @@ def resident_portal_bundle(*, tenant, resident: Resident) -> dict:
         .select_related("room")
         .first()
     )
-    documents = Document.objects.filter(
-        tenant=tenant, resident=resident, deleted_at__isnull=True
-    ).order_by("-created_at")[:20]
+    documents = (
+        Document.objects.alive()
+        .filter(tenant=tenant, resident=resident)
+        .order_by("-created_at")[:20]
+    )
     latest_rent = (
-        RentRecord.objects.filter(tenant=tenant, resident=resident, deleted_at__isnull=True)
+        RentRecord.objects.alive()
+        .filter(tenant=tenant, resident=resident)
         .order_by("-due_date")
         .first()
     )
-    open_complaints = Complaint.objects.filter(
-        tenant=tenant,
-        resident=resident,
-        deleted_at__isnull=True,
-        status__in=["open", "in_progress"],
-    ).order_by("-created_at")[:10]
+    open_complaints = (
+        Complaint.objects.alive()
+        .filter(
+            tenant=tenant,
+            resident=resident,
+            status__in=["open", "in_progress"],
+        )
+        .order_by("-created_at")[:10]
+    )
     object_ids = [str(resident.pk)]
     if assignment:
         object_ids.append(str(assignment.pk))

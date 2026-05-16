@@ -192,7 +192,7 @@ class RoomViewSet(PGViewSet):
 
         from .models import Room
 
-        qs = Room.objects.filter(tenant=tenant)
+        qs = Room.objects.alive().filter(tenant=tenant)
         full = qs.filter(
             room_status="occupied", current_occupancy__gte=F("occupancy_limit")
         ).count()
@@ -272,7 +272,7 @@ class BedAssignmentViewSet(PGViewSet):
         if not new_room_id:
             return Response({"detail": "room is required"}, status=status.HTTP_400_BAD_REQUEST)
         tenant = getattr(request, "tenant", None)
-        new_room = Room.objects.filter(tenant=tenant, pk=new_room_id).first()
+        new_room = Room.objects.alive().filter(tenant=tenant, pk=new_room_id).first()
         if not new_room:
             return Response({"detail": "room not found"}, status=status.HTTP_404_NOT_FOUND)
         try:
@@ -539,9 +539,7 @@ class ResidentMeView(APIView):
         resident_id = get_resident_id_for_user(request)
         if tenant is None or resident_id is None:
             return Response({"detail": "resident_profile_not_found"}, status=404)
-        resident = Resident.objects.filter(
-            tenant=tenant, pk=resident_id, deleted_at__isnull=True
-        ).first()
+        resident = Resident.objects.alive().filter(tenant=tenant, pk=resident_id).first()
         if not resident:
             return Response({"detail": "resident_profile_not_found"}, status=404)
         return Response(resident_portal_bundle(tenant=tenant, resident=resident))
@@ -588,7 +586,7 @@ class PublicAvailableRoomsView(APIView):
         tenant = Tenant.objects.filter(slug=tenant_slug, is_active=True).first()
         if not tenant:
             return Response({"detail": "tenant_not_found"}, status=404)
-        rooms = Room.objects.filter(
+        rooms = Room.objects.alive().filter(
             tenant=tenant,
             room_status="available",
         ).extra(where=["current_occupancy < occupancy_limit"])

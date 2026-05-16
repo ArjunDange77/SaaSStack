@@ -40,11 +40,8 @@ def get_resident_id_for_user(request) -> int | None:
     from apps.products.pg_management.models import Resident
 
     resident = (
-        Resident.objects.filter(
-            tenant=tenant,
-            user=request.user,
-            deleted_at__isnull=True,
-        )
+        Resident.objects.alive()
+        .filter(tenant=tenant, user=request.user)
         .values_list("id", flat=True)
         .first()
     )

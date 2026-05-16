@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { api } from "@/api/client";
+import { api, apiErrorMessage } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { PortalCardSkeleton } from "@/components/pg/PortalCardSkeleton";
 
@@ -64,7 +64,9 @@ export function ResidentPortal() {
   if (error || !data) {
     return (
       <div className="portal-page">
-        <p className="error">Could not load your profile. Please try again or sign out.</p>
+        <p className="error">
+          {apiErrorMessage(error, "Could not load your profile. Please try again or sign out.")}
+        </p>
         <button type="button" onClick={logout}>Sign out</button>
       </div>
     );

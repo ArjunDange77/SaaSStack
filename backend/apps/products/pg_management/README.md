@@ -2,6 +2,10 @@
 
 First vertical on the SaaSStack kernel: paying-guest (PG) property operations.
 
+## Model convention
+
+All PG domain models inherit **`TenantDomainModel`** (`apps.registry.models`): tenant FK, `created_at` / `updated_at`, `created_by` / `updated_by`, `is_active`, and `deleted_at` (soft delete). Engine list/detail querysets exclude deleted rows; services use `Model.objects.alive()`.
+
 ## Resources
 
 | Slug | Model | Notes |

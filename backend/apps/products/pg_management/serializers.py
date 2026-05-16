@@ -49,7 +49,7 @@ class ResidentSerializer(serializers.ModelSerializer):
         tenant = self.context.get("tenant")
         if not tenant:
             return value
-        qs = Resident.objects.filter(tenant=tenant, phone=value, deleted_at__isnull=True)
+        qs = Resident.objects.alive().filter(tenant=tenant, phone=value)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
@@ -277,7 +277,7 @@ class PublicBookingSerializer(serializers.Serializer):
         super().__init__(*args, **kwargs)
         tenant = self.context.get("tenant")
         if tenant is not None:
-            self.fields["preferred_room"].queryset = Room.objects.filter(
+            self.fields["preferred_room"].queryset = Room.objects.alive().filter(
                 tenant=tenant,
                 room_status="available",
             ).extra(where=["current_occupancy < occupancy_limit"])

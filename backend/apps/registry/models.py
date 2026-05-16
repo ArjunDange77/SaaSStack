@@ -33,8 +33,35 @@ class TenantAuditedModel(models.Model):
 
 
 class SoftDeleteMixin(models.Model):
+    """Soft-delete flags shared by all tenant domain models."""
+
     is_active = models.BooleanField(default=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+
+
+class SoftDeleteQuerySet(models.QuerySet):
+    def alive(self):
+        return self.filter(deleted_at__isnull=True)
+
+
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db)
+
+    def alive(self):
+        return self.get_queryset().alive()
+
+
+class TenantDomainModel(TenantAuditedModel, SoftDeleteMixin):
+    """
+    Standard base for product domain models: tenant scope, audit columns, soft delete.
+    Engine ViewSets auto-filter deleted rows; use Model.objects.alive() in services.
+    """
+
+    objects = SoftDeleteManager()
 
     class Meta:
         abstract = True
