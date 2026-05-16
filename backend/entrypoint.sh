@@ -40,6 +40,11 @@ fi
 echo "Applying migrations..."
 python manage.py migrate --noinput
 
+if [ "$DJANGO_ENV" = "production" ] || [ "$DJANGO_ENV" = "staging" ]; then
+  echo "Ensuring cache table for rate limiting..."
+  python manage.py createcachetable --allow-migrate || true
+fi
+
 if [ "${RUN_BOOTSTRAP:-false}" = "true" ]; then
   echo "Seeding kernel defaults..."
   python manage.py seed_kernel || true

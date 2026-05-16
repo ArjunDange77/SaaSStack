@@ -5,10 +5,32 @@ import { apiErrorMessage } from "@/api/client";
 import { BookingStepIndicator } from "@/components/pg/BookingStepIndicator";
 import { RoomCard, type RoomCardData } from "@/components/pg/RoomCard";
 import { RoomCardSkeleton } from "@/components/pg/RoomCardSkeleton";
+import {
+  mapApiErrorsToFields,
+  normalizeIndiaPhone,
+  type PublicBookingFieldErrors,
+  validatePublicBookingForm,
+} from "@/lib/publicBookingValidation";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 type Step = "rooms" | "form" | "done";
+
+function FieldLabel({
+  htmlFor,
+  required,
+  children,
+}: {
+  htmlFor: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <label htmlFor={htmlFor} className={required ? "field-required" : undefined}>
+      {children}
+    </label>
+  );
+}
 
 export function PublicBookingPage() {
   const { tenantSlug = "pg-demo" } = useParams();
@@ -20,7 +42,9 @@ export function PublicBookingPage() {
   const [phone, setPhone] = useState("");
   const [duration, setDuration] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [website, setWebsite] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<PublicBookingFieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<number | null>(null);
 
@@ -50,39 +74,62 @@ export function PublicBookingPage() {
     setPhone("");
     setDuration("");
     setRemarks("");
+    setWebsite("");
     setBookingId(null);
     setError("");
+    setFieldErrors({});
     loadRooms();
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedPhone = phone.trim();
-    if (trimmedPhone.length < 10) {
-      setError("Please enter a valid phone number (at least 10 digits).");
+    const clientErrors = validatePublicBookingForm({
+      fullName,
+      phone,
+      duration,
+      remarks,
+      website,
+    });
+    if (Object.keys(clientErrors).length > 0) {
+      setFieldErrors(clientErrors);
+      setError("Please fix the highlighted fields.");
       return;
     }
+
     setSubmitting(true);
     setError("");
+    setFieldErrors({});
     try {
       const { data } = await axios.post<{ id: number }>(
         `${API_BASE}/api/pg/public/${tenantSlug}/booking-requests/`,
         {
           full_name: fullName.trim(),
-          phone: trimmedPhone,
-          duration,
-          remarks,
+          phone: normalizeIndiaPhone(phone),
+          duration: duration.trim(),
+          remarks: remarks.trim(),
           preferred_room: selectedRoom?.id ?? null,
+          website,
         }
       );
       setBookingId(data.id);
       setStep("done");
     } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.data) {
+        const mapped = mapApiErrorsToFields(err.response.data);
+        if (Object.keys(mapped).length > 0) {
+          setFieldErrors(mapped);
+          setError(apiErrorMessage(err, "Could not submit booking."));
+          return;
+        }
+      }
       setError(apiErrorMessage(err, "Could not submit booking."));
     } finally {
       setSubmitting(false);
     }
   };
+
+  const inputClass = (field: keyof PublicBookingFieldErrors) =>
+    fieldErrors[field] ? "field-invalid" : undefined;
 
   if (step === "done") {
     return (
@@ -95,7 +142,7 @@ export function PublicBookingPage() {
           <h1>Request received</h1>
           <p className="booking-success-lead">
             Thank you, {fullName.trim()}. We&apos;ll contact you on{" "}
-            <strong>{phone.trim()}</strong> within 24 hours.
+            <strong>{normalizeIndiaPhone(phone)}</strong> within 24 hours.
           </p>
           {bookingId != null && (
             <p className="muted booking-ref">Reference #{bookingId}</p>
@@ -166,45 +213,115 @@ export function PublicBookingPage() {
       )}
 
       {step === "form" && (
-        <form onSubmit={submit} className="booking-form">
+        <form onSubmit={submit} className="booking-form" noValidate>
           {selectedRoom && (
             <div className="booking-selected-room">
               <p className="muted">Selected room</p>
               <RoomCard room={selectedRoom} as="div" />
             </div>
           )}
-          <label>
-            Full name
+          <label className="hp-field" aria-hidden="true">
+            Website
             <input
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              autoComplete="name"
+              tabIndex={-1}
+              autoComplete="off"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
             />
           </label>
-          <label>
-            Phone
+          <div className="field-block">
+            <FieldLabel htmlFor="booking-full-name" required>
+              Full name
+            </FieldLabel>
             <input
+              id="booking-full-name"
+              required
+              className={inputClass("full_name")}
+              value={fullName}
+              onChange={(e) => {
+                setFullName(e.target.value);
+                setFieldErrors((prev) => ({ ...prev, full_name: undefined }));
+              }}
+              autoComplete="name"
+              aria-invalid={Boolean(fieldErrors.full_name)}
+            />
+            {fieldErrors.full_name && (
+              <p className="field-error-msg" role="alert">
+                {fieldErrors.full_name}
+              </p>
+            )}
+          </div>
+          <div className="field-block">
+            <FieldLabel htmlFor="booking-phone" required>
+              Phone
+            </FieldLabel>
+            <input
+              id="booking-phone"
               required
               type="tel"
+              inputMode="numeric"
+              className={inputClass("phone")}
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                setPhone(digits);
+                setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+              }}
               autoComplete="tel"
-              minLength={10}
+              maxLength={10}
+              placeholder="10-digit mobile"
+              aria-invalid={Boolean(fieldErrors.phone)}
             />
-          </label>
-          <label>
-            Duration
+            {fieldErrors.phone && (
+              <p className="field-error-msg" role="alert">
+                {fieldErrors.phone}
+              </p>
+            )}
+          </div>
+          <div className="field-block">
+            <FieldLabel htmlFor="booking-duration" required>
+              Duration
+            </FieldLabel>
             <input
+              id="booking-duration"
+              required
+              className={inputClass("duration")}
               placeholder="e.g. 3 months"
               value={duration}
-              onChange={(e) => setDuration(e.target.value)}
+              onChange={(e) => {
+                setDuration(e.target.value);
+                setFieldErrors((prev) => ({ ...prev, duration: undefined }));
+              }}
+              minLength={2}
+              maxLength={120}
+              aria-invalid={Boolean(fieldErrors.duration)}
             />
-          </label>
-          <label>
-            Remarks
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={3} />
-          </label>
+            {fieldErrors.duration && (
+              <p className="field-error-msg" role="alert">
+                {fieldErrors.duration}
+              </p>
+            )}
+          </div>
+          <div className="field-block">
+            <FieldLabel htmlFor="booking-remarks">Remarks (optional)</FieldLabel>
+            <textarea
+              id="booking-remarks"
+              className={inputClass("remarks")}
+              value={remarks}
+              onChange={(e) => {
+                setRemarks(e.target.value);
+                setFieldErrors((prev) => ({ ...prev, remarks: undefined }));
+              }}
+              rows={3}
+              maxLength={500}
+              aria-invalid={Boolean(fieldErrors.remarks)}
+            />
+            {fieldErrors.remarks && (
+              <p className="field-error-msg" role="alert">
+                {fieldErrors.remarks}
+              </p>
+            )}
+          </div>
           {error && <p className="error">{error}</p>}
           <div className="toolbar">
             <button
@@ -213,6 +330,7 @@ export function PublicBookingPage() {
               onClick={() => {
                 setStep("rooms");
                 setError("");
+                setFieldErrors({});
               }}
             >
               Back

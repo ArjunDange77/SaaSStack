@@ -22,3 +22,5 @@
 | `scripts/teardown-staging-india.sh` | Delete entire staging RG |
 
 Secrets output: `deploy/.secrets/` (gitignored).
+
+Public booking rate limits use the Postgres `django_cache` table (`createcachetable` runs on staging/production container start). Tune via `PUBLIC_BOOKING_*_RATE` env vars on the API app.

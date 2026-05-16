@@ -7,7 +7,6 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from apps.registry.base import KernelModelViewSet
@@ -546,14 +545,10 @@ class StaffInviteView(APIView):
         return Response({"id": user.id, "username": user.username}, status=status.HTTP_201_CREATED)
 
 
-class PublicBookingThrottle(AnonRateThrottle):
-    rate = "30/hour"
-
-
 @method_decorator(never_cache, name="dispatch")
 class PublicAvailableRoomsView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [PublicBookingThrottle]
+    throttle_classes = PUBLIC_ROOMS_THROTTLES
 
     def get(self, request, tenant_slug):
         from apps.tenancy.models import Tenant
@@ -571,7 +566,7 @@ class PublicAvailableRoomsView(APIView):
 @method_decorator(never_cache, name="dispatch")
 class PublicBookingCreateView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [PublicBookingThrottle]
+    throttle_classes = PUBLIC_SUBMIT_THROTTLES
 
     def post(self, request, tenant_slug):
         from apps.tenancy.models import Tenant

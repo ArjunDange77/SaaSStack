@@ -1116,6 +1116,42 @@ button.pg-room-card {
   margin-bottom: 0.75rem;
 }
 
+.field-required::after {
+  content: " *";
+  color: var(--danger, #f87171);
+}
+
+.field-block {
+  margin-bottom: 0.75rem;
+}
+
+.field-block label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.field-error-msg {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  color: var(--danger, #f87171);
+}
+
+.booking-form input.field-invalid,
+.booking-form textarea.field-invalid {
+  border-color: var(--danger, #f87171);
+  outline-color: var(--danger, #f87171);
+}
+
+.hp-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .booking-form input,
 .booking-form textarea {
   width: 100%;

@@ -12,3 +12,9 @@ DATABASES = {
 MEDIA_ROOT = BASE_DIR / "test_media"  # noqa: F405
 DEPLOY_ENV = "local"
 CORS_ALLOW_ALL_ORIGINS = True
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}

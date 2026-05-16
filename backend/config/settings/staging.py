@@ -22,6 +22,9 @@ CORS_ALLOWED_ORIGINS = [
 
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 MIDDLEWARE = [  # noqa: F405
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",

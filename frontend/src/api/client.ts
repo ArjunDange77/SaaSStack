@@ -112,6 +112,9 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
     return "Network error. Check your connection and try again.";
   }
   const status = error.response.status;
+  if (status === 429) {
+    return "Too many requests. Please wait a few minutes and try again.";
+  }
   if (status === 401) {
     return "Your session expired. Please sign in again.";
   }

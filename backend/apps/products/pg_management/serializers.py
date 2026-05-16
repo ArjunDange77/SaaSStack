@@ -265,14 +265,55 @@ class PublicBookingSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
-    duration = serializers.CharField(max_length=120, required=False, allow_blank=True)
-    remarks = serializers.CharField(required=False, allow_blank=True)
+    duration = serializers.CharField(max_length=120)
+    remarks = serializers.CharField(required=False, allow_blank=True, max_length=500)
+    website = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         tenant = self.context.get("tenant")
         if tenant is not None:
-            self.fields["preferred_room"].queryset = Room.objects.filter(tenant=tenant)
+            self.fields["preferred_room"].queryset = Room.objects.filter(
+                tenant=tenant,
+                room_status="available",
+            ).extra(where=["current_occupancy < occupancy_limit"])
+
+    def validate_full_name(self, value):
+        from .validators import validate_public_full_name
+
+        return validate_public_full_name(value)
+
+    def validate_phone(self, value):
+        from .validators import validate_public_phone
+
+        return validate_public_phone(value)
+
+    def validate_duration(self, value):
+        from .validators import validate_public_duration
+
+        return validate_public_duration(value)
+
+    def validate_remarks(self, value):
+        from .validators import validate_public_remarks
+
+        return validate_public_remarks(value)
+
+    def validate_website(self, value):
+        if (value or "").strip():
+            raise serializers.ValidationError("Invalid submission.")
+        return ""
+
+    def validate_preferred_room(self, room):
+        if room is None:
+            return room
+        tenant = self.context.get("tenant")
+        if tenant is None or room.tenant_id != tenant.id:
+            raise serializers.ValidationError("Selected room is not available.")
+        if room.room_status != "available":
+            raise serializers.ValidationError("Selected room is not available.")
+        if room.current_occupancy >= room.occupancy_limit:
+            raise serializers.ValidationError("Selected room is fully occupied.")
+        return room
 
 
 class StaffInviteSerializer(serializers.Serializer):

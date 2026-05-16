@@ -122,6 +122,17 @@ if USE_AZURE_STORAGE:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+    }
+}
+
+PUBLIC_BOOKING_BURST_RATE = os.getenv("PUBLIC_BOOKING_BURST_RATE", "5/minute")
+PUBLIC_BOOKING_ROOMS_RATE = os.getenv("PUBLIC_BOOKING_ROOMS_RATE", "60/hour")
+PUBLIC_BOOKING_SUBMIT_RATE = os.getenv("PUBLIC_BOOKING_SUBMIT_RATE", "10/hour")
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -129,6 +140,11 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    "DEFAULT_THROTTLE_RATES": {
+        "public_booking_burst": PUBLIC_BOOKING_BURST_RATE,
+        "public_booking_rooms": PUBLIC_BOOKING_ROOMS_RATE,
+        "public_booking_submit": PUBLIC_BOOKING_SUBMIT_RATE,
+    },
 }
 
 
