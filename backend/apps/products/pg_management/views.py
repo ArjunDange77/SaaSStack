@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.registry.base import KernelModelViewSet
-from apps.registry.permissions import get_membership, get_resident_id_for_user, get_tenant_role
+from apps.registry.permissions import get_resident_id_for_user, get_tenant_role
 
 from .models import BedAssignment, BookingRequest, Complaint, Document, RentRecord, Resident, Room
 from .permissions import PGOperatorPermission, PGRolePermission, PGResidentOnlyPermission
