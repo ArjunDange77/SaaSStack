@@ -8,9 +8,9 @@ import type { NavItem } from "@/types/metadata";
 import { NavIcon } from "@/icons/registry";
 
 const GROUP_LABELS: Record<string, string> = {
-  core: "Core",
-  operations: "Operations",
-  system: "System",
+  core: "Overview",
+  operations: "Manage",
+  system: "Other",
 };
 
 function resolveHref(item: NavItem): string {

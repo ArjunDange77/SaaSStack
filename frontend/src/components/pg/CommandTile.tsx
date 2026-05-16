@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
 import type { TrendMeta } from "@/hooks/useResource";
 
 interface Props {
@@ -10,41 +11,78 @@ interface Props {
   icon?: ReactNode;
   size?: "lg" | "sm";
   trend?: TrendMeta;
+  subtext?: { text: string; tone: "up" | "warn" | "neutral" };
+  valueTone?: "default" | "warn" | "success";
 }
 
 function trendLabel(trend: TrendMeta): string {
-  const arrow = trend.direction === "up" ? "↑" : trend.direction === "down" ? "↓" : "→";
   const abs = Math.abs(trend.delta);
-  const suffix = trend.period ? ` (${trend.period})` : "";
+  const suffix = trend.period ? ` ${trend.period}` : "";
   if (typeof trend.delta === "number" && trend.delta % 1 !== 0) {
-    return `${arrow} ${abs}%${suffix}`;
+    return `${abs}%${suffix}`;
   }
-  return `${arrow} ${abs}${suffix}`;
+  return `${abs}${suffix}`;
 }
 
-export function CommandTile({ to, value, label, highlight, icon, size = "lg", trend }: Props) {
+export function CommandTile({
+  to,
+  value,
+  label,
+  highlight,
+  icon,
+  size = "lg",
+  trend,
+  subtext,
+  valueTone = "default",
+}: Props) {
+  const valueClass =
+    valueTone === "warn"
+      ? "kpi-value-warn"
+      : valueTone === "success"
+        ? "kpi-value-success"
+        : "";
+
   return (
     <Link
       to={to}
       className={[
         "command-tile",
-        size === "sm" ? "command-tile-sm" : "command-tile-lg",
-        highlight ? "command-tile-highlight" : "",
+        size === "sm" ? "command-tile-sm detail-card" : "command-tile-lg kpi-card",
+        highlight ? "command-tile-highlight kpi-card-alert" : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
       {icon && <span className="command-tile-icon">{icon}</span>}
-      <span className="command-tile-value">{value}</span>
-      {trend && trend.direction !== "flat" && (
-        <span
-          className={`command-tile-trend command-tile-trend-${trend.direction}`}
-          aria-label={`Trend ${trend.direction} ${trend.delta}`}
-        >
-          {trendLabel(trend)}
-        </span>
+      {size === "sm" ? (
+        <>
+          <span className="detail-label">{label}</span>
+          <span className={`command-tile-value detail-value ${valueClass}`}>{value}</span>
+        </>
+      ) : (
+        <>
+          <span className="command-tile-label kpi-label">{label}</span>
+          <span className={`command-tile-value kpi-value ${valueClass}`}>{value}</span>
+          {trend && trend.direction !== "flat" && (
+            <span
+              className={`command-tile-trend kpi-trend kpi-trend-${trend.direction === "up" ? "up" : trend.direction === "down" ? "warn" : "neutral"}`}
+              aria-label={`Trend ${trend.direction} ${trend.delta}`}
+            >
+              {trend.direction === "up" ? (
+                <IconTrendingUp size={14} stroke={2} aria-hidden />
+              ) : trend.direction === "down" ? (
+                <IconTrendingDown size={14} stroke={2} aria-hidden />
+              ) : null}
+              {trendLabel(trend)}
+            </span>
+          )}
+          {subtext && (
+            <span className={`command-tile-subtext kpi-trend kpi-trend-${subtext.tone}`}>
+              {subtext.text}
+            </span>
+          )}
+        </>
       )}
-      <span className="command-tile-label">{label}</span>
     </Link>
   );
 }

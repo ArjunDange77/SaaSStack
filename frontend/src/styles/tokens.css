@@ -1,0 +1,45 @@
+:root {
+  --brand-primary: #6366f1;
+  --brand-primary-hover: #4f46e5;
+  --brand-primary-muted: #a5b4fc;
+  --brand-primary-soft: rgba(99, 102, 241, 0.12);
+  --brand-primary-border: rgba(99, 102, 241, 0.3);
+
+  --bg: #0f1623;
+  --surface: #111827;
+  --surface-raised: rgba(255, 255, 255, 0.05);
+  --surface-muted: rgba(255, 255, 255, 0.03);
+
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.45);
+  --text-subtle: rgba(255, 255, 255, 0.35);
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.2);
+
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.15);
+  --warn: #f59e0b;
+  --warn-soft: rgba(245, 158, 11, 0.1);
+  --warn-border: rgba(245, 158, 11, 0.4);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.15);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-pill: 20px;
+
+  --font-size-body: 13px;
+  --font-size-label: 11px;
+  --font-size-page-title: 20px;
+  --font-size-kpi: 22px;
+
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --touch-min: 44px;
+  --sidebar-width: 220px;
+
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand-primary);
+}

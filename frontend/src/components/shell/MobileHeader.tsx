@@ -1,3 +1,5 @@
+import { IconMenu2, IconX } from "@tabler/icons-react";
+
 interface Props {
   title: string;
   subtitle?: string;
@@ -18,7 +20,7 @@ export function MobileHeader({ title, subtitle, menuOpen, onMenuToggle, trailing
         onClick={onMenuToggle}
       >
         <span className="menu-icon" aria-hidden>
-          {menuOpen ? "✕" : "☰"}
+          {menuOpen ? <IconX size={20} stroke={2} /> : <IconMenu2 size={20} stroke={2} />}
         </span>
       </button>
       <div className="mobile-header-titles">

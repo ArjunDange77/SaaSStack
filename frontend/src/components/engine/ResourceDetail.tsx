@@ -58,7 +58,7 @@ export function ResourceDetail({ slug, id, schema }: Props) {
       <p>
         <Link to={`/r/${slug}`}>← Back to {schema.title}</Link>
       </p>
-      <h2 className="resource-list-title">
+      <h2 className="resource-list-title page-title">
         {schema.title} #{id}
       </h2>
 
@@ -76,7 +76,7 @@ export function ResourceDetail({ slug, id, schema }: Props) {
       {!editing ? (
         <>
           {displayFields.map((field) => (
-            <div key={field.name} className="field">
+            <div key={field.name} className="field field-block">
               <label>{field.label}</label>
               <CellValue field={field} value={record[field.name]} labelMaps={labelMaps} />
               {(field.ui?.help_text || field.help_text) && (

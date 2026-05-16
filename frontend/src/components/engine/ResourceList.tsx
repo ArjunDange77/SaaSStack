@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import type { ListFilterMeta, ResourceSchema } from "@/types/metadata";
 import { useAuth } from "@/auth/AuthContext";
-import { RoomCard, type RoomCardData } from "@/components/pg/RoomCard";
+import { OperatorRoomCard } from "@/components/pg/OperatorRoomCard";
+import type { RoomCardData } from "@/components/pg/RoomCard";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { IconLayoutGrid, IconList } from "@tabler/icons-react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useResourceList, useResourceMutations } from "@/hooks/useResource";
 import { DynamicTable } from "./DynamicTable";
@@ -70,7 +73,9 @@ export function ResourceList({ slug, schema }: Props) {
   const [viewMode, setViewMode] = useState<"table" | "grid">(() => {
     if (!listViews.includes("grid")) return "table";
     const saved = localStorage.getItem(storageKey);
-    return saved === "grid" ? "grid" : "table";
+    if (saved === "table") return "table";
+    if (saved === "grid") return "grid";
+    return slug === "pg-rooms" ? "grid" : "table";
   });
 
   useEffect(() => {
@@ -123,17 +128,27 @@ export function ResourceList({ slug, schema }: Props) {
 
   return (
     <div>
-      <h2 className="resource-list-title">{schema.title}</h2>
-      {schema.description && <p className="muted">{schema.description}</p>}
-      <div className="toolbar toolbar-responsive">
+      <header className="page-header">
+        <div className="page-header-text">
+          <h2 className="resource-list-title page-title">{schema.title}</h2>
+          {schema.description && <p className="page-subtitle muted">{schema.description}</p>}
+        </div>
+      </header>
+      <div
+        className={
+          slug === "pg-rooms" ? "rooms-toolbar toolbar-responsive" : "toolbar toolbar-responsive"
+        }
+      >
         <input
-          placeholder="Search"
+          className={slug === "pg-rooms" ? "rooms-search" : undefined}
+          placeholder={slug === "pg-rooms" ? "Search rooms…" : "Search"}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search"
         />
         {sortField && (
           <select
+            className={slug === "pg-rooms" ? "sort-select" : undefined}
             value={ordering}
             onChange={(e) => setOrdering(e.target.value)}
             aria-label="Sort"
@@ -144,49 +159,56 @@ export function ResourceList({ slug, schema }: Props) {
           </select>
         )}
         {schema.capabilities?.create !== false && (
-          <button type="button" onClick={() => setShowCreate(true)}>New</button>
+          <button
+            type="button"
+            className={slug === "pg-rooms" ? "new-btn" : undefined}
+            onClick={() => setShowCreate(true)}
+          >
+            {slug === "pg-rooms" ? "+ New room" : "New"}
+          </button>
         )}
         {listViews.includes("grid") && (
           <div className="view-toggle" role="group" aria-label="View mode">
             <button
               type="button"
-              className={`secondary${viewMode === "table" ? " active" : ""}`}
+              className={viewMode === "table" ? "active" : ""}
+              aria-label="Table view"
               onClick={() => {
                 setViewMode("table");
                 localStorage.setItem(storageKey, "table");
               }}
             >
-              Table
+              <IconList size={16} stroke={1.75} aria-hidden />
             </button>
             <button
               type="button"
-              className={`secondary${viewMode === "grid" ? " active" : ""}`}
+              className={viewMode === "grid" ? "active" : ""}
+              aria-label="Grid view"
               onClick={() => {
                 setViewMode("grid");
                 localStorage.setItem(storageKey, "grid");
               }}
             >
-              Grid
+              <IconLayoutGrid size={16} stroke={1.75} aria-hidden />
             </button>
           </div>
         )}
       </div>
 
       {listFilters.length > 0 && (
-        <div className="filter-chips" role="group" aria-label="Filters">
+        <div className="filter-pills filter-chips" role="group" aria-label="Filters">
           {listFilters.map((filter) => {
             const expected = filter.value ?? "true";
             const key = `${filter.param}=${expected}`;
             return (
-              <button
+              <FilterPill
                 key={key}
-                type="button"
-                className={`filter-chip${activeKey === key ? " active" : ""}`}
+                active={activeKey === key}
                 onClick={() => applyFilter(filter)}
               >
                 {filter.label}
                 {typeof filter.count === "number" ? ` (${filter.count})` : ""}
-              </button>
+              </FilterPill>
             );
           })}
         </div>
@@ -207,10 +229,10 @@ export function ResourceList({ slug, schema }: Props) {
             </div>
           ) : (
             rows.map((row) => (
-              <RoomCard
+              <OperatorRoomCard
                 key={String(row.id)}
                 room={rowToRoomCard(row)}
-                onClick={() => navigate(`/r/${slug}/${row.id}`)}
+                slug={slug}
               />
             ))
           )}

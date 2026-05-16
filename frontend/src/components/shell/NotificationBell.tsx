@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { IconBell } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import type { PgDashboardStats } from "@/hooks/useResource";
 
@@ -31,7 +32,7 @@ export function NotificationBell({ stats }: Props) {
         aria-label={`Notifications${count ? `, ${count} items` : ""}`}
         onClick={() => setOpen((o) => !o)}
       >
-        🔔
+        <IconBell size={18} stroke={1.75} aria-hidden />
         {count > 0 && <span className="notification-bell-count">{count}</span>}
       </button>
       {open && (

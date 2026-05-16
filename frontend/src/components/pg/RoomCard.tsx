@@ -1,3 +1,4 @@
+import { Badge, badgeToneFromLabel } from "@/components/ui/Badge";
 import { AmenityTags } from "@/icons/amenities";
 
 export interface RoomCardData {
@@ -16,12 +17,6 @@ function cardClassForLabel(label: string): string {
   if (label === "Full") return "room-card-full";
   if (label === "Available") return "room-card-available";
   return "room-card-occupied";
-}
-
-function badgeTone(label: string): string {
-  if (label === "Available") return "success";
-  if (label === "Maintenance") return "warning";
-  return "neutral";
 }
 
 function formatRent(amount: string | number | null | undefined): string | null {
@@ -53,9 +48,7 @@ export function RoomCard({ room, onClick, selected, as = "button" }: Props) {
     <>
       <div className="pg-room-card-header">
         <strong className="pg-room-card-title">Room {room.room_number}</strong>
-        <span className={`badge badge-${badgeTone(room.availability_label)}`}>
-          {room.availability_label}
-        </span>
+        <Badge tone={badgeToneFromLabel(room.availability_label)}>{room.availability_label}</Badge>
       </div>
       <p className="muted pg-room-card-floor">Floor {room.floor}</p>
       {rentLabel && <p className="pg-room-card-price">{rentLabel}</p>}

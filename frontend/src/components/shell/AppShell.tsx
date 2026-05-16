@@ -105,8 +105,10 @@ export function AppShell() {
   return (
     <div className={`app-shell${menuOpen ? " menu-open" : ""}`}>
       <aside id="app-sidebar" className="sidebar" aria-hidden={isMobile ? !menuOpen : false}>
-        <h1 className="sidebar-brand">SaaSStack</h1>
-        {branding?.name && <p className="sidebar-tagline">{branding.name}</p>}
+        <div className="sidebar-brand-block">
+          <h1 className="sidebar-brand-name">{branding?.name ?? "SaaSStack"}</h1>
+          <p className="sidebar-brand-sub">PG Management</p>
+        </div>
         <div className="sidebar-tenant-block">{tenantSelect}</div>
         <NavBar badges={navBadges} />
         <hr className="sidebar-divider" />

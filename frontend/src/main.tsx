@@ -7,6 +7,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import { TenantScopeSync } from "./components/tenant/TenantScopeSync";
 import { AuthToastListener } from "./components/auth/AuthToastListener";
 import { ToastProvider } from "./components/ui/ToastProvider";
+import "./styles/tokens.css";
 import "./styles.css";
 
 const queryClient = new QueryClient({

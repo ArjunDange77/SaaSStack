@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom";
+import { IconBell } from "@tabler/icons-react";
 import { apiErrorMessage, isAuthError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { CommandTile } from "@/components/pg/CommandTile";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { pgQuickActions } from "@/config/pgQuickActions";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { usePgDashboard } from "@/hooks/useResource";
+import { kpiSubtext } from "@/lib/kpiSubtext";
 
 function CommandTileSkeleton({ sm }: { sm?: boolean }) {
   return (
@@ -23,10 +26,7 @@ export function PgDashboard() {
   if (isLoading) {
     return (
       <div className="pg-dashboard">
-        <header className="dashboard-header page-title-block">
-          <h1>Command center</h1>
-          <p className="muted">Loading your property overview…</p>
-        </header>
+        <PageHeader title="Command center" subtitle="Loading your property overview…" />
         <div className="command-center-grid command-center-grid-primary">
           {Array.from({ length: 5 }).map((_, i) => (
             <CommandTileSkeleton key={i} />
@@ -55,31 +55,18 @@ export function PgDashboard() {
   const rentOverdue = data?.rent_overdue ?? 0;
   const openComplaints = data?.open_complaints ?? 0;
   const quickActions = pgQuickActions(tenantSlug);
+  const kpiCtx = {
+    total_rooms: data?.total_rooms,
+    rooms_available: data?.rooms_available,
+  };
 
-  const allClear =
-    pendingBookings === 0 && rentOverdue === 0 && openComplaints === 0 && (data?.rent_due_unpaid ?? 0) === 0;
+  const subtitle = data?.as_of
+    ? `Today at a glance · As of ${data.as_of}`
+    : "Today at a glance";
 
   return (
     <div className="pg-dashboard">
-      <header className="dashboard-header page-title-block">
-        <h1>Command center</h1>
-        <p className="muted">Today at a glance</p>
-        {data?.as_of && <p className="muted dashboard-as-of">As of {data.as_of}</p>}
-      </header>
-
-      <div className="dashboard-quick-actions" role="toolbar" aria-label="Quick actions">
-        {quickActions.map((a) =>
-          a.external ? (
-            <a key={a.label} href={a.to} className="secondary" target="_blank" rel="noreferrer">
-              {a.label}
-            </a>
-          ) : (
-            <Link key={a.label} to={a.to} className="secondary">
-              {a.label}
-            </Link>
-          )
-        )}
-      </div>
+      <PageHeader title="Command center" subtitle={subtitle} />
 
       <section className="command-center" aria-label="Key metrics">
         <div className="command-center-grid command-center-grid-primary">
@@ -93,30 +80,59 @@ export function PgDashboard() {
             to="/r/pg-rooms?room_status=available"
             value={data?.rooms_available ?? 0}
             label="Available rooms"
+            subtext={kpiSubtext("available_rooms", kpiCtx) ?? undefined}
           />
           <CommandTile
             to="/r/pg-booking-requests?status=pending"
             value={pendingBookings}
             label="Pending bookings"
             highlight={pendingBookings > 0}
+            valueTone={pendingBookings > 0 ? "warn" : "default"}
             trend={trends.pending_bookings}
+            subtext={
+              pendingBookings > 0
+                ? (kpiSubtext("pending_bookings", kpiCtx) ?? undefined)
+                : undefined
+            }
           />
           <CommandTile
             to="/r/pg-rent-records?overdue=true"
             value={rentOverdue}
             label="Overdue rent"
             highlight={rentOverdue > 0}
+            valueTone={rentOverdue === 0 ? "success" : "warn"}
             trend={trends.rent_overdue}
+            subtext={
+              rentOverdue === 0 ? (kpiSubtext("rent_overdue", kpiCtx) ?? undefined) : undefined
+            }
           />
           <CommandTile
             to="/r/pg-complaints?status=open"
             value={openComplaints}
             label="Open complaints"
             highlight={openComplaints > 0}
+            valueTone={openComplaints === 0 ? "success" : "warn"}
             trend={trends.open_complaints}
+            subtext={
+              openComplaints === 0
+                ? (kpiSubtext("open_complaints", kpiCtx) ?? undefined)
+                : undefined
+            }
           />
         </div>
 
+        {pendingBookings > 0 && (
+          <Link to="/r/pg-booking-requests?status=pending" className="alert-banner">
+            <span>
+              <IconBell size={16} stroke={1.75} style={{ verticalAlign: "middle" }} aria-hidden />{" "}
+              {pendingBookings} pending booking request{pendingBookings === 1 ? "" : "s"} — review
+              now
+            </span>
+            <span className="alert-banner-cta">Review bookings →</span>
+          </Link>
+        )}
+
+        <p className="section-eyebrow">More detail</p>
         <div className="command-center-grid command-center-grid-secondary">
           <CommandTile
             size="sm"
@@ -129,6 +145,7 @@ export function PgDashboard() {
             to="/r/pg-rent-records?paid_status=unpaid"
             value={data?.rent_due_unpaid ?? 0}
             label="Unpaid rent"
+            valueTone={(data?.rent_due_unpaid ?? 0) > 0 ? "warn" : "default"}
           />
           <CommandTile
             size="sm"
@@ -140,45 +157,39 @@ export function PgDashboard() {
             size="sm"
             to="/r/pg-rooms?full=1"
             value={data?.rooms_full ?? 0}
-            label="Full"
+            label="Full rooms"
           />
           <CommandTile
             size="sm"
             to="/r/pg-rooms?room_status=maintenance"
             value={data?.rooms_maintenance ?? 0}
             label="Maintenance"
+            valueTone={(data?.rooms_maintenance ?? 0) === 0 ? "success" : "default"}
           />
         </div>
-
-        {allClear && (
-          <p className="dashboard-all-clear muted">
-            All clear — your property is running smoothly.
-          </p>
-        )}
       </section>
 
-      {(rentOverdue > 0 || openComplaints > 0 || pendingBookings > 0) && (
-        <section className="dashboard-alerts" aria-label="Attention needed">
-          {pendingBookings > 0 && (
-            <Link
-              to="/r/pg-booking-requests?status=pending"
-              className="dashboard-cta dashboard-cta-warning"
-            >
-              Review {pendingBookings} pending booking{pendingBookings === 1 ? "" : "s"}
+      <p className="section-eyebrow">Quick actions</p>
+      <div className="quick-actions" role="toolbar" aria-label="Quick actions">
+        {quickActions.map((a) => {
+          const Icon = a.icon;
+          const inner = (
+            <>
+              <Icon size={15} stroke={1.75} aria-hidden />
+              {a.label}
+            </>
+          );
+          return a.external ? (
+            <a key={a.label} href={a.to} className="ui-btn ui-btn-qa" target="_blank" rel="noreferrer">
+              {inner}
+            </a>
+          ) : (
+            <Link key={a.label} to={a.to} className="ui-btn ui-btn-qa">
+              {inner}
             </Link>
-          )}
-          {rentOverdue > 0 && (
-            <Link to="/r/pg-rent-records?overdue=true" className="dashboard-cta dashboard-cta-danger">
-              Collect {rentOverdue} overdue rent {rentOverdue === 1 ? "record" : "records"}
-            </Link>
-          )}
-          {openComplaints > 0 && (
-            <Link to="/r/pg-complaints?status=open" className="dashboard-cta dashboard-cta-warning">
-              Resolve {openComplaints} open {openComplaints === 1 ? "complaint" : "complaints"}
-            </Link>
-          )}
-        </section>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

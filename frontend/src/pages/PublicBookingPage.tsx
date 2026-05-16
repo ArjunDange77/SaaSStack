@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { apiErrorMessage } from "@/api/client";
+import { BookingRoomRow } from "@/components/pg/BookingRoomRow";
 import { BookingStepIndicator } from "@/components/pg/BookingStepIndicator";
 import { RoomCard, type RoomCardData } from "@/components/pg/RoomCard";
 import { RoomCardSkeleton } from "@/components/pg/RoomCardSkeleton";
@@ -133,7 +134,7 @@ export function PublicBookingPage() {
 
   if (step === "done") {
     return (
-      <div className="public-booking">
+      <div className="public-booking booking-wrap">
         <BookingStepIndicator current="done" />
         <div className="booking-success">
           <div className="booking-success-icon" aria-hidden>
@@ -159,7 +160,7 @@ export function PublicBookingPage() {
   }
 
   return (
-    <div className="public-booking">
+    <div className="public-booking booking-wrap">
       <header className="public-booking-header">
         <h1>Book a stay</h1>
         <p className="muted">Property: {tenantSlug}</p>
@@ -176,18 +177,26 @@ export function PublicBookingPage() {
             </div>
           ) : (
             <>
-              <div className="room-grid">
+              <div className="booking-room-list">
                 {rooms.map((room) => (
-                  <RoomCard
+                  <BookingRoomRow
                     key={room.id}
                     room={room}
-                    onClick={() => {
+                    selected={selectedRoom?.id === room.id}
+                    onSelect={() => {
                       setSelectedRoom(room);
-                      setStep("form");
                     }}
                   />
                 ))}
               </div>
+              <button
+                type="button"
+                className="continue-btn"
+                disabled={!selectedRoom}
+                onClick={() => setStep("form")}
+              >
+                Continue
+              </button>
               {rooms.length === 0 && (
                 <div className="booking-empty">
                   <p>No beds available right now.</p>
@@ -198,7 +207,7 @@ export function PublicBookingPage() {
               )}
               <button
                 type="button"
-                className="booking-skip-room ghost"
+                className="skip-btn ui-btn ui-btn-ghost"
                 onClick={() => {
                   setSelectedRoom(null);
                   setStep("form");
