@@ -42,7 +42,7 @@ python manage.py migrate --noinput
 
 if [ "$DJANGO_ENV" = "production" ] || [ "$DJANGO_ENV" = "staging" ]; then
   echo "Ensuring cache table for rate limiting..."
-  python manage.py createcachetable --allow-migrate || true
+  python manage.py createcachetable
 fi
 
 if [ "${RUN_BOOTSTRAP:-false}" = "true" ]; then

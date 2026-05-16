@@ -80,6 +80,16 @@ jobs:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           images: ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
+      - name: Wait for container startup
+        run: sleep 90
+
+      - name: Early API gate (health + public booking)
+        env:
+          API_BASE_URL: ${{ secrets.PRODUCTION_API_URL }}
+          EXPECTED_ENV: production
+          EXPECTED_VERSION: ${{ github.sha }}
+        run: bash deploy/scripts/smoke_public_api.sh
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:

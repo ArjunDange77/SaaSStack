@@ -45,6 +45,24 @@ def pg_available_room(pg_tenant, user):
     )
 
 
+def test_public_available_rooms_returns_200(api_client, pg_tenant, pg_available_room):
+    response = api_client.get(f"/api/pg/public/{pg_tenant.slug}/rooms/available/")
+    assert response.status_code == 200, response.content
+    assert isinstance(response.data, list)
+    assert any(r["id"] == pg_available_room.id for r in response.data)
+
+
+def test_public_available_rooms_ok_when_throttle_cache_fails(api_client, pg_tenant, monkeypatch):
+    from rest_framework.throttling import SimpleRateThrottle
+
+    def broken_allow(self, request, view):
+        raise RuntimeError("cache unavailable")
+
+    monkeypatch.setattr(SimpleRateThrottle, "allow_request", broken_allow)
+    response = api_client.get(f"/api/pg/public/{pg_tenant.slug}/rooms/available/")
+    assert response.status_code == 200, response.content
+
+
 def test_booking_public_create_and_operator_approve(api_client, pg_member, pg_tenant, pg_available_room):
     create = api_client.post(
         f"/api/pg/public/{pg_tenant.slug}/booking-requests/",

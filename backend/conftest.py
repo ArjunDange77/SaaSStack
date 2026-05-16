@@ -1,6 +1,15 @@
 import pytest
 
 
+@pytest.fixture(scope="session", autouse=True)
+def django_cache_table(django_db_setup, django_db_blocker):
+    """Create django_cache table used by public booking throttles (same as staging)."""
+    with django_db_blocker.unblock():
+        from django.core.management import call_command
+
+        call_command("createcachetable", verbosity=0)
+
+
 @pytest.fixture
 def api_client():
     from rest_framework.test import APIClient

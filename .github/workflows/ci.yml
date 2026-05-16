@@ -43,7 +43,9 @@ jobs:
         run: |
           ruff check config apps/registry/middleware.py apps/registry/logging_filters.py \
             apps/registry/storage.py apps/registry/tests/test_health.py config/health.py \
-            apps/tenancy/middleware.py
+            apps/tenancy/middleware.py \
+            apps/products/pg_management/views.py apps/products/pg_management/serializers.py \
+            apps/products/pg_management/throttles.py apps/products/pg_management/validators.py
       - name: Pytest
         env:
           DJANGO_SECRET_KEY: ci-secret

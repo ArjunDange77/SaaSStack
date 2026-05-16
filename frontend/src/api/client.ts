@@ -90,6 +90,12 @@ export function isAuthError(error: unknown): boolean {
   return status === 401 || status === 403;
 }
 
+function isHtmlErrorBody(data: unknown): boolean {
+  if (typeof data !== "string") return false;
+  const trimmed = data.trim().toLowerCase();
+  return trimmed.startsWith("<!doctype") || trimmed.startsWith("<html");
+}
+
 function formatValidationErrors(data: Record<string, unknown>): string | null {
   const parts: string[] = [];
   for (const [key, value] of Object.entries(data)) {
@@ -122,6 +128,12 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
     return "File is too large to upload.";
   }
   const data = error.response.data;
+  if (isHtmlErrorBody(data)) {
+    if (status >= 500) {
+      return "Server error. Please try again in a few minutes.";
+    }
+    return fallback;
+  }
   if (typeof data === "string" && data.trim()) return data;
   if (data && typeof data === "object" && !Array.isArray(data)) {
     const record = data as Record<string, unknown>;

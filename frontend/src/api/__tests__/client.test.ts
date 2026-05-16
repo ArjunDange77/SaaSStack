@@ -20,6 +20,25 @@ describe("apiErrorMessage", () => {
     expect(apiErrorMessage(err, "fallback")).toContain("phone");
   });
 
+  it("does not surface HTML error pages for 500 responses", () => {
+    const err = new axios.AxiosError(
+      "server",
+      "500",
+      undefined,
+      undefined,
+      {
+        status: 500,
+        data: "<!doctype html><html><body>Server Error</body></html>",
+        statusText: "Internal Server Error",
+        headers: {},
+        config: {} as never,
+      }
+    );
+    const msg = apiErrorMessage(err, "Could not load rooms.");
+    expect(msg).not.toContain("<!doctype");
+    expect(msg).toMatch(/server error/i);
+  });
+
   it("returns session message for 401", () => {
     const err = new axios.AxiosError(
       "unauth",

@@ -13,8 +13,10 @@ MEDIA_ROOT = BASE_DIR / "test_media"  # noqa: F405
 DEPLOY_ENV = "local"
 CORS_ALLOW_ALL_ORIGINS = True
 
+# Match staging/production so throttle tests exercise DatabaseCache.
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
     }
 }

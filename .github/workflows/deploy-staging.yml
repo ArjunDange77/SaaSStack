@@ -91,6 +91,13 @@ jobs:
             --settings SEED_STAGING_DEMO=false \
             --output none
 
+      - name: Early API gate (health + public booking)
+        env:
+          API_BASE_URL: ${{ secrets.STAGING_API_URL }}
+          EXPECTED_ENV: staging
+          EXPECTED_VERSION: ${{ github.sha }}
+        run: bash deploy/scripts/smoke_public_api.sh
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
