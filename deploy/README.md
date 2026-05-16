@@ -29,7 +29,8 @@ Public booking rate limits use the Postgres `django_cache` table. `createcacheta
 
 | Layer | What it does |
 |-------|----------------|
-| **CI** | pytest, frontend build+tests, **single** Docker build+push to GHCR (GHA layer cache) |
+| **CI** | pytest, frontend build+tests (+ dist artifact for deploy) |
+| **Deploy** | Docker build+push to GHCR (GHA cache), then App Service + SWA |
 | **Early API gate** | `wait_for_api.sh` + public rooms JSON **before** SWA upload (no fixed `sleep 90`) |
 | **Full smoke** | Login, catalog, dashboard, public booking at end |
 | **Entrypoint** | `createcachetable` must succeed or container startup fails |
