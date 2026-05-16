@@ -5,12 +5,15 @@ from django.http import HttpResponse
 from django.urls import include, path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from config.health import HealthView
+
 def index(request):
     return HttpResponse("SaaSStack backend up")
 
 urlpatterns = [
     path("", index),
     path("admin/", admin.site.urls),
+    path("api/health/", HealthView.as_view(), name="health"),
     path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/accounts/", include("apps.accounts.urls")),

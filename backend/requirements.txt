@@ -4,6 +4,12 @@ djangorestframework-simplejwt
 psycopg2-binary
 python-dotenv
 django-cors-headers
+python-json-logger
+gunicorn
+whitenoise
+django-storages[azure]
+azure-identity
+azure-monitor-opentelemetry
 redis
 celery
 

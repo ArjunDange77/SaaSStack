@@ -1,6 +1,6 @@
-"""Test settings — SQLite in-memory (no Docker Postgres required)."""
+"""Test settings — SQLite in-memory."""
 
-from .settings import *  # noqa: F401,F403
+from config.settings.base import *  # noqa: F401,F403
 
 DATABASES = {
     "default": {
@@ -10,3 +10,5 @@ DATABASES = {
 }
 
 MEDIA_ROOT = BASE_DIR / "test_media"  # noqa: F405
+DEPLOY_ENV = "local"
+CORS_ALLOW_ALL_ORIGINS = True

@@ -1,6 +1,9 @@
 from django.utils.deprecation import MiddlewareMixin
+
+from apps.registry.storage import set_storage_tenant_slug
+
 from .models import Tenant
-from urllib.parse import urlparse
+
 
 class TenantMiddleware(MiddlewareMixin):
     """
@@ -13,23 +16,19 @@ class TenantMiddleware(MiddlewareMixin):
 
     def process_request(self, request):
         request.tenant = None
-        # 1) X-Tenant header (slug)
         tenant_slug = request.headers.get("X-Tenant") or request.META.get("HTTP_X_TENANT")
         if tenant_slug:
             try:
                 request.tenant = Tenant.objects.get(slug=tenant_slug, is_active=True)
-                return
             except Tenant.DoesNotExist:
                 request.tenant = None
+        elif request.get_host():
+            host = request.get_host().split(":")[0]
+            if host:
+                try:
+                    request.tenant = Tenant.objects.get(domain__iexact=host, is_active=True)
+                except Tenant.DoesNotExist:
+                    request.tenant = None
 
-        # 2) Host header / domain mapping
-        host = request.get_host().split(":")[0]
-        if host:
-            try:
-                request.tenant = Tenant.objects.get(domain__iexact=host, is_active=True)
-                return
-            except Tenant.DoesNotExist:
-                request.tenant = None
-
-        # else leave as None (global)
-        return
+        tenant = getattr(request, "tenant", None)
+        set_storage_tenant_slug(getattr(tenant, "slug", None) if tenant else None)

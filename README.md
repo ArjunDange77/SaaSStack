@@ -123,4 +123,18 @@ Green `pytest` + `npm run test:run` means:
 1. Update `docs/contracts/` locally if the contract changes.  
 2. Copy `backend/apps/demo/tests/` patterns; add tests for your slug.  
 3. Red → implement model + `register_resource` → migrate → green.  
-4. Add optional `NavBarItem` in admin; verify `/r/<slug>` in the app.  
+4. Add optional `NavBarItem` in admin; verify `/r/<slug>` in the app.
+
+## Deployment (Azure + CI/CD)
+
+| Branch | CI | Deploy |
+|--------|-----|--------|
+| `feature/*` | lint, test, build | never |
+| `staging` | via deploy workflow | auto → Azure staging |
+| `main` | via deploy workflow | production (approval gate) |
+
+- Health: `GET /api/health/` (version, environment, DB/storage checks)
+- **Azure staging (India):** operator guides live in `deploy/docs/` (**local only**, gitignored — not on GitHub). Start with `deploy/docs/india-staging-deploy.md` after copying `deploy/.secrets/azure-account.local.env.example` → `azure-account.local.env`.
+- Scripts: `deploy/scripts/provision-staging-india.sh`, `deploy/scripts/cost-guardrails-setup.sh`
+- Compose: `docker-compose.dev.yml` (dev), `docker-compose.prod.yml` (prod-like)
+- Settings: `DJANGO_SETTINGS_MODULE=config.settings.local|staging|production`

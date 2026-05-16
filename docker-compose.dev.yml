@@ -39,7 +39,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/:/app/        # bind mount for local dev (auto-reload)
+      - ./backend/:/app/
     command: ["/app/entrypoint.sh"]
 
   frontend:
@@ -62,4 +62,3 @@ services:
 volumes:
   postgres_data:
   redis_data:
-
