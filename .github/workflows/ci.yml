@@ -7,10 +7,10 @@ on:
         description: Build and push backend image to GHCR (deploy pipelines)
         type: boolean
         default: false
-      vite_api_base:
-        description: VITE_API_BASE for production frontend build artifact
-        type: string
-        default: http://localhost:8000
+    secrets:
+      VITE_API_BASE:
+        description: Staging/production API URL for Vite build (cannot pass secrets via with)
+        required: false
   pull_request:
     branches: [main, staging]
   push:
@@ -84,7 +84,7 @@ jobs:
       - run: npm ci
       - name: Typecheck and build
         env:
-          VITE_API_BASE: ${{ github.event_name == 'workflow_call' && inputs.vite_api_base || 'http://localhost:8000' }}
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE || 'http://localhost:8000' }}
         run: npm run build
       - run: npm run test:run
       - name: Upload frontend dist

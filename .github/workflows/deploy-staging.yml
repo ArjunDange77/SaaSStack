@@ -18,9 +18,11 @@ permissions:
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      packages: write
     with:
       push_backend_image: true
-      vite_api_base: ${{ secrets.VITE_API_BASE }}
     secrets: inherit
 
   deploy:
