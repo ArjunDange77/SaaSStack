@@ -2,12 +2,18 @@
 
 import os
 
+from corsheaders.defaults import default_headers
+
 from .base import *  # noqa: F401,F403
 
 DEPLOY_ENV = "staging"
 DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes")
 
 CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_HEADERS = (
+    *default_headers,
+    "x-tenant",
+)
 CORS_ALLOWED_ORIGINS = [
     o.strip()
     for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
