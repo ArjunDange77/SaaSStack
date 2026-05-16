@@ -37,6 +37,14 @@ from .services import (
     sync_resident_on_vacate,
     validate_assignment,
 )
+from .throttles import (
+    PublicBookingBurstThrottle,
+    PublicBookingSubmitThrottle,
+    PublicRoomsThrottle,
+)
+
+PUBLIC_ROOMS_THROTTLES = [PublicBookingBurstThrottle, PublicRoomsThrottle]
+PUBLIC_SUBMIT_THROTTLES = [PublicBookingBurstThrottle, PublicBookingSubmitThrottle]
 
 User = get_user_model()
 PG_PERMISSIONS = (PGRolePermission,)
