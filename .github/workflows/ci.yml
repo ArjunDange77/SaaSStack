@@ -62,7 +62,7 @@ jobs:
           POSTGRES_PASSWORD: changeme
           DB_HOST: localhost
           DB_PORT: "5432"
-        run: pytest
+        run: pytest --cov-fail-under=70
 
   frontend:
     runs-on: ubuntu-latest
@@ -84,7 +84,7 @@ jobs:
         env:
           VITE_API_BASE: ${{ secrets.VITE_API_BASE || 'http://localhost:8000' }}
         run: npm run build
-      - run: npm run test:run
+      - run: npm run test:coverage
       - name: Upload frontend dist for deploy
         if: ${{ github.event_name == 'workflow_call' }}
         uses: actions/upload-artifact@v4

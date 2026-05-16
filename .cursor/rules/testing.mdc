@@ -1,0 +1,41 @@
+---
+description: Testing policy — every feature ships with regression tests; CI enforces coverage floors.
+globs:
+  - backend/**/*
+  - frontend/**/*
+  - deploy/**/*
+---
+
+# Testing policy
+
+## Definition of done
+
+1. **Backend feature or bugfix** — at least one pytest in the owning app’s `tests/` (API test for endpoints; service tests for business logic). Follow `backend/apps/products/pg_management/tests/test_booking.py` and `test_resident_portal.py`.
+2. **Frontend feature or bugfix** — vitest for new/changed components or hooks; use `frontend/src/test/test-utils.tsx` and existing engine test patterns.
+3. **User-facing HTTP flow** (login, portal, public booking) — extend `deploy/scripts/smoke_test.py` or add an API integration test with `APIClient` + fixtures from `backend/conftest.py`.
+4. **No regression** — existing pytest/vitest stay green; do not lower coverage thresholds without explicit approval.
+
+## PR checklist
+
+Before merge, ask: **What broke before? What does this change touch?** Add or extend a test that would fail on the old bug.
+
+## Local commands
+
+```bash
+# Backend (70% line coverage floor on apps/)
+cd backend && pip install -r requirements-dev.txt && pytest --cov-fail-under=70
+
+# Frontend (40% line coverage floor)
+cd frontend && npm run test:coverage
+```
+
+Or from repo root: `bash scripts/test-all.sh`
+
+## CI and deploy gates
+
+- **CI** (`ci.yml`): `pytest --cov-fail-under=70`, `npm run test:coverage`
+- **Staging smoke** (`smoke_test.py`): operator + resident auth, `/api/accounts/me/`, `/api/pg/resident/me/`, catalog/schema/dashboard/public rooms
+
+## E2E
+
+Playwright E2E is deferred. Rely on API/unit tests + deploy smoke until E2E is added in a follow-up phase.

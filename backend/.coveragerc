@@ -1,0 +1,15 @@
+[run]
+source = apps
+omit =
+    */migrations/*
+    */tests/*
+    config/settings/*
+    config/settings.py
+    config/wsgi.py
+    config/asgi.py
+    manage.py
+
+[report]
+fail_under = 70
+show_missing = true
+skip_empty = true

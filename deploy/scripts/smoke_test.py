@@ -13,6 +13,8 @@ SMOKE_SWA_URL = os.getenv("SMOKE_SWA_URL", "").rstrip("/")
 SMOKE_USERNAME = os.getenv("SMOKE_USERNAME", "admin")
 SMOKE_PASSWORD = os.getenv("SMOKE_PASSWORD", "admin")
 SMOKE_TENANT = os.getenv("SMOKE_TENANT", "pg-demo")
+SMOKE_RESIDENT_USER = os.getenv("SMOKE_RESIDENT_USER", "resident")
+SMOKE_RESIDENT_PASSWORD = os.getenv("SMOKE_RESIDENT_PASSWORD", "admin")
 EXPECTED_ENV = os.getenv("EXPECTED_ENV", "")
 EXPECTED_VERSION = os.getenv("EXPECTED_VERSION", "")
 PUBLIC_TENANT = os.getenv("SMOKE_PUBLIC_TENANT", "pg-demo")
@@ -25,6 +27,19 @@ def fail(msg: str) -> None:
 
 def ok(msg: str) -> None:
     print(f"SMOKE OK: {msg}")
+
+
+def login(client: httpx.Client, username: str, password: str) -> str:
+    response = client.post(
+        "/api/auth/login/",
+        json={"username": username, "password": password},
+    )
+    if response.status_code != 200:
+        fail(f"login ({username}) status {response.status_code}: {response.text}")
+    token = response.json().get("access")
+    if not token:
+        fail(f"login ({username}) missing access token")
+    return token
 
 
 def main() -> None:
@@ -48,21 +63,22 @@ def main() -> None:
             fail(f"frontend status {swa.status_code} at {SMOKE_SWA_URL}")
         ok("frontend")
 
-    login = client.post(
-        "/api/auth/login/",
-        json={"username": SMOKE_USERNAME, "password": SMOKE_PASSWORD},
-    )
-    if login.status_code != 200:
-        fail(f"login status {login.status_code}: {login.text}")
-    token = login.json().get("access")
-    if not token:
-        fail("login missing access token")
-    ok("login")
+    operator_token = login(client, SMOKE_USERNAME, SMOKE_PASSWORD)
+    ok("operator login")
 
     headers = {
-        "Authorization": f"Bearer {token}",
+        "Authorization": f"Bearer {operator_token}",
         "X-Tenant": SMOKE_TENANT,
     }
+
+    me = client.get("/api/accounts/me/", headers=headers)
+    if me.status_code != 200:
+        fail(f"accounts/me status {me.status_code}: {me.text}")
+    me_body = me.json()
+    if not me_body.get("username"):
+        fail("accounts/me missing username")
+    ok("accounts/me")
+
     catalog = client.get("/api/meta/catalog/", headers=headers)
     if catalog.status_code != 200:
         fail(f"catalog status {catalog.status_code}: {catalog.text}")
@@ -71,6 +87,13 @@ def main() -> None:
     if not resources:
         fail("catalog has no resources (run seed_pg --demo)")
     ok("catalog")
+
+    schema = client.get("/api/meta/schema/pg-rooms/", headers=headers)
+    if schema.status_code != 200:
+        fail(f"schema pg-rooms status {schema.status_code}: {schema.text}")
+    if not schema.json().get("fields"):
+        fail("schema pg-rooms missing fields")
+    ok("schema pg-rooms")
 
     dashboard = client.get("/api/pg/dashboard/", headers=headers)
     if dashboard.status_code != 200:
@@ -81,6 +104,28 @@ def main() -> None:
     if booking.status_code != 200:
         fail(f"public booking rooms status {booking.status_code}: {booking.text}")
     ok("public booking reachable")
+
+    resident_token = login(client, SMOKE_RESIDENT_USER, SMOKE_RESIDENT_PASSWORD)
+    ok("resident login")
+
+    resident_headers = {
+        "Authorization": f"Bearer {resident_token}",
+        "X-Tenant": SMOKE_TENANT,
+    }
+    resident_me = client.get("/api/accounts/me/", headers=resident_headers)
+    if resident_me.status_code != 200:
+        fail(f"resident accounts/me status {resident_me.status_code}: {resident_me.text}")
+    if resident_me.json().get("role") != "resident":
+        fail(f"resident accounts/me expected role resident, got {resident_me.json().get('role')}")
+    ok("resident accounts/me")
+
+    portal = client.get("/api/pg/resident/me/", headers=resident_headers)
+    if portal.status_code != 200:
+        fail(f"resident portal status {portal.status_code}: {portal.text}")
+    portal_body = portal.json()
+    if "profile" not in portal_body:
+        fail("resident portal missing profile")
+    ok("resident portal")
 
     print("All smoke tests passed.")
 

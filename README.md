@@ -92,23 +92,28 @@ Before shipping UI changes, check **375px**, **768px**, and **1280px** in browse
 
 ## Testing (TDD baseline)
 
-**Contracts are the spec; tests prove the code matches.**
+**Contracts are the spec; tests prove the code matches.** New work is not done until touched behavior has a regression test. See [`.cursor/rules/testing.mdc`](.cursor/rules/testing.mdc) for the full policy.
 
 ```bash
-# Backend (SQLite in-memory for tests)
+# Backend (70% line coverage floor on apps/)
 cd backend
 pip install -r requirements-dev.txt
-pytest
+pytest --cov-fail-under=70
 
-# Frontend
+# Frontend (40% line coverage floor)
 cd frontend
 npm install
-npm run test:run
+npm run test:coverage
+
+# Both (from repo root)
+bash scripts/test-all.sh
 ```
+
+**Definition of done:** backend change → pytest in the owning app; frontend change → vitest for changed components/hooks; login/portal/booking flows → extend `deploy/scripts/smoke_test.py` or API integration tests. CI fails if coverage drops below configured floors.
 
 ### Kernel validation checklist (automated)
 
-Green `pytest` + `npm run test:run` means:
+Green `pytest --cov-fail-under=70` + `npm run test:coverage` means:
 
 - [ ] `schema_version` present on catalog and resource metadata  
 - [ ] Registered resource appears in `/api/meta/catalog/`  
