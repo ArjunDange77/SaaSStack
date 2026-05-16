@@ -2,6 +2,8 @@ using './main.bicep'
 
 param environmentName = 'staging'
 param location = 'centralindia'
+param appServiceLocation = 'southindia'
+param staticWebAppLocation = 'eastasia'
 param enableMonitoring = false
 param enableKeyVault = false
 param useAzureStorage = false

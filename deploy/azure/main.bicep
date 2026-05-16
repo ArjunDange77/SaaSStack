@@ -4,6 +4,12 @@ param environmentName string = 'staging'
 @description('Azure region — use centralindia or southindia for India pilots')
 param location string = 'centralindia'
 
+@description('App Service region (B1 Linux may be unavailable in some India regions on trial subs)')
+param appServiceLocation string = location
+
+@description('Static Web Apps region (SWA is not available in all regions; eastasia is nearest to India)')
+param staticWebAppLocation string = 'eastasia'
+
 @description('PostgreSQL admin password (min 8 chars, mixed case + numbers)')
 @secure()
 param postgresPassword string
@@ -114,7 +120,7 @@ resource postgresDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2
 
 resource appPlan 'Microsoft.Web/serverfarms@2023-01-01' = {
   name: '${namePrefix}-plan'
-  location: location
+  location: appServiceLocation
   sku: {
     name: 'B1'
     tier: 'Basic'
@@ -127,7 +133,7 @@ resource appPlan 'Microsoft.Web/serverfarms@2023-01-01' = {
 
 resource webApp 'Microsoft.Web/sites@2023-01-01' = {
   name: '${namePrefix}-api'
-  location: location
+  location: appServiceLocation
   identity: {
     type: 'SystemAssigned'
   }
@@ -235,7 +241,7 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
 
 resource staticWebApp 'Microsoft.Web/staticSites@2022-03-01' = {
   name: '${namePrefix}-web'
-  location: location
+  location: staticWebAppLocation
   sku: {
     name: 'Free'
     tier: 'Free'

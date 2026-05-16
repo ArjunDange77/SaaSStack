@@ -5,7 +5,8 @@
 ## First-time setup
 
 1. Copy `deploy/.secrets/azure-account.local.env.example` → `deploy/.secrets/azure-account.local.env`
-2. Set `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION=centralindia`, `BUDGET_ALERT_EMAIL`
+2. Set `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION=centralindia`, `BUDGET_ALERT_EMAIL`  
+   Optional overrides: `AZURE_APP_LOCATION=southindia`, `AZURE_SWA_LOCATION=eastasia` (defaults — cheapest layout when centralindia cannot host API/SWA)
 3. `az login` then read **`deploy/docs/cost-guardrails.md`**
 4. `./deploy/scripts/cost-guardrails-setup.sh`
 5. `./deploy/scripts/provision-staging-india.sh`

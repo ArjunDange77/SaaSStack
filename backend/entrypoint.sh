@@ -51,6 +51,12 @@ if [ "${RUN_BOOTSTRAP:-false}" = "true" ]; then
   fi
 fi
 
+if [ "${SEED_STAGING_DEMO:-false}" = "true" ]; then
+  echo "SEED_STAGING_DEMO=true — seeding kernel + pg-demo (idempotent)..."
+  python manage.py seed_kernel || true
+  python manage.py seed_pg --demo || true
+fi
+
 if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] && [ -n "$DJANGO_SUPERUSER_USERNAME" ]; then
   echo "Creating superuser (if not exists)..."
   python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); \

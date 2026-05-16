@@ -54,9 +54,30 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           images: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          registry-url: https://ghcr.io
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Wait for container startup (migrations run in entrypoint)
         run: sleep 90
+
+      - name: Seed demo data (idempotent)
+        env:
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+        run: |
+          RG=rg-saasstack-staging
+          az webapp config appsettings set \
+            --resource-group "$RG" \
+            --name "$AZURE_WEBAPP_NAME" \
+            --settings SEED_STAGING_DEMO=true \
+            --output none
+          az webapp restart --resource-group "$RG" --name "$AZURE_WEBAPP_NAME" --output none
+          sleep 120
+          az webapp config appsettings set \
+            --resource-group "$RG" \
+            --name "$AZURE_WEBAPP_NAME" \
+            --settings SEED_STAGING_DEMO=false \
+            --output none
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -101,6 +122,7 @@ jobs:
       - name: Smoke tests
         env:
           API_BASE_URL: ${{ secrets.STAGING_API_URL }}
+          SMOKE_SWA_URL: ${{ secrets.SMOKE_SWA_URL }}
           EXPECTED_ENV: staging
           EXPECTED_VERSION: ${{ github.sha }}
           SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}

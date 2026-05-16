@@ -9,6 +9,7 @@ import sys
 import httpx
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
+SMOKE_SWA_URL = os.getenv("SMOKE_SWA_URL", "").rstrip("/")
 SMOKE_USERNAME = os.getenv("SMOKE_USERNAME", "admin")
 SMOKE_PASSWORD = os.getenv("SMOKE_PASSWORD", "admin")
 SMOKE_TENANT = os.getenv("SMOKE_TENANT", "pg-demo")
@@ -41,6 +42,12 @@ def main() -> None:
         fail(f"version expected {EXPECTED_VERSION}, got {data.get('version')}")
     ok("health")
 
+    if SMOKE_SWA_URL:
+        swa = httpx.get(SMOKE_SWA_URL, timeout=30.0, follow_redirects=True)
+        if swa.status_code >= 400:
+            fail(f"frontend status {swa.status_code} at {SMOKE_SWA_URL}")
+        ok("frontend")
+
     login = client.post(
         "/api/auth/login/",
         json={"username": SMOKE_USERNAME, "password": SMOKE_PASSWORD},
@@ -59,7 +66,16 @@ def main() -> None:
     catalog = client.get("/api/meta/catalog/", headers=headers)
     if catalog.status_code != 200:
         fail(f"catalog status {catalog.status_code}: {catalog.text}")
+    catalog_body = catalog.json()
+    resources = catalog_body if isinstance(catalog_body, list) else catalog_body.get("resources") or []
+    if not resources:
+        fail("catalog has no resources (run seed_pg --demo)")
     ok("catalog")
+
+    dashboard = client.get("/api/pg/dashboard/", headers=headers)
+    if dashboard.status_code != 200:
+        fail(f"dashboard status {dashboard.status_code}: {dashboard.text}")
+    ok("dashboard")
 
     booking = client.get(f"/api/pg/public/{PUBLIC_TENANT}/rooms/available/")
     if booking.status_code != 200:
