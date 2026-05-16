@@ -2,11 +2,23 @@ name: CI
 
 on:
   workflow_call:
+    inputs:
+      push_backend_image:
+        description: Build and push backend image to GHCR (deploy pipelines)
+        type: boolean
+        default: false
+      vite_api_base:
+        description: VITE_API_BASE for production frontend build artifact
+        type: string
+        default: http://localhost:8000
   pull_request:
     branches: [main, staging]
   push:
     branches:
       - "feature/**"
+
+permissions:
+  contents: read
 
 jobs:
   backend:
@@ -72,18 +84,46 @@ jobs:
       - run: npm ci
       - name: Typecheck and build
         env:
-          VITE_API_BASE: http://localhost:8000
+          VITE_API_BASE: ${{ github.event_name == 'workflow_call' && inputs.vite_api_base || 'http://localhost:8000' }}
         run: npm run build
       - run: npm run test:run
+      - name: Upload frontend dist
+        if: github.event_name == 'workflow_call' && inputs.push_backend_image
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 1
 
-  docker-backend:
+  backend-image:
+    if: github.event_name == 'workflow_call' && inputs.push_backend_image
+    needs: backend
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - name: Build backend image
-        run: |
-          docker build \
-            -f backend/Dockerfile \
-            --build-arg APP_VERSION=${{ github.sha }} \
-            -t saasstack-backend:ci \
-            .
+
+      - name: Set image name (GHCR requires lowercase)
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}/backend" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

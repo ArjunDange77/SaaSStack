@@ -27,17 +27,15 @@ Public booking rate limits use the Postgres `django_cache` table. `createcacheta
 
 ## Deploy guards (staging / production)
 
-Faulty code should be blocked **before** users see it:
-
 | Layer | What it does |
 |-------|----------------|
-| **CI on every `staging` push** | `deploy-staging` calls reusable `ci.yml`: pytest (with `DatabaseCache` + `createcachetable`), frontend build + tests, Docker build |
-| **Early API gate** | After backend deploy, `smoke_public_api.sh` checks health + `GET .../rooms/available/` **before** Static Web App upload |
-| **Full smoke** | Login, catalog, dashboard, public booking again at end of workflow |
-| **Entrypoint** | `createcachetable` must succeed or container startup fails (no silent `|| true`) |
-| **Runtime** | Throttle cache errors → allow request + log (booking stays up; limits may be off briefly) |
-| **Frontend** | HTML 500 pages are not shown raw to users |
+| **CI** | pytest, frontend build+tests, **single** Docker build+push to GHCR (GHA layer cache) |
+| **Early API gate** | `wait_for_api.sh` + public rooms JSON **before** SWA upload (no fixed `sleep 90`) |
+| **Full smoke** | Login, catalog, dashboard, public booking at end |
+| **Entrypoint** | `createcachetable` must succeed or container startup fails |
 
-**Recommended GitHub setting:** Branch protection on `staging` → require status checks `ci / backend`, `ci / frontend`, `ci / docker-backend` before merge (optional if you only push directly to `staging`; direct pushes still run CI via `workflow_call`).
+**Staging demo seed:** not run on every push. Use **Actions → Deploy Staging → Run workflow** with **Re-seed pg-demo** checked, or `bash deploy/scripts/seed_staging_demo.sh` locally with `az login`.
 
-**Before you push:** run locally — `cd backend && pytest` and `cd frontend && npm run test:run && npm run build`.
+**Typical staging deploy time:** ~4–6 min (was ~9–10 min) — no per-push seed restart, no duplicate Docker/frontend builds.
+
+**Before you push:** `cd backend && pytest` and `cd frontend && npm run test:run && npm run build`.
