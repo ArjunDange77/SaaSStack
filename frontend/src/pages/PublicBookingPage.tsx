@@ -198,13 +198,13 @@ export function PublicBookingPage() {
               )}
               <button
                 type="button"
-                className="secondary booking-skip-room"
+                className="booking-skip-room ghost"
                 onClick={() => {
                   setSelectedRoom(null);
                   setStep("form");
                 }}
               >
-                Continue without selecting a room
+                I&apos;ll choose a room later
               </button>
             </>
           )}

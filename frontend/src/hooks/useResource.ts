@@ -1,9 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, apiErrorMessage } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
 import { useToast } from "@/components/ui/ToastProvider";
+import { scopeTenant } from "@/lib/queryKeys";
 import type { PaginatedResponse, ResourceSchema } from "@/types/metadata";
 import { hasFileValues, toFormData } from "@/utils/formValues";
 import { actionSuccessMessage } from "@/utils/feedbackMessages";
+
+function useTenantSlug(): string {
+  return useAuth().tenantSlug;
+}
 
 function stripUnchangedFiles(
   body: Record<string, unknown>,
@@ -39,8 +45,9 @@ async function writeResource(
 }
 
 export function useResourceSchema(slug: string | undefined) {
+  const tenant = useTenantSlug();
   return useQuery({
-    queryKey: ["schema", slug],
+    queryKey: scopeTenant(tenant, "schema", slug),
     queryFn: async () => {
       const { data } = await api.get<ResourceSchema>(`/meta/schema/${slug}/`);
       return data;
@@ -56,8 +63,9 @@ export function useResourceList(
   ordering?: string,
   filters: Record<string, string> = {}
 ) {
+  const tenant = useTenantSlug();
   return useQuery({
-    queryKey: ["resource", slug, "list", search, page, ordering, filters],
+    queryKey: scopeTenant(tenant, "resource", slug, "list", search, page, ordering, filters),
     queryFn: async () => {
       const { data } = await api.get<PaginatedResponse<Record<string, unknown>> | Record<string, unknown>[]>(
         `/meta/resources/${slug}/`,
@@ -85,8 +93,9 @@ export function useResourceList(
 }
 
 export function useRelatedResourceOptions(relatedSlug: string | null | undefined) {
+  const tenant = useTenantSlug();
   return useQuery({
-    queryKey: ["resource", relatedSlug, "options"],
+    queryKey: scopeTenant(tenant, "resource", relatedSlug, "options"),
     queryFn: async () => {
       const { data } = await api.get<PaginatedResponse<Record<string, unknown>> | Record<string, unknown>[]>(
         `/meta/resources/${relatedSlug}/`,
@@ -100,8 +109,9 @@ export function useRelatedResourceOptions(relatedSlug: string | null | undefined
 }
 
 export function useResourceDetail(slug: string | undefined, id: string | undefined) {
+  const tenant = useTenantSlug();
   return useQuery({
-    queryKey: ["resource", slug, "detail", id],
+    queryKey: scopeTenant(tenant, "resource", slug, "detail", id),
     queryFn: async () => {
       const { data } = await api.get<Record<string, unknown>>(`/meta/resources/${slug}/${id}/`);
       return data;
@@ -111,8 +121,9 @@ export function useResourceDetail(slug: string | undefined, id: string | undefin
 }
 
 export function useResourceTimeline(slug: string | undefined, id: string | undefined) {
+  const tenant = useTenantSlug();
   return useQuery({
-    queryKey: ["timeline", slug, id],
+    queryKey: scopeTenant(tenant, "timeline", slug, id),
     queryFn: async () => {
       const { data } = await api.get<Record<string, unknown>[]>(
         `/meta/resources/${slug}/${id}/timeline/`
@@ -125,11 +136,12 @@ export function useResourceTimeline(slug: string | undefined, id: string | undef
 
 export function useResourceMutations(slug: string, schema?: ResourceSchema) {
   const qc = useQueryClient();
+  const tenant = useTenantSlug();
   const { success, error: toastError } = useToast();
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["resource", slug] });
-    qc.invalidateQueries({ queryKey: ["timeline", slug] });
-    qc.invalidateQueries({ queryKey: ["pg", "dashboard"] });
+    qc.invalidateQueries({ queryKey: scopeTenant(tenant, "resource", slug) });
+    qc.invalidateQueries({ queryKey: scopeTenant(tenant, "timeline", slug) });
+    qc.invalidateQueries({ queryKey: scopeTenant(tenant, "pg", "dashboard") });
   };
 
   const create = useMutation({
@@ -225,6 +237,12 @@ export function useResourceMutations(slug: string, schema?: ResourceSchema) {
   return { create, update, remove, runAction };
 }
 
+export interface TrendMeta {
+  direction: "up" | "down" | "flat";
+  delta: number;
+  period: string;
+}
+
 export interface PgDashboardStats {
   active_residents: number;
   total_rooms: number;
@@ -238,11 +256,13 @@ export interface PgDashboardStats {
   rent_overdue: number;
   pending_bookings: number;
   as_of?: string;
+  trends?: Record<string, TrendMeta>;
 }
 
 export function usePgDashboard(enabled = true) {
+  const tenant = useTenantSlug();
   return useQuery({
-    queryKey: ["pg", "dashboard"],
+    queryKey: scopeTenant(tenant, "pg", "dashboard"),
     queryFn: async () => {
       const { data } = await api.get<PgDashboardStats>("/pg/dashboard/");
       return data;

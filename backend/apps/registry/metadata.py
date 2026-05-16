@@ -5,8 +5,18 @@ from typing import Any, Dict, List, Optional, Type
 
 from rest_framework import serializers
 
-from apps.registry.constants import REGISTRY_SCHEMA_VERSION
+from django.contrib.auth import get_user_model
+
+from apps.registry.constants import (
+    KERNEL_RELATION_DISPLAY_DEFAULTS,
+    KERNEL_USER_DISPLAY_FIELD,
+    KERNEL_USER_RESOURCE_SLUG,
+    REGISTRY_SCHEMA_VERSION,
+    USER_RELATION_FIELD_NAMES,
+)
 from apps.registry.relation_map import model_to_resource_slug
+
+User = get_user_model()
 
 
 def _apply_ui_overrides(meta: Dict[str, Any], viewset_class: Type, field_name: str) -> None:
@@ -39,7 +49,12 @@ def _serializer_field_to_meta(
     if isinstance(field, serializers.BooleanField):
         meta["type"] = "boolean"
     elif isinstance(field, serializers.IntegerField):
-        meta["type"] = "integer"
+        if name in USER_RELATION_FIELD_NAMES:
+            meta["type"] = "relation"
+            meta["related_resource"] = KERNEL_USER_RESOURCE_SLUG
+            meta["relation_display_field"] = KERNEL_RELATION_DISPLAY_DEFAULTS[name]
+        else:
+            meta["type"] = "integer"
     elif isinstance(field, serializers.DecimalField):
         meta["type"] = "decimal"
     elif isinstance(field, serializers.ChoiceField):
@@ -68,10 +83,20 @@ def _serializer_field_to_meta(
     elif isinstance(field, serializers.PrimaryKeyRelatedField):
         meta["type"] = "relation"
         qs = getattr(field, "queryset", None)
-        slug = model_to_resource_slug(qs.model) if qs is not None else None
+        slug = None
+        if qs is not None:
+            if qs.model == User:
+                slug = KERNEL_USER_RESOURCE_SLUG
+            else:
+                slug = model_to_resource_slug(qs.model)
+        elif name in USER_RELATION_FIELD_NAMES:
+            slug = KERNEL_USER_RESOURCE_SLUG
         meta["related_resource"] = slug
         display_fields = getattr(viewset_class, "relation_display_fields", {}) or {}
-        meta["relation_display_field"] = display_fields.get(name, "id")
+        defaults = dict(KERNEL_RELATION_DISPLAY_DEFAULTS)
+        meta["relation_display_field"] = display_fields.get(
+            name, defaults.get(name, "id")
+        )
     else:
         meta["type"] = "string"
         meta["drf_class"] = internal
@@ -176,9 +201,26 @@ def build_resource_metadata(
         "detail_path_template": f"/api/meta/resources/{slug}/{{id}}/",
     }
     if list_filters:
-        meta["list_filters"] = list_filters
+        enriched = []
+        counts_fn = getattr(viewset_class, "get_list_filter_counts", None)
+        counts = counts_fn(request) if request is not None and counts_fn else {}
+        for f in list_filters:
+            entry = dict(f)
+            key = f"{f.get('param')}={f.get('value', 'true')}"
+            if key in counts:
+                entry["count"] = counts[key]
+            elif f.get("param") in counts:
+                entry["count"] = counts[f["param"]]
+            enriched.append(entry)
+        meta["list_filters"] = enriched
     if empty_state:
         meta["empty_state"] = empty_state
+    empty_cta = getattr(viewset_class, "empty_state_cta", None)
+    if empty_cta:
+        meta["empty_state_cta"] = empty_cta
+    alt_views = getattr(viewset_class, "list_alternate_views", None)
+    if alt_views:
+        meta["list_views"] = ["table", *alt_views]
     if request is not None and hasattr(viewset_class, "get_metadata_capabilities"):
         caps = viewset_class.get_metadata_capabilities(request)
     elif request is not None:

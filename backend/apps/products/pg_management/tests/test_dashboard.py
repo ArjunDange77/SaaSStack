@@ -36,3 +36,6 @@ def test_pg_dashboard_stats(pg_member, pg_tenant):
     assert response.data["rent_due_unpaid"] >= 1
     assert "occupancy_rate" in response.data
     assert "rent_overdue" in response.data
+    assert "trends" in response.data
+    assert "pending_bookings" in response.data["trends"]
+    assert response.data["trends"]["pending_bookings"]["period"] == "7d"

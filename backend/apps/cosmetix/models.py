@@ -65,6 +65,11 @@ class NavBarItem(models.Model):
         help_text="Optional registered resource slug for dynamic CRUD routes",
     )
     sort_order = models.PositiveIntegerField(default=0)
+    nav_group = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="Sidebar section label key (e.g. core, operations)",
+    )
     is_active = models.BooleanField(default=True)
     open_in_new_tab = models.BooleanField(default=False)
 

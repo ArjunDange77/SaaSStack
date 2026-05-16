@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -123,8 +123,25 @@ def approve_booking(
     return resident
 
 
+def _trend(current: int, previous: int) -> dict:
+    delta = current - previous
+    if delta > 0:
+        direction = "up"
+    elif delta < 0:
+        direction = "down"
+    else:
+        direction = "flat"
+    return {"direction": direction, "delta": delta, "period": "7d"}
+
+
+def _count_in_window(qs, field: str, start: date, end: date) -> int:
+    return qs.filter(**{f"{field}__date__gte": start, f"{field}__date__lt": end}).count()
+
+
 def dashboard_stats(tenant):
     today = timezone.now().date()
+    week_start = today - timedelta(days=7)
+    prev_week_start = today - timedelta(days=14)
     residents_qs = Resident.objects.filter(tenant=tenant, deleted_at__isnull=True)
     rooms_qs = Room.objects.filter(tenant=tenant)
     total_rooms = rooms_qs.count()
@@ -144,6 +161,24 @@ def dashboard_stats(tenant):
     pending_bookings = BookingRequest.objects.filter(
         tenant=tenant, status="pending", deleted_at__isnull=True
     ).count()
+    booking_qs = BookingRequest.objects.filter(tenant=tenant, deleted_at__isnull=True)
+    complaint_qs = Complaint.objects.filter(tenant=tenant, deleted_at__isnull=True)
+    bookings_this_week = _count_in_window(booking_qs, "created_at", week_start, today + timedelta(days=1))
+    bookings_prev_week = _count_in_window(booking_qs, "created_at", prev_week_start, week_start)
+    complaints_this_week = _count_in_window(complaint_qs, "created_at", week_start, today + timedelta(days=1))
+    complaints_prev_week = _count_in_window(complaint_qs, "created_at", prev_week_start, week_start)
+    overdue_now = rent_qs.filter(paid_status="unpaid", due_date__lt=today).count()
+    overdue_prev = rent_qs.filter(
+        paid_status="unpaid",
+        due_date__lt=week_start,
+        due_date__gte=prev_week_start,
+    ).count()
+    trends = {
+        "pending_bookings": _trend(bookings_this_week, bookings_prev_week),
+        "open_complaints": _trend(complaints_this_week, complaints_prev_week),
+        "rent_overdue": _trend(overdue_now, overdue_prev),
+        "occupancy_rate": _trend(int(occupancy_rate), int(occupancy_rate)),
+    }
     return {
         "active_residents": residents_qs.filter(active_status="active").count(),
         "total_rooms": total_rooms,
@@ -159,6 +194,7 @@ def dashboard_stats(tenant):
         "rent_overdue": rent_qs.filter(paid_status="unpaid", due_date__lt=today).count(),
         "pending_bookings": pending_bookings,
         "as_of": today.isoformat(),
+        "trends": trends,
     }
 
 

@@ -22,6 +22,19 @@ function choiceLabel(field: FieldMeta, raw: string): string {
   return field.ui?.label_map?.[raw] ?? raw.replace(/_/g, " ");
 }
 
+function formatDateTimeValue(value: unknown, type: "datetime" | "date"): string {
+  if (value === null || value === undefined || value === "") return "";
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return String(value);
+  return type === "date" ? d.toLocaleDateString() : d.toLocaleString();
+}
+
+function parseOccupancyFraction(value: unknown): { current: number; limit: number } | null {
+  const m = String(value ?? "").match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (!m) return null;
+  return { current: Number(m[1]), limit: Number(m[2]) };
+}
+
 export function CellValue({ field, value, labelMaps = {}, row }: Props) {
   if (!field) return <>{String(value ?? "")}</>;
 
@@ -33,8 +46,27 @@ export function CellValue({ field, value, labelMaps = {}, row }: Props) {
     display = path.split("/").pop() ?? path;
   } else if (field.type === "choice" && value !== null && value !== undefined) {
     display = choiceLabel(field, String(value));
+  } else if (field.type === "datetime") {
+    display = formatDateTimeValue(value, "datetime");
+  } else if (field.type === "date") {
+    display = formatDateTimeValue(value, "date");
   } else {
     display = value === null || value === undefined ? "" : String(value);
+  }
+
+  const occupancy = field.ui?.variant === "progress" ? parseOccupancyFraction(value) : null;
+  if (occupancy && occupancy.limit > 0) {
+    const pct = Math.min(100, Math.round((occupancy.current / occupancy.limit) * 100));
+    return (
+      <div className="occupancy-progress" title={`${occupancy.current}/${occupancy.limit}`}>
+        <div className="occupancy-progress-track">
+          <div className="occupancy-progress-fill" style={{ width: `${pct}%` }} />
+        </div>
+        <span className="occupancy-progress-label">
+          {occupancy.current}/{occupancy.limit}
+        </span>
+      </div>
+    );
   }
 
   const dateHighlight =

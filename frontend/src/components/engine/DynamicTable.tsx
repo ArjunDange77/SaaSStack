@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { ResourceSchema } from "@/types/metadata";
 import { fieldByName } from "@/types/metadata";
 import { useRelationLabelMaps } from "@/hooks/useRelationLabels";
@@ -90,9 +91,18 @@ export function DynamicTable({ schema, rows, loading, onRowClick }: Props) {
         {loading && rows.length === 0 ? (
           <CardSkeleton />
         ) : rows.length === 0 ? (
-          <div className="record-cards-empty">
+          <div className="record-cards-empty empty-state-panel">
+            <p className="empty-state-icon" aria-hidden>
+              ○
+            </p>
             <p>{emptyMessage}</p>
-            <p className="muted">Use New to add your first record.</p>
+            {schema.empty_state_cta ? (
+              <Link to={schema.empty_state_cta.href} className="empty-state-cta">
+                {schema.empty_state_cta.label}
+              </Link>
+            ) : (
+              <p className="muted">Use New to add your first record.</p>
+            )}
           </div>
         ) : (
           rows.map(renderCard)
@@ -115,9 +125,18 @@ export function DynamicTable({ schema, rows, loading, onRowClick }: Props) {
               <TableSkeleton columns={columns.length + 1} />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + 1} className="empty-state">
+                <td colSpan={columns.length + 1} className="empty-state empty-state-panel">
+                  <p className="empty-state-icon" aria-hidden>
+                    ○
+                  </p>
                   <p>{emptyMessage}</p>
-                  <p className="muted">Use New to add your first record.</p>
+                  {schema.empty_state_cta ? (
+                    <Link to={schema.empty_state_cta.href} className="empty-state-cta">
+                      {schema.empty_state_cta.label}
+                    </Link>
+                  ) : (
+                    <p className="muted">Use New to add your first record.</p>
+                  )}
                 </td>
               </tr>
             ) : (

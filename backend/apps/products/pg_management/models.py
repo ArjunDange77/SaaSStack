@@ -55,6 +55,10 @@ class Room(TenantAuditedModel):
     occupancy_limit = models.PositiveIntegerField(default=1)
     current_occupancy = models.PositiveIntegerField(default=0, editable=False)
     room_status = models.CharField(max_length=32, choices=STATUS_CHOICES, default="available")
+    monthly_rent_per_bed = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    amenities = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["floor", "room_number"]

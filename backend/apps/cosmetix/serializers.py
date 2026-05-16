@@ -24,5 +24,6 @@ class NavBarItemSerializer(serializers.ModelSerializer):
             "icon",
             "resource_slug",
             "sort_order",
+            "nav_group",
             "open_in_new_tab",
         )

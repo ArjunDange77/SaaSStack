@@ -11,6 +11,7 @@ const STEPS = [
 export function BookingStepIndicator({ current }: Props) {
   const currentIdx = STEPS.findIndex((s) => s.id === current);
   return (
+    <div className="booking-steps-wrap">
     <ol className="booking-steps" aria-label="Booking progress">
       {STEPS.map((step, i) => (
         <li
@@ -22,5 +23,7 @@ export function BookingStepIndicator({ current }: Props) {
         </li>
       ))}
     </ol>
+    <p className="muted booking-steps-duration">~2 min to complete</p>
+    </div>
   );
 }

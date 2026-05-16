@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { apiErrorMessage, isAuthError } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useResourceSchema } from "@/hooks/useResource";
 import { assertSupportedSchemaVersion } from "@/types/metadata";
 import { ResourceList } from "@/components/engine/ResourceList";
@@ -32,7 +33,11 @@ function SchemaError({ slug, error }: { slug?: string; error: unknown }) {
 
 export function ResourceListRoute() {
   const { slug } = useParams<{ slug: string }>();
+  const { tenantSlug } = useAuth();
   const { data: schema, isLoading, error } = useResourceSchema(slug);
+  useDocumentTitle(
+    schema ? `${schema.title} — ${tenantSlug} | SaaSStack` : undefined
+  );
 
   if (isLoading) return <p>Loading schema…</p>;
   if (error || !schema || !slug) {
@@ -45,7 +50,13 @@ export function ResourceListRoute() {
 
 export function ResourceDetailRoute() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
+  const { tenantSlug } = useAuth();
   const { data: schema, isLoading, error } = useResourceSchema(slug);
+  useDocumentTitle(
+    schema && id
+      ? `${schema.title} #${id} — ${tenantSlug} | SaaSStack`
+      : undefined
+  );
 
   if (isLoading) return <p>Loading schema…</p>;
   if (error || !schema || !slug || !id) {

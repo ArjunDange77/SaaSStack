@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
+import { scopeTenant } from "@/lib/queryKeys";
 import type { FieldMeta, PaginatedResponse, ResourceSchema } from "@/types/metadata";
 
 export type RelationLabelMap = Record<string, Record<string, string>>;
@@ -15,6 +17,7 @@ async function fetchRelatedRows(slug: string): Promise<Record<string, unknown>[]
 
 /** Build fieldName -> { id -> displayLabel } for all relation fields on a schema. */
 export function useRelationLabelMaps(schema: ResourceSchema | undefined): RelationLabelMap {
+  const { tenantSlug } = useAuth();
   const relationFields = useMemo(
     () => (schema?.fields ?? []).filter((f) => f.type === "relation" && f.related_resource),
     [schema]
@@ -22,7 +25,7 @@ export function useRelationLabelMaps(schema: ResourceSchema | undefined): Relati
 
   const queries = useQueries({
     queries: relationFields.map((field) => ({
-      queryKey: ["resource", field.related_resource, "label-map"],
+      queryKey: scopeTenant(tenantSlug, "resource", field.related_resource, "label-map"),
       queryFn: () => fetchRelatedRows(field.related_resource!),
       enabled: Boolean(field.related_resource),
       staleTime: 60_000,
@@ -42,7 +45,7 @@ export function useRelationLabelMaps(schema: ResourceSchema | undefined): Relati
       maps[field.name] = byId;
     });
     return maps;
-  }, [relationFields, queries]);
+  }, [relationFields, queries, tenantSlug]);
 }
 
 export function resolveRelationLabel(

@@ -1,10 +1,14 @@
+import { AmenityTags } from "@/icons/amenities";
+
 export interface RoomCardData {
   id: number;
   room_number: string;
   floor: string;
   occupancy_display: string;
   availability_label: string;
-  sharing_label: string;
+  sharing_label?: string;
+  monthly_rent_per_bed?: string | number | null;
+  amenities?: string[];
 }
 
 function cardClassForLabel(label: string): string {
@@ -18,6 +22,13 @@ function badgeTone(label: string): string {
   if (label === "Available") return "success";
   if (label === "Maintenance") return "warning";
   return "neutral";
+}
+
+function formatRent(amount: string | number | null | undefined): string | null {
+  if (amount === null || amount === undefined || amount === "") return null;
+  const n = Number(amount);
+  if (Number.isNaN(n)) return null;
+  return `₹${n.toLocaleString("en-IN")} / bed / mo`;
 }
 
 interface Props {
@@ -36,6 +47,8 @@ export function RoomCard({ room, onClick, selected, as = "button" }: Props) {
     .filter(Boolean)
     .join(" ");
 
+  const rentLabel = formatRent(room.monthly_rent_per_bed);
+
   const inner = (
     <>
       <div className="pg-room-card-header">
@@ -45,9 +58,14 @@ export function RoomCard({ room, onClick, selected, as = "button" }: Props) {
         </span>
       </div>
       <p className="muted pg-room-card-floor">Floor {room.floor}</p>
+      {rentLabel && <p className="pg-room-card-price">{rentLabel}</p>}
       <p className="pg-room-card-meta">
-        {room.occupancy_display} occupied · {room.sharing_label}
+        {room.occupancy_display} occupied
+        {room.sharing_label ? ` · ${room.sharing_label}` : ""}
       </p>
+      {room.amenities && room.amenities.length > 0 && (
+        <AmenityTags keys={room.amenities} />
+      )}
     </>
   );
 

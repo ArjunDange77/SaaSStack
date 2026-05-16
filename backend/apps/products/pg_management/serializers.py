@@ -75,6 +75,8 @@ class RoomSerializer(serializers.ModelSerializer):
             "availability_label",
             "sharing_label",
             "room_status",
+            "monthly_rent_per_bed",
+            "amenities",
             "created_at",
             "updated_at",
             "created_by",
@@ -245,6 +247,8 @@ class PublicRoomSerializer(serializers.ModelSerializer):
             "availability_label",
             "sharing_label",
             "room_status",
+            "monthly_rent_per_bed",
+            "amenities",
         )
 
     def get_occupancy_display(self, obj):

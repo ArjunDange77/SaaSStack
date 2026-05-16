@@ -1,9 +1,11 @@
 import type { ActionMeta, ResourceSchema } from "@/types/metadata";
 import { useResourceMutations } from "@/hooks/useResource";
+import { filterActionsForRecord } from "@/lib/actionVisibility";
 
 interface Props {
   schema: ResourceSchema;
   recordId?: string;
+  record?: Record<string, unknown>;
   onDone?: () => void;
   className?: string;
 }
@@ -15,9 +17,13 @@ function allowedActions(schema: ResourceSchema) {
   return schema.actions.filter((a) => set.has(a.name));
 }
 
-export function DynamicActionRenderer({ schema, recordId, onDone, className }: Props) {
+export function DynamicActionRenderer({ schema, recordId, record, onDone, className }: Props) {
   const { runAction } = useResourceMutations(schema.resource, schema);
-  const visible = allowedActions(schema);
+  const visible = filterActionsForRecord(
+    schema.resource,
+    record,
+    allowedActions(schema)
+  );
   const detailActions = visible.filter((a) => a.detail);
   const listActions = visible.filter((a) => !a.detail);
 

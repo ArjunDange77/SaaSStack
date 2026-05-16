@@ -151,15 +151,14 @@ class RoomViewSet(PGViewSet):
     ordering = ("floor", "room_number")
     filter_backends = (SearchFilter, OrderingFilter)
     resource_list_display = (
-        "id",
         "room_number",
         "floor",
         "occupancy_display",
-        "sharing_label",
-        "availability_label",
         "room_status",
     )
     empty_state = "No rooms configured. Add rooms to track occupancy."
+    empty_state_cta = {"label": "Add room", "href": "/r/pg-rooms?new=1"}
+    list_alternate_views = ("grid",)
     list_filters = (
         {"param": "room_status", "label": "Occupied", "value": "occupied"},
         {"param": "room_status", "label": "Available", "value": "available"},
@@ -167,17 +166,42 @@ class RoomViewSet(PGViewSet):
         {"param": "full", "label": "Full", "value": "1"},
     )
     field_ui_overrides = {
-        "room_status": BADGE_STATUS,
-        "availability_label": {
-            "variant": "badge",
+        "room_status": {
+            **BADGE_STATUS,
             "badge_map": {
-                "Available": "success",
-                "Full": "neutral",
-                "Maintenance": "warning",
-                "Occupied": "neutral",
+                "available": "success",
+                "occupied": "neutral",
+                "maintenance": "warning",
             },
         },
+        "occupancy_display": {"variant": "progress"},
     }
+
+    @classmethod
+    def get_list_filter_counts(cls, request):
+        tenant = getattr(request, "tenant", None)
+        if tenant is None and request is not None:
+            from apps.registry.permissions import get_membership
+
+            membership = get_membership(request)
+            if membership:
+                tenant = membership.tenant
+        if tenant is None:
+            return {}
+        from django.db.models import F
+
+        from .models import Room
+
+        qs = Room.objects.filter(tenant=tenant)
+        full = qs.filter(
+            room_status="occupied", current_occupancy__gte=F("occupancy_limit")
+        ).count()
+        return {
+            "room_status=occupied": qs.filter(room_status="occupied").count(),
+            "room_status=available": qs.filter(room_status="available").count(),
+            "room_status=maintenance": qs.filter(room_status="maintenance").count(),
+            "full=1": full,
+        }
 
     def get_queryset(self):
         qs = super().get_queryset()

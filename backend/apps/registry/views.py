@@ -19,6 +19,8 @@ class ResourceListMetaView(APIView):
         role = get_tenant_role(request)
         data = []
         for e in iter_resources():
+            if e.catalog_hidden:
+                continue
             if e.catalog_roles and (not role or role not in e.catalog_roles):
                 continue
             data.append(

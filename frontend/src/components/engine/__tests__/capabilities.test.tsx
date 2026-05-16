@@ -1,10 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithProviders } from "@/test/test-utils";
 import { DynamicActionRenderer } from "../DynamicActionRenderer";
+import { filterActionsForRecord } from "@/lib/actionVisibility";
 import { ResourceList } from "../ResourceList";
-import type { ResourceSchema } from "@/types/metadata";
+import type { ActionMeta, ResourceSchema } from "@/types/metadata";
 
 vi.mock("@/hooks/useResource", () => ({
   useResourceList: () => ({
@@ -52,18 +53,28 @@ describe("capabilities gating", () => {
     expect(screen.queryByRole("button", { name: "List act" })).not.toBeInTheDocument();
   });
 
+  it("hides booking actions when not pending", () => {
+    const bookingActions: ActionMeta[] = [
+      { name: "approve", label: "Approve", url_path: "approve", detail: true, methods: ["post"] },
+      { name: "reject", label: "Reject", url_path: "reject", detail: true, methods: ["post"] },
+    ];
+    const hidden = filterActionsForRecord(
+      "pg-booking-requests",
+      { status: "approved" },
+      bookingActions
+    );
+    expect(hidden).toHaveLength(0);
+  });
+
   it("ResourceList hides New when capabilities.create is false", () => {
     const schema: ResourceSchema = {
       ...baseSchema,
       capabilities: { create: false, update: false, delete: false, actions: [] },
     };
-    const client = new QueryClient();
-    render(
-      <QueryClientProvider client={client}>
-        <MemoryRouter>
-          <ResourceList slug="pg-rooms" schema={schema} />
-        </MemoryRouter>
-      </QueryClientProvider>
+    renderWithProviders(
+      <MemoryRouter>
+        <ResourceList slug="pg-rooms" schema={schema} />
+      </MemoryRouter>
     );
     expect(screen.queryByRole("button", { name: "New" })).not.toBeInTheDocument();
   });

@@ -56,23 +56,24 @@ class Command(BaseCommand):
             )
 
         nav = [
-            ("Dashboard", "/dashboard", "home", "", 0),
-            ("Residents", "/r/pg-residents", "users", "pg-residents", 10),
-            ("Rooms", "/r/pg-rooms", "building", "pg-rooms", 20),
-            ("Assignments", "/r/pg-bed-assignments", "bed", "pg-bed-assignments", 30),
-            ("Documents", "/r/pg-documents", "file", "pg-documents", 40),
-            ("Rent", "/r/pg-rent-records", "currency", "pg-rent-records", 50),
-            ("Complaints", "/r/pg-complaints", "alert", "pg-complaints", 60),
-            ("Bookings", "/r/pg-booking-requests", "calendar", "pg-booking-requests", 70),
+            ("Dashboard", "/dashboard", "home", "", "core", 0),
+            ("Residents", "/r/pg-residents", "users", "pg-residents", "core", 10),
+            ("Rooms", "/r/pg-rooms", "building", "pg-rooms", "core", 20),
+            ("Assignments", "/r/pg-bed-assignments", "bed", "pg-bed-assignments", "core", 30),
+            ("Documents", "/r/pg-documents", "file", "pg-documents", "core", 40),
+            ("Rent", "/r/pg-rent-records", "currency", "pg-rent-records", "operations", 50),
+            ("Complaints", "/r/pg-complaints", "alert", "pg-complaints", "operations", 60),
+            ("Bookings", "/r/pg-booking-requests", "calendar", "pg-booking-requests", "operations", 70),
         ]
-        for label, href, icon, resource_slug, order in nav:
-            NavBarItem.objects.get_or_create(
+        for label, href, icon, resource_slug, nav_group, order in nav:
+            NavBarItem.objects.update_or_create(
                 tenant=tenant,
                 label=label,
                 defaults={
                     "href": href,
                     "icon": icon,
                     "resource_slug": resource_slug,
+                    "nav_group": nav_group,
                     "sort_order": order,
                     "is_active": True,
                 },
@@ -102,13 +103,13 @@ class Command(BaseCommand):
 
     def _seed_sample_data(self, tenant, owner, resident_user):
         rooms_data = [
-            ("101", "1", 2),
-            ("102", "1", 2),
-            ("201", "2", 1),
-            ("202", "2", 1),
+            ("101", "1", 2, 8500, ["ac", "wifi", "attached_bath"]),
+            ("102", "1", 2, 7500, ["wifi"]),
+            ("201", "2", 1, 12000, ["ac", "wifi", "attached_bath"]),
+            ("202", "2", 1, 9500, ["ac", "wifi"]),
         ]
         rooms = []
-        for num, floor, limit in rooms_data:
+        for num, floor, limit, rent, amenities in rooms_data:
             room, _ = Room.objects.get_or_create(
                 tenant=tenant,
                 room_number=num,
@@ -116,10 +117,16 @@ class Command(BaseCommand):
                     "floor": floor,
                     "occupancy_limit": limit,
                     "room_status": "available",
+                    "monthly_rent_per_bed": rent,
+                    "amenities": amenities,
                     "created_by": owner,
                     "updated_by": owner,
                 },
             )
+            if room.monthly_rent_per_bed is None:
+                room.monthly_rent_per_bed = rent
+                room.amenities = amenities
+                room.save(update_fields=["monthly_rent_per_bed", "amenities"])
             rooms.append(room)
 
         residents_data = [

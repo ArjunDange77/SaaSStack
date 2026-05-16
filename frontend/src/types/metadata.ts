@@ -11,7 +11,7 @@ export type FieldType =
   | "file";
 
 export interface FieldUiMeta {
-  variant?: "badge";
+  variant?: "badge" | "progress";
   badge_map?: Record<string, string>;
   help_text?: string;
   date_highlight?: "past";
@@ -22,6 +22,12 @@ export interface ListFilterMeta {
   param: string;
   label: string;
   value?: string;
+  count?: number;
+}
+
+export interface EmptyStateCta {
+  label: string;
+  href: string;
 }
 
 export interface FieldMeta {
@@ -69,6 +75,8 @@ export interface ResourceSchema {
   capabilities?: ResourceCapabilities;
   list_filters?: ListFilterMeta[];
   empty_state?: string;
+  empty_state_cta?: EmptyStateCta;
+  list_views?: string[];
   list_path: string;
   detail_path_template: string;
 }
@@ -80,6 +88,7 @@ export interface NavItem {
   icon: string;
   resource_slug: string;
   sort_order: number;
+  nav_group?: string;
   open_in_new_tab: boolean;
 }
 

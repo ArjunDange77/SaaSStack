@@ -1,9 +1,17 @@
 import { NavLink } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
 import { NavBadge } from "@/components/pg/NavBadge";
+import { scopeTenant } from "@/lib/queryKeys";
 import type { NavItem } from "@/types/metadata";
 import { NavIcon } from "@/icons/registry";
+
+const GROUP_LABELS: Record<string, string> = {
+  core: "Core",
+  operations: "Operations",
+  system: "System",
+};
 
 function resolveHref(item: NavItem): string {
   if (item.resource_slug) {
@@ -21,17 +29,23 @@ interface Props {
 }
 
 export function NavBar({ badges = {} }: Props) {
+  const { tenantSlug } = useAuth();
   const { data: items = [] } = useQuery({
-    queryKey: ["nav-items"],
+    queryKey: scopeTenant(tenantSlug, "nav-items"),
     queryFn: async () => {
       const { data } = await api.get<NavItem[]>("/cosmetix/nav-items/");
       return data;
     },
   });
 
+  let lastGroup = "";
+
   return (
-    <nav>
+    <nav className="sidebar-nav">
       {items.map((item) => {
+        const group = item.nav_group || "";
+        const showHeading = group && group !== lastGroup;
+        if (showHeading) lastGroup = group;
         const to = resolveHref(item);
         const badgeCount = badges[to] ?? 0;
         const label = (
@@ -41,17 +55,21 @@ export function NavBar({ badges = {} }: Props) {
             <NavBadge count={badgeCount} />
           </>
         );
-        if (item.open_in_new_tab || item.href.startsWith("http")) {
-          return (
-            <a key={item.id} href={item.href} target="_blank" rel="noreferrer">
-              {label}
-            </a>
-          );
-        }
         return (
-          <NavLink key={item.id} to={to} end={to === "/"}>
-            {label}
-          </NavLink>
+          <div key={item.id} className="nav-item-wrap">
+            {showHeading && (
+              <p className="nav-group-label">{GROUP_LABELS[group] ?? group}</p>
+            )}
+            {item.open_in_new_tab || item.href.startsWith("http") ? (
+              <a href={item.href} target="_blank" rel="noreferrer" className="nav-link">
+                {label}
+              </a>
+            ) : (
+              <NavLink to={to} end={to === "/"} className="nav-link">
+                {label}
+              </NavLink>
+            )}
+          </div>
         );
       })}
     </nav>

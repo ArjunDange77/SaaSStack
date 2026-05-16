@@ -3,9 +3,10 @@ interface Props {
   subtitle?: string;
   menuOpen: boolean;
   onMenuToggle: () => void;
+  trailing?: React.ReactNode;
 }
 
-export function MobileHeader({ title, subtitle, menuOpen, onMenuToggle }: Props) {
+export function MobileHeader({ title, subtitle, menuOpen, onMenuToggle, trailing }: Props) {
   return (
     <header className="mobile-header mobile-only">
       <button
@@ -24,6 +25,7 @@ export function MobileHeader({ title, subtitle, menuOpen, onMenuToggle }: Props)
         <span className="mobile-header-title">{title}</span>
         {subtitle && <span className="mobile-header-subtitle">{subtitle}</span>}
       </div>
+      {trailing}
     </header>
   );
 }

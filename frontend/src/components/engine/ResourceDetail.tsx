@@ -65,6 +65,7 @@ export function ResourceDetail({ slug, id, schema }: Props) {
       <DynamicActionRenderer
         schema={schema}
         recordId={id}
+        record={record}
         onDone={() => {
           refetch();
           refetchTimeline();
