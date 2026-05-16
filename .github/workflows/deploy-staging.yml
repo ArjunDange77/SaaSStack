@@ -54,9 +54,6 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           images: ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          registry-url: https://ghcr.io
-          registry-username: ${{ github.actor }}
-          registry-password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Wait for container startup (migrations run in entrypoint)
         run: sleep 90
@@ -72,7 +69,22 @@ jobs:
             --settings SEED_STAGING_DEMO=true \
             --output none
           az webapp restart --resource-group "$RG" --name "$AZURE_WEBAPP_NAME" --output none
-          sleep 120
+          SEEDED=0
+          for i in $(seq 1 36); do
+            if curl -sf "${{ secrets.STAGING_API_URL }}/api/auth/login/" \
+              -H "Content-Type: application/json" \
+              -d '{"username":"admin","password":"admin"}' | grep -q access; then
+              echo "Seed verified: admin login OK"
+              SEEDED=1
+              break
+            fi
+            echo "Waiting for seed (attempt $i/36)..."
+            sleep 10
+          done
+          if [ "$SEEDED" != 1 ]; then
+            echo "Seed failed: admin login not available after restart"
+            exit 1
+          fi
           az webapp config appsettings set \
             --resource-group "$RG" \
             --name "$AZURE_WEBAPP_NAME" \
