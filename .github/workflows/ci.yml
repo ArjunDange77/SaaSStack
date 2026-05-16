@@ -88,7 +88,7 @@ jobs:
         run: npm run build
       - run: npm run test:run
       - name: Upload frontend dist
-        if: github.event_name == 'workflow_call' && inputs.push_backend_image
+        if: ${{ github.event_name == 'workflow_call' && inputs.push_backend_image == true }}
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
@@ -96,7 +96,7 @@ jobs:
           retention-days: 1
 
   backend-image:
-    if: github.event_name == 'workflow_call' && inputs.push_backend_image
+    if: ${{ github.event_name == 'workflow_call' && inputs.push_backend_image == true }}
     needs: backend
     runs-on: ubuntu-latest
     permissions:
