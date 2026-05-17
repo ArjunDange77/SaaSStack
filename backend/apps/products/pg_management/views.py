@@ -15,6 +15,7 @@ from apps.registry.permissions import get_resident_id_for_user, get_tenant_role
 from .models import BedAssignment, BookingRequest, Complaint, Document, RentRecord, Resident, Room
 from .permissions import PGOperatorPermission, PGRolePermission, PGResidentOnlyPermission
 from .rbac import build_capabilities, is_operator, is_resident, resident_queryset_filter
+from .seatmap import build_public_seatmap_payload
 from .serializers import (
     BedAssignmentSerializer,
     BookingRequestSerializer,
@@ -591,6 +592,20 @@ class PublicAvailableRoomsView(APIView):
             room_status="available",
         ).extra(where=["current_occupancy < occupancy_limit"])
         return Response(PublicRoomSerializer(rooms, many=True).data)
+
+
+@method_decorator(never_cache, name="dispatch")
+class PublicSeatmapView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = PUBLIC_ROOMS_THROTTLES
+
+    def get(self, request, tenant_slug):
+        from apps.tenancy.models import Tenant
+
+        tenant = Tenant.objects.filter(slug=tenant_slug, is_active=True).first()
+        if not tenant:
+            return Response({"detail": "tenant_not_found"}, status=404)
+        return Response(build_public_seatmap_payload(tenant=tenant))
 
 
 @method_decorator(never_cache, name="dispatch")

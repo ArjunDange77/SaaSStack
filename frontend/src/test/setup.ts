@@ -1,6 +1,25 @@
 import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
 
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: vi.fn((query: string) => ({
+    matches: query.includes("min-width"),
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
+class MockIntersectionObserver {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+
+vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+
 vi.mock("@/auth/AuthContext", () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
   useAuth: () => ({

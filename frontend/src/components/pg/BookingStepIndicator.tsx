@@ -1,5 +1,6 @@
 interface Props {
   current: "rooms" | "form" | "done";
+  variant?: "default" | "compact";
 }
 
 const STEPS = [
@@ -8,8 +9,30 @@ const STEPS = [
   { id: "done" as const, label: "Done" },
 ];
 
-export function BookingStepIndicator({ current }: Props) {
+const COMPACT_LABELS = ["Room", "Details", "Done"];
+
+export function BookingStepIndicator({ current, variant = "default" }: Props) {
   const currentIdx = STEPS.findIndex((s) => s.id === current);
+
+  if (variant === "compact") {
+    return (
+      <div className="steps steps-compact" aria-label="Booking progress">
+        {COMPACT_LABELS.map((label, i) => (
+          <div key={label} className="steps-compact-row">
+            <span
+              className={`s-item ${
+                i < currentIdx ? "s-done" : i === currentIdx ? "s-active" : "s-inactive"
+              }`}
+            >
+              <span className="s-circle">{i < currentIdx ? "✓" : i + 1}</span>
+              <span className="s-label">{label}</span>
+            </span>
+            {i < COMPACT_LABELS.length - 1 && <span className="s-line" aria-hidden />}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="booking-steps-wrap">

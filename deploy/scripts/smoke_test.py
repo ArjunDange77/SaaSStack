@@ -105,6 +105,23 @@ def main() -> None:
         fail(f"public booking rooms status {booking.status_code}: {booking.text}")
     ok("public booking reachable")
 
+    seatmap = client.get(f"/api/pg/public/{PUBLIC_TENANT}/rooms/seatmap/")
+    if seatmap.status_code != 200:
+        fail(f"public seatmap status {seatmap.status_code}: {seatmap.text}")
+    seatmap_body = seatmap.json()
+    if not seatmap_body.get("floors"):
+        fail("public seatmap missing floors")
+    if seatmap_body.get("summary", {}).get("total_rooms", 0) < 1:
+        fail("public seatmap has no rooms")
+    selectable = any(
+        r.get("selectable")
+        for floor in seatmap_body.get("floors", [])
+        for r in floor.get("rooms", [])
+    )
+    if not selectable:
+        fail("public seatmap has no selectable room")
+    ok("public seatmap")
+
     resident_token = login(client, SMOKE_RESIDENT_USER, SMOKE_RESIDENT_PASSWORD)
     ok("resident login")
 

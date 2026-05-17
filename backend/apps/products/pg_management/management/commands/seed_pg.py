@@ -101,13 +101,29 @@ class Command(BaseCommand):
         user.save()
         return user, created
 
-    def _seed_sample_data(self, tenant, owner, resident_user):
-        rooms_data = [
-            ("101", "1", 2, 8500, ["ac", "wifi", "attached_bath"]),
-            ("102", "1", 2, 7500, ["wifi"]),
-            ("201", "2", 1, 12000, ["ac", "wifi", "attached_bath"]),
-            ("202", "2", 1, 9500, ["ac", "wifi"]),
+    def _demo_rooms_catalog(self):
+        """~48 rooms across 4 floors for public booking seat-map demos."""
+        rows = []
+        amenity_sets = [
+            ["ac", "wifi", "attached_bath"],
+            ["wifi"],
+            ["wifi", "laundry"],
+            ["ac", "wifi", "tv"],
         ]
+        for floor in ("1", "2", "3", "4"):
+            for i in range(1, 13):
+                num = f"{floor}{i:02d}"
+                if i % 3 == 1:
+                    limit, rent = 1, 7000 + int(floor) * 800 + i * 50
+                elif i % 3 == 2:
+                    limit, rent = 2, 5000 + int(floor) * 400 + i * 40
+                else:
+                    limit, rent = 4, 4200 + int(floor) * 300 + i * 30
+                rows.append((num, floor, limit, rent, amenity_sets[i % len(amenity_sets)]))
+        return rows
+
+    def _seed_sample_data(self, tenant, owner, resident_user):
+        rooms_data = self._demo_rooms_catalog()
         rooms = []
         for num, floor, limit, rent, amenities in rooms_data:
             room, _ = Room.objects.get_or_create(
@@ -165,11 +181,16 @@ class Command(BaseCommand):
             portal_resident.user = resident_user
             portal_resident.save(update_fields=["user"])
 
-        if residents and rooms:
+        room_by_number = {r.room_number: r for r in rooms}
+
+        def assign_resident(resident, room_number):
+            room = room_by_number.get(room_number)
+            if not room:
+                return
             BedAssignment.objects.get_or_create(
                 tenant=tenant,
-                resident=residents[0],
-                room=rooms[0],
+                resident=resident,
+                room=room,
                 assigned_date=date.today(),
                 defaults={
                     "status": "active",
@@ -177,21 +198,15 @@ class Command(BaseCommand):
                     "updated_by": owner,
                 },
             )
-            recalculate_room_occupancy(rooms[0])
+            recalculate_room_occupancy(room)
 
-            if portal_resident.active_status == "active" and len(rooms) > 1:
-                BedAssignment.objects.get_or_create(
-                    tenant=tenant,
-                    resident=portal_resident,
-                    room=rooms[1],
-                    assigned_date=date.today(),
-                    defaults={
-                        "status": "active",
-                        "created_by": owner,
-                        "updated_by": owner,
-                    },
-                )
-                recalculate_room_occupancy(rooms[1])
+        if residents and rooms:
+            assign_resident(residents[0], "101")
+            assign_resident(residents[1], "105")
+            if len(residents) > 2:
+                assign_resident(residents[2], "106")
+            if portal_resident.active_status == "active":
+                assign_resident(portal_resident, "201")
 
         due = date.today() + timedelta(days=5)
         overdue = date.today() - timedelta(days=10)
@@ -251,7 +266,7 @@ class Command(BaseCommand):
             defaults={
                 "duration": "6 months",
                 "status": "pending",
-                "preferred_room": rooms[2] if len(rooms) > 2 else None,
+                "preferred_room": room_by_number.get("203"),
                 "created_by": owner,
                 "updated_by": owner,
             },
