@@ -220,6 +220,7 @@ class BookingRequestSerializer(serializers.ModelSerializer):
             "tenant",
             "full_name",
             "phone",
+            "email",
             "preferred_room",
             "duration",
             "status",
@@ -264,6 +265,7 @@ class PublicRoomSerializer(serializers.ModelSerializer):
 class PublicBookingSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=200)
     phone = serializers.CharField(max_length=20)
+    email = serializers.EmailField(required=False, allow_blank=True, max_length=254)
     preferred_room = serializers.PrimaryKeyRelatedField(
         queryset=Room.objects.none(),
         required=False,
@@ -291,6 +293,11 @@ class PublicBookingSerializer(serializers.Serializer):
         from .validators import validate_public_phone
 
         return validate_public_phone(value)
+
+    def validate_email(self, value):
+        from .validators import validate_public_email
+
+        return validate_public_email(value)
 
     def validate_duration(self, value):
         from .validators import validate_public_duration

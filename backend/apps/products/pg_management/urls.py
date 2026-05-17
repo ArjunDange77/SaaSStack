@@ -4,6 +4,7 @@ from .views import (
     PGDashboardView,
     PublicAvailableRoomsView,
     PublicBookingCreateView,
+    PublicBookingFormSchemaView,
     PublicSeatmapView,
     ResidentMeView,
     StaffInviteView,
@@ -22,6 +23,11 @@ urlpatterns = [
         "public/<slug:tenant_slug>/rooms/seatmap/",
         PublicSeatmapView.as_view(),
         name="pg-public-seatmap",
+    ),
+    path(
+        "public/<slug:tenant_slug>/booking-form/",
+        PublicBookingFormSchemaView.as_view(),
+        name="pg-public-booking-form",
     ),
     path(
         "public/<slug:tenant_slug>/booking-requests/",

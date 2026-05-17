@@ -83,6 +83,13 @@ jobs:
           EXPECTED_VERSION: ${{ github.sha }}
         run: bash deploy/scripts/smoke_public_api.sh
 
+      - name: Ensure pg-demo seed (if sparse)
+        env:
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          AZURE_RESOURCE_GROUP: rg-saasstack-staging
+        run: bash deploy/scripts/ensure_staging_demo_seed.sh
+
       - name: Download frontend dist from CI
         id: frontend_artifact
         continue-on-error: true

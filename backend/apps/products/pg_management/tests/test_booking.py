@@ -138,6 +138,43 @@ def test_public_booking_rejects_invalid_phone(api_client, pg_tenant, phone):
     assert "phone" in response.data
 
 
+@pytest.mark.parametrize(
+    "full_name",
+    ["John3", "@@", "-Bad"],
+)
+def test_public_booking_rejects_invalid_name(api_client, pg_tenant, full_name):
+    response = api_client.post(
+        f"/api/pg/public/{pg_tenant.slug}/booking-requests/",
+        _public_booking_payload(full_name=full_name),
+        format="json",
+    )
+    assert response.status_code == 400
+    assert "full_name" in response.data
+
+
+@pytest.mark.parametrize(
+    "duration",
+    ["0 months", "32 days", "x"],
+)
+def test_public_booking_rejects_invalid_duration(api_client, pg_tenant, duration):
+    response = api_client.post(
+        f"/api/pg/public/{pg_tenant.slug}/booking-requests/",
+        _public_booking_payload(duration=duration),
+        format="json",
+    )
+    assert response.status_code == 400
+    assert "duration" in response.data
+
+
+def test_public_booking_accepts_structured_duration(api_client, pg_tenant):
+    response = api_client.post(
+        f"/api/pg/public/{pg_tenant.slug}/booking-requests/",
+        _public_booking_payload(duration="31 days"),
+        format="json",
+    )
+    assert response.status_code == 201
+
+
 def test_public_booking_requires_duration(api_client, pg_tenant):
     response = api_client.post(
         f"/api/pg/public/{pg_tenant.slug}/booking-requests/",
@@ -155,6 +192,37 @@ def test_public_booking_rejects_honeypot(api_client, pg_tenant):
         format="json",
     )
     assert response.status_code == 400
+
+
+def test_public_booking_form_schema(api_client, pg_tenant):
+    response = api_client.get(f"/api/pg/public/{pg_tenant.slug}/booking-form/")
+    assert response.status_code == 200
+    assert response.data["schema_version"]
+    names = [f["name"] for f in response.data["fields"]]
+    assert "full_name" in names
+    assert "email" in names
+    assert "duration" in names
+
+
+def test_public_booking_accepts_optional_email(api_client, pg_tenant):
+    response = api_client.post(
+        f"/api/pg/public/{pg_tenant.slug}/booking-requests/",
+        _public_booking_payload(email="guest@example.com"),
+        format="json",
+    )
+    assert response.status_code == 201
+    booking = BookingRequest.objects.get(pk=response.data["id"])
+    assert booking.email == "guest@example.com"
+
+
+def test_public_booking_rejects_invalid_email(api_client, pg_tenant):
+    response = api_client.post(
+        f"/api/pg/public/{pg_tenant.slug}/booking-requests/",
+        _public_booking_payload(email="not-an-email"),
+        format="json",
+    )
+    assert response.status_code == 400
+    assert "email" in response.data
 
 
 def test_public_booking_normalizes_india_phone(api_client, pg_tenant):

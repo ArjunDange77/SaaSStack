@@ -1,12 +1,12 @@
 interface Props {
   current: "rooms" | "form" | "done";
-  variant?: "default" | "compact";
+  variant?: "default" | "compact" | "mock";
 }
 
 const STEPS = [
-  { id: "rooms" as const, label: "Choose room" },
-  { id: "form" as const, label: "Your details" },
-  { id: "done" as const, label: "Done" },
+  { id: "rooms" as const, label: "Choose room", mockLabel: "Room" },
+  { id: "form" as const, label: "Your details", mockLabel: "Your details" },
+  { id: "done" as const, label: "Done", mockLabel: "Done" },
 ];
 
 const COMPACT_LABELS = ["Room", "Details", "Done"];
@@ -30,6 +30,35 @@ export function BookingStepIndicator({ current, variant = "default" }: Props) {
             {i < COMPACT_LABELS.length - 1 && <span className="s-line" aria-hidden />}
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (variant === "mock") {
+    return (
+      <div className="booking-steps-mock" aria-label="Booking progress">
+        <div className="steps">
+          {STEPS.map((step, i) => {
+            const done = i < currentIdx;
+            const active = i === currentIdx;
+            return (
+              <div key={step.id} className="steps-mock-item-wrap">
+                <div
+                  className={`s-item ${done ? "s-done" : active ? "s-active" : "s-inactive"}`}
+                >
+                  <span className="s-circle">{done ? "✓" : i + 1}</span>
+                  <span className="s-label">{step.mockLabel}</span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <span className={`s-line${done ? " done" : ""}`} aria-hidden />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {current === "form" && (
+          <p className="eta">~1 min remaining</p>
+        )}
       </div>
     );
   }

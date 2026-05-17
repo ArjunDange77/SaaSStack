@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { PublicBookingPage } from "../PublicBookingPage";
+import { PUBLIC_BOOKING_FORM_SCHEMA_FALLBACK } from "@/config/publicBookingFormFields";
 
 const { mockGet, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -39,6 +40,15 @@ const listRooms = [
     availability_label: "Available",
     monthly_rent_per_bed: "8000",
     amenities: ["wifi"],
+  },
+  {
+    id: 2,
+    room_number: "202",
+    floor: "2",
+    occupancy_display: "0/1",
+    availability_label: "Available",
+    monthly_rent_per_bed: "7500",
+    amenities: [],
   },
 ];
 
@@ -93,6 +103,9 @@ describe("PublicBookingPage", () => {
       if (path.includes("available")) {
         return Promise.resolve({ data: listRooms });
       }
+      if (path.includes("booking-form")) {
+        return Promise.resolve({ data: PUBLIC_BOOKING_FORM_SCHEMA_FALLBACK });
+      }
       return Promise.resolve({ data: seatmapPayload });
     });
     mockPost.mockResolvedValue({ data: { id: 99 } });
@@ -105,7 +118,11 @@ describe("PublicBookingPage", () => {
     });
     await userEvent.click(screen.getByRole("button", { name: /Room 201/i }));
     await userEvent.click(screen.getByRole("button", { name: /Select Room 201/i }));
-    expect(screen.getByLabelText(/Full name/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Full name/i)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Booking summary/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Enter manually/i)).not.toBeInTheDocument();
   });
 
   it("switches to list view", async () => {
@@ -115,7 +132,41 @@ describe("PublicBookingPage", () => {
     });
     await userEvent.click(screen.getByRole("button", { name: /List view/i }));
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Continue/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Room 201/i })).toBeInTheDocument();
+    });
+  });
+
+  it("shows sticky continue after selecting a list room", async () => {
+    renderBooking();
+    await userEvent.click(await screen.findByRole("button", { name: /List view/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Room 202/i }));
+    const continueButtons = screen.getAllByRole("button", { name: /^Continue$/i });
+    expect(continueButtons.length).toBeGreaterThanOrEqual(1);
+    expect(continueButtons[0]).toBeVisible();
+  });
+
+  it("advances on double-click in list view", async () => {
+    renderBooking();
+    await userEvent.click(await screen.findByRole("button", { name: /List view/i }));
+    const row = await screen.findByRole("button", { name: /Room 202/i });
+    fireEvent.click(row);
+    fireEvent.click(row);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Full name/i)).toBeInTheDocument();
+    });
+  });
+
+  it("switches to map view after scrolling list", async () => {
+    renderBooking();
+    await userEvent.click(await screen.findByRole("button", { name: /List view/i }));
+    const body = document.querySelector(".booking-rooms-body");
+    if (body) {
+      Object.defineProperty(body, "scrollTop", { value: 200, writable: true });
+      fireEvent.scroll(body);
+    }
+    await userEvent.click(screen.getByRole("button", { name: /Map view/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Single · free/i)).toBeInTheDocument();
     });
   });
 
@@ -125,6 +176,8 @@ describe("PublicBookingPage", () => {
       expect(screen.getByRole("button", { name: /Room 201/i })).toBeInTheDocument();
     });
     await userEvent.click(await screen.findByTestId("choose-later-btn"));
-    expect(screen.getByLabelText(/Full name/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Full name/i)).toBeInTheDocument();
+    });
   });
 });

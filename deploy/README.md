@@ -35,7 +35,9 @@ Public booking rate limits use the Postgres `django_cache` table. `createcacheta
 | **Full smoke** | Login, catalog, dashboard, public booking at end |
 | **Entrypoint** | `createcachetable` must succeed or container startup fails |
 
-**Staging demo seed:** not run on every push. Use **Actions → Deploy Staging → Run workflow** with **Re-seed pg-demo** checked, or `bash deploy/scripts/seed_staging_demo.sh` locally with `az login`.
+**Staging demo seed:** deploy runs `ensure_staging_demo_seed.sh` after the API is up — if the public seatmap has fewer than 48 rooms, it triggers `seed_staging_demo.sh` automatically (~3–5 min one-time restart). Manual override: **Actions → Deploy Staging → Run workflow** with **Re-seed pg-demo** checked, or `bash deploy/scripts/seed_staging_demo.sh` locally with `az login`.
+
+**Staging smoke secrets:** set `SMOKE_RESIDENT_USER` / `SMOKE_RESIDENT_PASSWORD` to `resident` / `admin` (or omit those secrets entirely so smoke defaults apply). Empty GitHub secrets override defaults and break resident login.
 
 **Typical staging deploy time:** ~4–6 min (was ~9–10 min) — no per-push seed restart, no duplicate Docker/frontend builds.
 

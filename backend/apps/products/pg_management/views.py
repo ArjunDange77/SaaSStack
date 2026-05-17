@@ -609,6 +609,22 @@ class PublicSeatmapView(APIView):
 
 
 @method_decorator(never_cache, name="dispatch")
+class PublicBookingFormSchemaView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = PUBLIC_ROOMS_THROTTLES
+
+    def get(self, request, tenant_slug):
+        from apps.tenancy.models import Tenant
+
+        from .form_schema import build_public_booking_form_schema
+
+        tenant = Tenant.objects.filter(slug=tenant_slug, is_active=True).first()
+        if not tenant:
+            return Response({"detail": "tenant_not_found"}, status=404)
+        return Response(build_public_booking_form_schema())
+
+
+@method_decorator(never_cache, name="dispatch")
 class PublicBookingCreateView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = PUBLIC_SUBMIT_THROTTLES
@@ -625,6 +641,7 @@ class PublicBookingCreateView(APIView):
             tenant=tenant,
             full_name=ser.validated_data["full_name"],
             phone=ser.validated_data["phone"],
+            email=ser.validated_data.get("email", ""),
             preferred_room=ser.validated_data.get("preferred_room"),
             duration=ser.validated_data.get("duration", ""),
             remarks=ser.validated_data.get("remarks", ""),

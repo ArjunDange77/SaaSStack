@@ -8,16 +8,19 @@ import sys
 
 import httpx
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
-SMOKE_SWA_URL = os.getenv("SMOKE_SWA_URL", "").rstrip("/")
-SMOKE_USERNAME = os.getenv("SMOKE_USERNAME", "admin")
-SMOKE_PASSWORD = os.getenv("SMOKE_PASSWORD", "admin")
-SMOKE_TENANT = os.getenv("SMOKE_TENANT", "pg-demo")
-SMOKE_RESIDENT_USER = os.getenv("SMOKE_RESIDENT_USER", "resident")
-SMOKE_RESIDENT_PASSWORD = os.getenv("SMOKE_RESIDENT_PASSWORD", "admin")
-EXPECTED_ENV = os.getenv("EXPECTED_ENV", "")
-EXPECTED_VERSION = os.getenv("EXPECTED_VERSION", "")
-PUBLIC_TENANT = os.getenv("SMOKE_PUBLIC_TENANT", "pg-demo")
+from smoke_env import env_nonempty
+
+API_BASE_URL = env_nonempty("API_BASE_URL", "http://localhost:8000").rstrip("/")
+SMOKE_SWA_URL = env_nonempty("SMOKE_SWA_URL", "").rstrip("/")
+SMOKE_USERNAME = env_nonempty("SMOKE_USERNAME", "admin")
+SMOKE_PASSWORD = env_nonempty("SMOKE_PASSWORD", "admin")
+SMOKE_TENANT = env_nonempty("SMOKE_TENANT", "pg-demo")
+SMOKE_RESIDENT_USER = env_nonempty("SMOKE_RESIDENT_USER", "resident")
+SMOKE_RESIDENT_PASSWORD = env_nonempty("SMOKE_RESIDENT_PASSWORD", "admin")
+EXPECTED_ENV = env_nonempty("EXPECTED_ENV", "")
+EXPECTED_VERSION = env_nonempty("EXPECTED_VERSION", "")
+PUBLIC_TENANT = env_nonempty("SMOKE_PUBLIC_TENANT", "pg-demo")
+SMOKE_MIN_SEATMAP_ROOMS = int(env_nonempty("SMOKE_MIN_SEATMAP_ROOMS", "0") or "0")
 
 
 def fail(msg: str) -> None:
@@ -40,6 +43,14 @@ def login(client: httpx.Client, username: str, password: str) -> str:
     if not token:
         fail(f"login ({username}) missing access token")
     return token
+
+
+def min_seatmap_rooms() -> int:
+    if SMOKE_MIN_SEATMAP_ROOMS > 0:
+        return SMOKE_MIN_SEATMAP_ROOMS
+    if EXPECTED_ENV == "staging":
+        return 48
+    return 0
 
 
 def main() -> None:
@@ -111,8 +122,15 @@ def main() -> None:
     seatmap_body = seatmap.json()
     if not seatmap_body.get("floors"):
         fail("public seatmap missing floors")
-    if seatmap_body.get("summary", {}).get("total_rooms", 0) < 1:
+    total_rooms = seatmap_body.get("summary", {}).get("total_rooms", 0)
+    min_rooms = min_seatmap_rooms()
+    if total_rooms < 1:
         fail("public seatmap has no rooms")
+    if min_rooms and total_rooms < min_rooms:
+        fail(
+            f"public seatmap has {total_rooms} rooms (need {min_rooms}); "
+            "run seed_pg --demo or Deploy Staging with Re-seed pg-demo"
+        )
     selectable = any(
         r.get("selectable")
         for floor in seatmap_body.get("floors", [])
@@ -121,6 +139,12 @@ def main() -> None:
     if not selectable:
         fail("public seatmap has no selectable room")
     ok("public seatmap")
+
+    if not SMOKE_RESIDENT_USER or not SMOKE_RESIDENT_PASSWORD:
+        fail(
+            "resident credentials empty; set SMOKE_RESIDENT_USER/SMOKE_RESIDENT_PASSWORD "
+            "or remove empty GitHub secrets so defaults apply"
+        )
 
     resident_token = login(client, SMOKE_RESIDENT_USER, SMOKE_RESIDENT_PASSWORD)
     ok("resident login")

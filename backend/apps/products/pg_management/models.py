@@ -183,6 +183,7 @@ class BookingRequest(TenantDomainModel):
 
     full_name = models.CharField(max_length=200)
     phone = models.CharField(max_length=20)
+    email = models.EmailField(blank=True)
     preferred_room = models.ForeignKey(
         Room,
         null=True,
