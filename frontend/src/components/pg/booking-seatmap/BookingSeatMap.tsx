@@ -40,8 +40,11 @@ export function BookingSeatMap({
   }, [data.floors, panelRoom]);
 
   const scrollToFloor = useCallback((floorKey: string) => {
+    const root = floorAreaRef.current;
     const el = sectionRefs.current.get(floorKey);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!root || !el) return;
+    const top = el.offsetTop - root.offsetTop;
+    root.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     setActiveFloorKey(floorKey);
   }, []);
 

@@ -2244,10 +2244,27 @@ td {
 
 /* Public booking seat-map (dark dedicated) */
 .public-booking-seatmap-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: #0d1117;
   color: #fff;
-  padding: 0.75rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  box-sizing: border-box;
+}
+
+.public-booking-seatmap-page .public-booking-seatmap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .booking-view-toggle {
@@ -2275,12 +2292,16 @@ td {
 
 .public-booking-seatmap .seatmap-shell {
   display: flex;
+  flex: 1;
   gap: 0;
+  min-height: 0;
+  width: 100%;
   background: #0d1117;
   border-radius: 14px;
   overflow: hidden;
   font-family: var(--font-sans);
-  min-height: min(560px, calc(100vh - 6rem));
+  max-height: calc(100vh - 3.5rem);
+  max-height: calc(100dvh - 3.5rem);
 }
 
 .public-booking-seatmap .left-nav {
@@ -2358,6 +2379,7 @@ td {
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
 }
 
 .public-booking-seatmap .top-bar {
@@ -2489,8 +2511,10 @@ td {
 
 .public-booking-seatmap .floor-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 16px 20px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .public-booking-seatmap .floor-heading {
@@ -2514,7 +2538,7 @@ td {
 
 .public-booking-seatmap .floor-block {
   margin-bottom: 20px;
-  scroll-margin-top: 8px;
+  scroll-margin-top: 12px;
 }
 
 .public-booking-seatmap .rooms-wrap {
@@ -2873,13 +2897,34 @@ td {
 }
 
 @media (max-width: 767px) {
+  .public-booking-seatmap-page {
+    padding: 0.35rem 0.5rem 0.5rem;
+  }
+
+  .public-booking-seatmap-page .booking-view-toggle {
+    margin-bottom: 0.5rem;
+  }
+
+  .public-booking-seatmap-page .public-booking-seatmap {
+    max-width: none;
+  }
+
   .public-booking-seatmap .seatmap-shell {
     flex-direction: column;
-    min-height: auto;
+    max-height: calc(100dvh - 2.75rem);
+    border-radius: 10px;
   }
 
   .public-booking-seatmap .right-panel {
     display: none;
+  }
+
+  .public-booking-seatmap .top-bar {
+    padding: 12px 14px 10px;
+  }
+
+  .public-booking-seatmap .floor-area {
+    padding: 12px 14px;
   }
 
   .public-booking-seatmap .stats-bar {
@@ -2887,5 +2932,11 @@ td {
     bottom: 0;
     background: #0d1117;
     z-index: 2;
+    flex-shrink: 0;
+  }
+
+  .public-booking-seatmap .floor-chips {
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.35rem;
   }
 }

@@ -32,11 +32,28 @@ def room_sharing(room: Room) -> str:
     return "single" if room.occupancy_limit <= 1 else "shared"
 
 
-def floor_sort_key(floor: str) -> tuple:
+def normalize_floor_key(floor: str) -> str:
+    """Canonical key so '1', '01', and '1st' merge into one floor group."""
     raw = (floor or "").strip()
+    if not raw:
+        return "0"
     if raw.isdigit():
-        return (0, int(raw), raw)
-    return (1, 0, raw.lower())
+        return str(int(raw))
+    lower = raw.lower()
+    for suffix in ("st", "nd", "rd", "th"):
+        if lower.endswith(suffix):
+            prefix = lower[: -len(suffix)].strip()
+            if prefix.isdigit():
+                return str(int(prefix))
+            break
+    return lower
+
+
+def floor_sort_key(floor: str) -> tuple:
+    key = normalize_floor_key(floor)
+    if key.isdigit():
+        return (0, int(key), key)
+    return (1, 0, key)
 
 
 def floor_display_label(floor: str) -> str:
@@ -73,7 +90,7 @@ def build_public_seatmap_payload(*, tenant) -> dict:
     )
     by_floor: dict[str, list[Room]] = defaultdict(list)
     for room in rooms:
-        key = (room.floor or "").strip() or "0"
+        key = normalize_floor_key(room.floor or "")
         by_floor[key].append(room)
 
     floors_out = []
@@ -90,7 +107,9 @@ def build_public_seatmap_payload(*, tenant) -> dict:
             {
                 "key": floor_key,
                 "label": floor_display_label(floor_key),
-                "sort_order": floor_sort_key(floor_key)[1] if floor_sort_key(floor_key)[0] == 0 else 999,
+                "sort_order": floor_sort_key(floor_key)[1]
+                if floor_sort_key(floor_key)[0] == 0
+                else 999,
                 "available_count": floor_avail,
                 "rooms": serialized,
             }

@@ -250,7 +250,7 @@ export function PublicBookingPage() {
 
   if (step === "rooms" && viewMode === "seatmap") {
     return (
-      <div className="public-booking public-booking-seatmap-page">
+      <div className="public-booking-seatmap-page">
         <ViewToggle viewMode={viewMode} onChange={setView} />
         {loadingSeatmap && <SeatMapSkeleton />}
         {!loadingSeatmap && seatmapData && (

@@ -9,6 +9,7 @@ from apps.products.pg_management.seatmap import (
     VISUAL_PARTIAL,
     build_public_seatmap_payload,
     is_room_publicly_bookable,
+    normalize_floor_key,
     seatmap_visual_status,
 )
 
@@ -78,6 +79,33 @@ def test_is_room_selectable_matches_available_endpoint(api_client, pg_tenant, us
     avail = api_client.get(f"/api/pg/public/{pg_tenant.slug}/rooms/available/")
     avail_ids = {r["id"] for r in avail.data}
     assert avail_ids == {rid for rid, r in by_id.items() if r["selectable"]}
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("1", "1"),
+        ("01", "1"),
+        ("1st", "1"),
+        ("2nd", "2"),
+        ("", "0"),
+    ],
+)
+def test_normalize_floor_key(raw, expected):
+    assert normalize_floor_key(raw) == expected
+
+
+def test_seatmap_merges_floor_aliases(pg_tenant, user):
+    _room(pg_tenant, user, room_number="A1", floor="1")
+    _room(pg_tenant, user, room_number="A2", floor="1st")
+    _room(pg_tenant, user, room_number="A3", floor="01")
+
+    data = build_public_seatmap_payload(tenant=pg_tenant)
+    floor_keys = [f["key"] for f in data["floors"]]
+    assert floor_keys.count("1") == 1
+    floor_one = next(f for f in data["floors"] if f["key"] == "1")
+    assert floor_one["label"] == "1st"
+    assert len(floor_one["rooms"]) == 3
 
 
 def test_seatmap_returns_200_grouped_floors(api_client, pg_tenant, user):
