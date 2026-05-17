@@ -8,19 +8,30 @@ import sys
 
 import httpx
 
-from smoke_env import env_nonempty
+try:
+    from smoke_env import env_nonempty
+except ImportError:  # pragma: no cover - fallback if PYTHONPATH is wrong in CI
 
-API_BASE_URL = env_nonempty("API_BASE_URL", "http://localhost:8000").rstrip("/")
-SMOKE_SWA_URL = env_nonempty("SMOKE_SWA_URL", "").rstrip("/")
-SMOKE_USERNAME = env_nonempty("SMOKE_USERNAME", "admin")
-SMOKE_PASSWORD = env_nonempty("SMOKE_PASSWORD", "admin")
-SMOKE_TENANT = env_nonempty("SMOKE_TENANT", "pg-demo")
-SMOKE_RESIDENT_USER = env_nonempty("SMOKE_RESIDENT_USER", "resident")
-SMOKE_RESIDENT_PASSWORD = env_nonempty("SMOKE_RESIDENT_PASSWORD", "admin")
-EXPECTED_ENV = env_nonempty("EXPECTED_ENV", "")
-EXPECTED_VERSION = env_nonempty("EXPECTED_VERSION", "")
-PUBLIC_TENANT = env_nonempty("SMOKE_PUBLIC_TENANT", "pg-demo")
-SMOKE_MIN_SEATMAP_ROOMS = int(env_nonempty("SMOKE_MIN_SEATMAP_ROOMS", "0") or "0")
+    def env_nonempty(name: str, default: str) -> str:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        stripped = raw.strip()
+        return stripped if stripped else default
+
+
+def smoke_credential(name: str, default: str) -> str:
+    """Read at use-time so empty GitHub secrets cannot stick as blank env vars."""
+    return env_nonempty(name, default)
+
+
+API_BASE_URL = smoke_credential("API_BASE_URL", "http://localhost:8000").rstrip("/")
+SMOKE_SWA_URL = smoke_credential("SMOKE_SWA_URL", "").rstrip("/")
+SMOKE_TENANT = smoke_credential("SMOKE_TENANT", "pg-demo")
+EXPECTED_ENV = smoke_credential("EXPECTED_ENV", "")
+EXPECTED_VERSION = smoke_credential("EXPECTED_VERSION", "")
+PUBLIC_TENANT = smoke_credential("SMOKE_PUBLIC_TENANT", "pg-demo")
+SMOKE_MIN_SEATMAP_ROOMS = int(smoke_credential("SMOKE_MIN_SEATMAP_ROOMS", "0") or "0")
 
 
 def fail(msg: str) -> None:
@@ -32,16 +43,24 @@ def ok(msg: str) -> None:
     print(f"SMOKE OK: {msg}")
 
 
-def login(client: httpx.Client, username: str, password: str) -> str:
+def login(client: httpx.Client, role: str, username: str, password: str) -> str:
+    user = (username or "").strip()
+    pwd = (password or "").strip()
+    if not user or not pwd:
+        fail(
+            f"login ({role}) missing credentials for {role}; "
+            f"set env vars or remove empty GitHub secrets so defaults apply "
+            f"(resident: resident/admin, operator: admin/admin)"
+        )
     response = client.post(
         "/api/auth/login/",
-        json={"username": username, "password": password},
+        json={"username": user, "password": pwd},
     )
     if response.status_code != 200:
-        fail(f"login ({username}) status {response.status_code}: {response.text}")
+        fail(f"login ({role}:{user}) status {response.status_code}: {response.text}")
     token = response.json().get("access")
     if not token:
-        fail(f"login ({username}) missing access token")
+        fail(f"login ({role}:{user}) missing access token")
     return token
 
 
@@ -74,7 +93,9 @@ def main() -> None:
             fail(f"frontend status {swa.status_code} at {SMOKE_SWA_URL}")
         ok("frontend")
 
-    operator_token = login(client, SMOKE_USERNAME, SMOKE_PASSWORD)
+    operator_user = smoke_credential("SMOKE_USERNAME", "admin")
+    operator_pass = smoke_credential("SMOKE_PASSWORD", "admin")
+    operator_token = login(client, "operator", operator_user, operator_pass)
     ok("operator login")
 
     headers = {
@@ -140,13 +161,9 @@ def main() -> None:
         fail("public seatmap has no selectable room")
     ok("public seatmap")
 
-    if not SMOKE_RESIDENT_USER or not SMOKE_RESIDENT_PASSWORD:
-        fail(
-            "resident credentials empty; set SMOKE_RESIDENT_USER/SMOKE_RESIDENT_PASSWORD "
-            "or remove empty GitHub secrets so defaults apply"
-        )
-
-    resident_token = login(client, SMOKE_RESIDENT_USER, SMOKE_RESIDENT_PASSWORD)
+    resident_user = smoke_credential("SMOKE_RESIDENT_USER", "resident")
+    resident_pass = smoke_credential("SMOKE_RESIDENT_PASSWORD", "admin")
+    resident_token = login(client, "resident", resident_user, resident_pass)
     ok("resident login")
 
     resident_headers = {

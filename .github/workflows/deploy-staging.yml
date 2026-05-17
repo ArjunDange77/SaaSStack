@@ -132,8 +132,9 @@ jobs:
           EXPECTED_VERSION: ${{ github.sha }}
           SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
-          SMOKE_RESIDENT_USER: ${{ secrets.SMOKE_RESIDENT_USER }}
-          SMOKE_RESIDENT_PASSWORD: ${{ secrets.SMOKE_RESIDENT_PASSWORD }}
+          # Defaults match seed_pg demo; do not pass empty secrets (breaks login).
+          SMOKE_RESIDENT_USER: resident
+          SMOKE_RESIDENT_PASSWORD: admin
         run: bash deploy/scripts/smoke_test.sh
 
       - name: Deployment summary
