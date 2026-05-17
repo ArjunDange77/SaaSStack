@@ -78,41 +78,4 @@ describe("BookingSeatMap", () => {
     );
     expect(screen.getByRole("button", { name: /Select Room 201/i })).toBeInTheDocument();
   });
-
-  it("scrolls floor area when floor pip is clicked", async () => {
-    const scrollTo = vi.fn();
-    const dataWithFloors: PublicSeatmapPayload = {
-      ...data,
-      floors: [
-        ...data.floors,
-        {
-          key: "1",
-          label: "1st",
-          sort_order: 1,
-          available_count: 1,
-          rooms: [
-            {
-              ...data.floors[0].rooms[0],
-              id: 9,
-              room_number: "101",
-              floor: "1",
-            },
-          ],
-        },
-      ],
-    };
-    const { container } = render(
-      <BookingSeatMap
-        data={dataWithFloors}
-        selectedRoom={null}
-        onSelectRoom={vi.fn()}
-        onConfirmSelection={vi.fn()}
-        onChooseLater={vi.fn()}
-      />
-    );
-    const floorArea = container.querySelector(".floor-area") as HTMLElement;
-    floorArea.scrollTo = scrollTo;
-    await userEvent.click(screen.getByRole("button", { name: /Floor 1st/i }));
-    expect(scrollTo).toHaveBeenCalled();
-  });
 });

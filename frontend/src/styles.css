@@ -2263,8 +2263,9 @@ td {
   flex-direction: column;
   min-height: 0;
   width: 100%;
-  max-width: 1400px;
+  max-width: min(96vw, 1680px);
   margin: 0 auto;
+  --seatmap-tile-gap: 5px;
 }
 
 .booking-view-toggle {
@@ -2302,75 +2303,6 @@ td {
   font-family: var(--font-sans);
   max-height: calc(100vh - 3.5rem);
   max-height: calc(100dvh - 3.5rem);
-}
-
-.public-booking-seatmap .left-nav {
-  width: 56px;
-  flex-shrink: 0;
-  background: #111827;
-  border-right: 0.5px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 0;
-  gap: 4px;
-}
-
-.public-booking-seatmap .floor-pip {
-  width: 36px;
-  min-height: 36px;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s;
-  border: 1.5px solid transparent;
-  gap: 1px;
-  background: transparent;
-  color: inherit;
-  padding: 4px 2px;
-}
-
-.public-booking-seatmap .floor-pip:hover {
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.public-booking-seatmap .floor-pip.active {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.5);
-}
-
-.public-booking-seatmap .fp-num {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.public-booking-seatmap .floor-pip.active .fp-num {
-  color: #a5b4fc;
-}
-
-.public-booking-seatmap .fp-dots {
-  display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
-  width: 16px;
-  justify-content: center;
-}
-
-.public-booking-seatmap .fp-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 1px;
-}
-
-.public-booking-seatmap .fp-divider {
-  width: 24px;
-  height: 0.5px;
-  background: rgba(255, 255, 255, 0.08);
-  margin: 4px 0;
 }
 
 .public-booking-seatmap .seatmap-center {
@@ -2542,25 +2474,24 @@ td {
 }
 
 .public-booking-seatmap .rooms-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+  display: grid;
+  grid-template-columns: repeat(var(--room-cols, 6), minmax(0, 1fr));
+  gap: var(--seatmap-tile-gap);
 }
 
 .public-booking-seatmap .room-tile {
   position: relative;
-  width: 46px;
-  height: 44px;
-  border-radius: 6px;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   border: 1.5px solid transparent;
   transition: transform 0.12s, border-color 0.12s;
-  flex-shrink: 0;
   background: transparent;
   color: inherit;
   padding: 0;
@@ -2610,14 +2541,14 @@ td {
 }
 
 .public-booking-seatmap .rt-num {
-  font-size: 11px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: clamp(11px, 1.1vw, 15px);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .public-booking-seatmap .rt-occ {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.35);
+  font-size: clamp(9px, 0.85vw, 12px);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 @keyframes seatmapPulseRing {
@@ -2865,28 +2796,6 @@ td {
   text-align: center;
 }
 
-.public-booking-seatmap .floor-chips {
-  display: flex;
-  gap: 0.35rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.5rem;
-  -webkit-overflow-scrolling: touch;
-}
-
-.public-booking-seatmap .floor-chips .floor-pip {
-  width: auto;
-  min-width: 52px;
-  flex-direction: row;
-  padding: 6px 10px;
-  gap: 6px;
-}
-
-.public-booking-seatmap .floor-chips .fp-dots {
-  width: auto;
-  max-width: 48px;
-}
-
 .seatmap-sheet-backdrop .seatmap-sheet {
   max-width: 100%;
   width: 100%;
@@ -2894,6 +2803,78 @@ td {
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: #111827;
   color: #fff;
+}
+
+@media (min-width: 768px) {
+  .public-booking-seatmap-page .public-booking-seatmap {
+    --seatmap-tile-gap: 7px;
+  }
+
+  .public-booking-seatmap .rooms-wrap {
+    grid-template-columns: repeat(auto-fill, minmax(58px, 68px));
+  }
+
+  .public-booking-seatmap .floor-area {
+    padding: 18px 24px;
+  }
+
+  .public-booking-seatmap .floor-heading {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+
+  .public-booking-seatmap .floor-block {
+    margin-bottom: 24px;
+  }
+
+  .public-booking-seatmap .room-tile {
+    border-radius: 9px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .public-booking-seatmap-page .public-booking-seatmap {
+    --seatmap-tile-gap: 9px;
+  }
+
+  .public-booking-seatmap .rooms-wrap {
+    grid-template-columns: repeat(auto-fill, minmax(72px, 88px));
+  }
+
+  .public-booking-seatmap .right-panel {
+    width: 240px;
+  }
+
+  .public-booking-seatmap .floor-area {
+    padding: 20px 28px;
+  }
+
+  .public-booking-seatmap .tb-title {
+    font-size: 1.125rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .public-booking-seatmap-page .public-booking-seatmap {
+    --seatmap-tile-gap: 10px;
+  }
+
+  .public-booking-seatmap .rooms-wrap {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 100px));
+  }
+
+  .public-booking-seatmap .room-tile {
+    border-radius: 10px;
+    gap: 4px;
+  }
+
+  .public-booking-seatmap .rt-num {
+    font-size: 15px;
+  }
+
+  .public-booking-seatmap .rt-occ {
+    font-size: 12px;
+  }
 }
 
 @media (max-width: 767px) {
@@ -2933,10 +2914,5 @@ td {
     background: #0d1117;
     z-index: 2;
     flex-shrink: 0;
-  }
-
-  .public-booking-seatmap .floor-chips {
-    margin-bottom: 0.35rem;
-    padding-bottom: 0.35rem;
   }
 }

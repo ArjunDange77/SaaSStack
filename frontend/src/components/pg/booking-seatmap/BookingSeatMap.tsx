@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import type { PublicSeatmapPayload, PublicSeatmapRoom } from "@/types/publicSeatmap";
 import { BookingStepIndicator } from "@/components/pg/BookingStepIndicator";
-import { FloorNavPips } from "./FloorNavPips";
 import { FloorSection } from "./FloorSection";
 import { RoomDetailPanel } from "./RoomDetailPanel";
 import { SeatMapLegend } from "./SeatMapLegend";
@@ -24,12 +23,7 @@ export function BookingSeatMap({
   onChooseLater,
 }: Props) {
   const isMobile = useIsMobile();
-  const floorAreaRef = useRef<HTMLDivElement>(null);
-  const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
   const [hoveredRoom, setHoveredRoom] = useState<PublicSeatmapRoom | null>(null);
-  const [activeFloorKey, setActiveFloorKey] = useState<string | null>(
-    data.floors[0]?.key ?? null
-  );
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
   const panelRoom = selectedRoom ?? hoveredRoom;
@@ -38,36 +32,6 @@ export function BookingSeatMap({
     const fl = data.floors.find((f) => f.rooms.some((r) => r.id === panelRoom.id));
     return fl?.label;
   }, [data.floors, panelRoom]);
-
-  const scrollToFloor = useCallback((floorKey: string) => {
-    const root = floorAreaRef.current;
-    const el = sectionRefs.current.get(floorKey);
-    if (!root || !el) return;
-    const top = el.offsetTop - root.offsetTop;
-    root.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
-    setActiveFloorKey(floorKey);
-  }, []);
-
-  useEffect(() => {
-    const root = floorAreaRef.current;
-    if (!root || data.floors.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        const top = visible[0];
-        if (!top?.target.id.startsWith("floor-")) return;
-        const key = top.target.id.replace("floor-", "");
-        setActiveFloorKey(key);
-      },
-      { root, rootMargin: "-20% 0px -55% 0px", threshold: [0, 0.25, 0.5] }
-    );
-
-    sectionRefs.current.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [data.floors]);
 
   const handleSelect = (room: PublicSeatmapRoom) => {
     onSelectRoom(room);
@@ -88,15 +52,6 @@ export function BookingSeatMap({
   return (
     <div className="public-booking-seatmap">
       <div className="seatmap-shell">
-        {!isMobile && (
-          <FloorNavPips
-            floors={data.floors}
-            activeFloorKey={activeFloorKey}
-            onFloorSelect={scrollToFloor}
-            variant="sidebar"
-          />
-        )}
-
         <div className="seatmap-center">
           <div className="top-bar">
             <div className="tb-row">
@@ -106,18 +61,10 @@ export function BookingSeatMap({
               </div>
               <BookingStepIndicator current="rooms" variant="compact" />
             </div>
-            {isMobile && (
-              <FloorNavPips
-                floors={data.floors}
-                activeFloorKey={activeFloorKey}
-                onFloorSelect={scrollToFloor}
-                variant="chips"
-              />
-            )}
             <SeatMapLegend />
           </div>
 
-          <div className="floor-area" ref={floorAreaRef}>
+          <div className="floor-area">
             {data.floors.map((floor) => (
               <FloorSection
                 key={floor.key}
@@ -125,10 +72,6 @@ export function BookingSeatMap({
                 selectedRoomId={selectedRoom?.id ?? null}
                 onHover={handleHover}
                 onSelect={isMobile ? handleTileTap : handleSelect}
-                sectionRef={(el) => {
-                  if (el) sectionRefs.current.set(floor.key, el);
-                  else sectionRefs.current.delete(floor.key);
-                }}
               />
             ))}
           </div>
