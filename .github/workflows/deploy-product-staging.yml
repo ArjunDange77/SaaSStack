@@ -43,6 +43,10 @@ on:
         required: false
         type: boolean
         default: false
+      seed_goa_force:
+        required: false
+        type: boolean
+        default: false
       smoke_script:
         required: false
         type: string
@@ -101,6 +105,22 @@ jobs:
         run: |
           pip install -r backend/requirements.txt
           bash deploy/scripts/migrate.sh
+
+      - name: Ensure Goa pilot seed (database)
+        if: inputs.run_goa_pilot_seed
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.staging
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          SEED_GOA_FORCE: ${{ inputs.seed_goa_force }}
+          GOA_TENANT: sai-baba-school-bus
+          GOA_USER: kamlesh
+          GOA_PASSWORD: admin
+        run: bash deploy/scripts/ensure_staging_goa_pilot_seed.sh
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -193,27 +213,6 @@ jobs:
           SB_SMOKE_PASSWORD: admin
           SB_SMOKE_TENANT: sb-demo
         run: bash deploy/scripts/ensure_staging_sb_demo_seed.sh
-
-      - name: Seed Goa pilot (manual)
-        if: inputs.run_goa_pilot_seed && inputs.seed_demo
-        env:
-          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
-          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
-          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
-        run: bash deploy/scripts/seed_staging_goa_pilot.sh
-
-      - name: Ensure Goa pilot seed (sai-baba-school-bus)
-        if: inputs.run_goa_pilot_seed
-        env:
-          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
-          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
-          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
-          GOA_TENANT: sai-baba-school-bus
-          GOA_USER: kamlesh
-          GOA_PASSWORD: admin
-        run: bash deploy/scripts/ensure_staging_goa_pilot_seed.sh
 
       - uses: actions/download-artifact@v4
         id: frontend_artifact

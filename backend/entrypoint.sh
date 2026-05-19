@@ -68,10 +68,13 @@ if [ "${SEED_SB_STAGING_DEMO:-false}" = "true" ]; then
   python manage.py seed_school_bus || true
 fi
 
+# Manual/Portal recovery only — CI uses deploy/scripts/seed_goa_pilot_via_db.sh (no restart).
 if [ "${SEED_GOA_PILOT_STAGING:-false}" = "true" ]; then
   echo "SEED_GOA_PILOT_STAGING=true — seeding sai-baba-school-bus pilot (reset)..."
-  python manage.py seed_kernel || true
-  python manage.py seed_goa_pilot --reset || true
+  started=$(date +%s)
+  python manage.py seed_kernel
+  python manage.py seed_goa_pilot --reset
+  echo "Goa pilot seed finished in $(($(date +%s) - started))s"
 fi
 
 if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] && [ -n "$DJANGO_SUPERUSER_USERNAME" ]; then

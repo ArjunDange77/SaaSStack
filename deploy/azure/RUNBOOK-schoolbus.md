@@ -59,17 +59,21 @@ GITHUB_ENVIRONMENT=schoolbus-staging ./deploy/scripts/setup-github-oidc.sh
 
 ## Goa pilot client demo (`sai-baba-school-bus`) — 15 minutes
 
-**Setup (staging):** from repo root, with `az login`:
+**Setup (staging):** **Deploy Staging** seeds via Postgres from CI (`seed_goa_pilot_via_db.sh`) — no app restart. Verify **kamlesh** @ **sai-baba-school-bus** (≥15 students) in final smoke.
+
+**Manual re-seed (database, preferred):** same env as migrate secrets:
 
 ```bash
-bash deploy/scripts/seed_staging_goa_pilot.sh
+cd backend
+export DJANGO_SETTINGS_MODULE=config.settings.staging
+# POSTGRES_* / DB_HOST from GitHub staging secrets or deploy/.secrets
+python manage.py seed_kernel
+python manage.py seed_goa_pilot --reset
 ```
 
-Defaults: `rg-saasstack-staging`, `saasstack-staging-api`. Sets `SEED_GOA_PILOT_STAGING=true`, restarts API, verifies **kamlesh** @ **sai-baba-school-bus** (≥15 students).
+**Fallback (slow — restarts API, blocks health):** `bash deploy/scripts/seed_staging_goa_pilot.sh` sets `SEED_GOA_PILOT_STAGING=true` on the web app.
 
-**Requires:** latest API deployed via **Deploy Staging**.
-
-**Manual fallback:** Portal → `saasstack-staging-api` → **SSH** → `python manage.py migrate --noinput && python manage.py seed_goa_pilot --reset`
+**SSH fallback:** Portal → `saasstack-staging-api` → **SSH** → `python manage.py migrate --noinput && python manage.py seed_goa_pilot --reset`
 
 **Daily trips (weekdays):** `python manage.py generate_today_trips` (or `--tenant=sai-baba-school-bus`)
 

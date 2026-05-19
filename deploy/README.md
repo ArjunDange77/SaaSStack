@@ -29,7 +29,9 @@ GitHub: use **Deploy Staging** workflow and the `staging` environment ([STAGING-
 | `scripts/provision-staging-india.sh` | PG Bicep + `rg-saasstack-staging` |
 | `scripts/teardown-schoolbus-staging.sh` | Delete retired SB/shared RGs after cutover |
 | `scripts/smoke_unified_staging.sh` | PG + School Bus smoke on one API URL |
-| `scripts/ensure_staging_goa_pilot_seed.sh` | Idempotent Goa pilot seed on unified API |
+| `scripts/seed_goa_pilot_via_db.sh` | Goa pilot seed via Postgres from CI (primary) |
+| `scripts/ensure_staging_goa_pilot_seed.sh` | Sparse-check + DB seed; optional API verify |
+| `scripts/seed_staging_goa_pilot.sh` | **Fallback** — app-setting restart (slow) |
 | `scripts/provision-schoolbus-staging.sh` | **Deprecated** — do not use for staging |
 | `scripts/provision-schoolbus-production.sh` | School Bus prod RG (Phase 2, minimal) |
 | `scripts/setup-github-oidc.sh` | GitHub federated login (set `GITHUB_ENVIRONMENT`) |

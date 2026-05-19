@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Seed sai-baba-school-bus on unified staging API (rg-saasstack-staging; no deployment slot).
+# FALLBACK ONLY: seed via SEED_GOA_PILOT_STAGING app setting + app restart (blocks boot; slow).
+# Prefer: deploy/scripts/seed_goa_pilot_via_db.sh from CI or SSH (see RUNBOOK-schoolbus.md).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -43,6 +44,9 @@ az webapp config appsettings set \
   --settings SEED_GOA_PILOT_STAGING=true \
   --output none
 az webapp restart --resource-group "$RG" --name "$APP" "${SLOT_ARGS[@]}" --output none
+
+echo "Waiting 30s for container restart before health checks..."
+sleep 30
 
 SEEDED=0
 for i in $(seq 1 "$MAX_ATTEMPTS"); do

@@ -28,6 +28,14 @@ WORKFLOW_CHECKS: dict[str, list[tuple[str, str]]] = {
         (ROOT / ".github/workflows/deploy-staging.yml", "run_goa_pilot_seed: true"),
         (ROOT / ".github/workflows/deploy-staging.yml", "early_gate_script: smoke_unified_staging.sh"),
         (ROOT / ".github/workflows/deploy-staging.yml", "smoke_script: smoke_unified_staging.sh"),
+        (
+            ROOT / ".github/workflows/deploy-product-staging.yml",
+            "Ensure Goa pilot seed (database)",
+        ),
+        (
+            ROOT / ".github/workflows/deploy-product-staging.yml",
+            "bash deploy/scripts/ensure_staging_goa_pilot_seed.sh",
+        ),
     ],
 }
 

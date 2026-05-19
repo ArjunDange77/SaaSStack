@@ -61,6 +61,7 @@ jobs:
       run_goa_pilot_seed: true
       run_sb_demo_seed: false
       seed_demo: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.seed_pg_demo == 'true' || github.event.inputs.seed_goa_pilot == 'true') }}
+      seed_goa_force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.seed_goa_pilot == 'true' }}
       early_gate_script: smoke_unified_staging.sh
       smoke_script: smoke_unified_staging.sh
     secrets: inherit

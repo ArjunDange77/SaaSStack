@@ -14,7 +14,9 @@ Login at `http://localhost:5173`: `kamlesh` / `admin` @ `sai-baba-school-bus`; P
 
 ## Tier 2 — CI
 
-Green **Deploy Staging** on GitHub (includes `ci.yml` with deploy script shellcheck + profile validation).
+Green **Deploy Staging** on GitHub (includes `ci.yml` with deploy script shellcheck + profile validation). Goa pilot data is seeded from the workflow via **Postgres** (`seed_goa_pilot_via_db.sh`) after migrate — not via app restart.
+
+Force re-seed: **Actions → Deploy Staging → Run workflow** → check **seed_goa_pilot**.
 
 ## Tier 2.5 — Pre-push (Azure CLI)
 
@@ -34,6 +36,7 @@ Offline (no Azure): `python3 deploy/scripts/validate_deploy_profile.py --all-pro
 
 ```bash
 export STAGING_API_URL="https://saasstack-staging-api.azurewebsites.net"
+export GOA_MIN_STUDENTS=15
 bash deploy/scripts/smoke_unified_staging.sh
 ```
 
