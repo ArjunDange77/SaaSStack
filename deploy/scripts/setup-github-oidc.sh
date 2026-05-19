@@ -8,11 +8,29 @@ source "$ROOT/deploy/scripts/lib/load-local-secrets.sh"
 load_local_secrets || true
 
 SECRETS_DIR="$ROOT/deploy/.secrets"
-RG="${AZURE_RESOURCE_GROUP:-rg-saasstack-staging}"
+ENV_NAME="${GITHUB_ENVIRONMENT:-staging}"
+
+case "$ENV_NAME" in
+  schoolbus-staging)
+    RG="${AZURE_RESOURCE_GROUP:-rg-saasstack-sb-staging}"
+    SECRETS_OUT="$SECRETS_DIR/github-schoolbus-staging-secrets.env"
+    ;;
+  schoolbus-production)
+    RG="${AZURE_RESOURCE_GROUP:-rg-saasstack-sb-prod}"
+    SECRETS_OUT="$SECRETS_DIR/github-schoolbus-production-secrets.env"
+    ;;
+  production)
+    RG="${AZURE_RESOURCE_GROUP:-rg-saasstack-prod}"
+    SECRETS_OUT="$SECRETS_DIR/github-production-secrets.env"
+    ;;
+  *)
+    RG="${AZURE_RESOURCE_GROUP:-rg-saasstack-staging}"
+    SECRETS_OUT="$SECRETS_DIR/github-staging-secrets.env"
+    ;;
+esac
 
 GITHUB_ORG="${GITHUB_ORG:-}"
 GITHUB_REPO="${GITHUB_REPO:-}"
-ENV_NAME="${GITHUB_ENVIRONMENT:-staging}"
 
 if ! command -v az >/dev/null 2>&1; then
   echo "Azure CLI required."
@@ -70,7 +88,7 @@ mkdir -p "$SECRETS_DIR"
   echo "AZURE_CLIENT_ID=$APP_ID"
   echo "AZURE_TENANT_ID=$TENANT_ID"
   echo "AZURE_SUBSCRIPTION_ID=$SUBSCRIPTION_ID"
-} >>"$SECRETS_DIR/github-staging-secrets.env"
+} >>"$SECRETS_OUT"
 
 echo ""
 echo "OIDC ready. Add to GitHub → Environments → ${ENV_NAME}:"
@@ -78,4 +96,4 @@ echo "  AZURE_CLIENT_ID=$APP_ID"
 echo "  AZURE_TENANT_ID=$TENANT_ID"
 echo "  AZURE_SUBSCRIPTION_ID=$SUBSCRIPTION_ID"
 echo ""
-echo "Also copy remaining values from: deploy/.secrets/github-staging-secrets.env"
+echo "Also copy remaining values from: $SECRETS_OUT"

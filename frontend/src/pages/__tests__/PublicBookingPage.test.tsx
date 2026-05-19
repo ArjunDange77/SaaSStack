@@ -140,9 +140,13 @@ describe("PublicBookingPage", () => {
     renderBooking();
     await userEvent.click(await screen.findByRole("button", { name: /List view/i }));
     await userEvent.click(await screen.findByRole("button", { name: /Room 202/i }));
+    expect(
+      screen.getByRole("region", { name: /Room selection actions/i })
+    ).toBeInTheDocument();
     const continueButtons = screen.getAllByRole("button", { name: /^Continue$/i });
     expect(continueButtons.length).toBeGreaterThanOrEqual(1);
     expect(continueButtons[0]).toBeVisible();
+    expect(screen.getByRole("button", { name: /I'll choose a room later/i })).toBeInTheDocument();
   });
 
   it("advances on double-click in list view", async () => {

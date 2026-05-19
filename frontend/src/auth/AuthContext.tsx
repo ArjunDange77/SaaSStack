@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AUTH_EXPIRED_EVENT, clearAuthStorage, fetchMe, login as apiLogin } from "@/api/client";
 
-export type AppRole = "owner" | "staff" | "resident" | null;
+export type AppRole = "owner" | "staff" | "resident" | "parent" | null;
 
 interface AuthState {
   accessToken: string | null;
@@ -9,6 +9,8 @@ interface AuthState {
   tenantSlug: string;
   role: AppRole;
   residentId: number | null;
+  driverId: number | null;
+  parentId: number | null;
 }
 
 interface AuthContextValue extends AuthState {
@@ -52,11 +54,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
   });
+  const [driverId, setDriverId] = useState<number | null>(() => {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    try {
+      const u = JSON.parse(raw) as { driver_id?: number };
+      return u.driver_id ?? null;
+    } catch {
+      return null;
+    }
+  });
+  const [parentId, setParentId] = useState<number | null>(() => {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    try {
+      const u = JSON.parse(raw) as { parent_id?: number };
+      return u.parent_id ?? null;
+    } catch {
+      return null;
+    }
+  });
 
   const applyMe = useCallback((me: Record<string, unknown>) => {
     setUser(me);
     setRole((me.role as AppRole) ?? null);
     setResidentId(typeof me.resident_id === "number" ? me.resident_id : null);
+    setDriverId(typeof me.driver_id === "number" ? me.driver_id : null);
+    setParentId(typeof me.parent_id === "number" ? me.parent_id : null);
     localStorage.setItem("user", JSON.stringify(me));
   }, []);
 
@@ -71,6 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setRole(null);
       setResidentId(null);
+      setDriverId(null);
+      setParentId(null);
     };
     window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
@@ -102,6 +128,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setRole(null);
     setResidentId(null);
+    setDriverId(null);
+    setParentId(null);
   }, []);
 
   const value = useMemo(
@@ -111,13 +139,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenantSlug,
       role,
       residentId,
+      driverId,
+      parentId,
       isAuthenticated: Boolean(accessToken),
       login,
       logout,
       setTenantSlug,
       refreshMe,
     }),
-    [accessToken, user, tenantSlug, role, residentId, login, logout, setTenantSlug, refreshMe]
+    [accessToken, user, tenantSlug, role, residentId, driverId, parentId, login, logout, setTenantSlug, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

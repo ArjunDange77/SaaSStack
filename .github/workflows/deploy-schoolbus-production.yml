@@ -1,0 +1,152 @@
+# School Bus — production: deploy to staging slots, then swap to production.
+name: Deploy School Bus Production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/apps/products/school_bus/**"
+      - "frontend/src/pages/school_bus/**"
+      - "frontend/src/pages/__tests__/Sb*.test.tsx"
+      - "frontend/src/hooks/useSchoolBus.ts"
+      - "frontend/src/components/school_bus/**"
+      - "frontend/src/App.tsx"
+      - "frontend/src/auth/AuthContext.tsx"
+      - "frontend/src/pages/LoginPage.tsx"
+      - "deploy/azure/schoolbus.bicep"
+      - "deploy/azure/schoolbus.prod.india.bicepparam"
+      - ".github/workflows/deploy-schoolbus-production.yml"
+  workflow_dispatch:
+    inputs:
+      skip_swap:
+        description: Deploy to slots only (no swap)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: write
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: schoolbus-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image name
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}/backend" >> "$GITHUB_ENV"
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: APP_VERSION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run migrations
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.production
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+        run: |
+          pip install -r backend/requirements.txt
+          bash deploy/scripts/migrate.sh
+
+      - name: Deploy API to staging slot
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          slot-name: staging
+          images: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - uses: actions/download-artifact@v4
+        id: frontend_artifact
+        continue-on-error: true
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - uses: actions/setup-node@v4
+        if: steps.frontend_artifact.outcome != 'success'
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm build (fallback)
+        if: steps.frontend_artifact.outcome != 'success'
+        working-directory: frontend
+        env:
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+        run: npm ci && npm run build
+
+      - name: Package frontend
+        run: |
+          cd frontend/dist
+          zip -r "$GITHUB_WORKSPACE/frontend-dist.zip" .
+
+      - name: Deploy frontend to staging slot
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME_FRONTEND }}
+          slot-name: staging
+          package: frontend-dist.zip
+
+      - name: Smoke staging slot
+        env:
+          API_BASE_URL: https://${{ secrets.AZURE_WEBAPP_NAME }}-staging.azurewebsites.net
+          EXPECTED_ENV: production
+          EXPECTED_VERSION: ${{ github.sha }}
+        run: bash deploy/scripts/smoke_schoolbus_staging.sh
+
+      - name: Swap staging slot to production (API)
+        if: github.event_name != 'workflow_dispatch' || inputs.skip_swap != true
+        run: |
+          az webapp deployment slot swap \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ secrets.AZURE_WEBAPP_NAME }}" \
+            --slot staging
+
+      - name: Swap staging slot to production (frontend)
+        if: github.event_name != 'workflow_dispatch' || inputs.skip_swap != true
+        run: |
+          az webapp deployment slot swap \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ secrets.AZURE_WEBAPP_NAME_FRONTEND }}" \
+            --slot staging
+
+      - name: Production health check
+        if: github.event_name != 'workflow_dispatch' || inputs.skip_swap != true
+        env:
+          PRODUCTION_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+        run: curl -fsS "${PRODUCTION_API_URL}/api/health/"

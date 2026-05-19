@@ -24,4 +24,10 @@ class MeView(APIView):
         membership = get_membership(request)
         data["role"] = membership.role if membership else None
         data["resident_id"] = get_resident_id_for_user(request)
+        from apps.products.school_bus.permissions import get_driver_for_user, get_parent_for_user
+
+        driver = get_driver_for_user(request)
+        parent = get_parent_for_user(request)
+        data["driver_id"] = driver.id if driver else None
+        data["parent_id"] = parent.id if parent else None
         return Response(data)

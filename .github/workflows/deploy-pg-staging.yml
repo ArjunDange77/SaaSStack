@@ -1,0 +1,55 @@
+# PG Management — staging deploy only (path-isolated from School Bus).
+name: Deploy PG Staging
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - "backend/apps/products/pg_management/**"
+      - "frontend/src/pages/Pg*.tsx"
+      - "frontend/src/pages/PublicBookingPage.tsx"
+      - "frontend/src/pages/ResidentPortal.tsx"
+      - "frontend/src/components/pg/**"
+      - "frontend/src/App.tsx"
+      - "deploy/azure/main.bicep"
+      - "deploy/azure/staging.india.bicepparam"
+      - "deploy/azure/modules/**"
+      - ".github/workflows/deploy-pg-staging.yml"
+      - ".github/workflows/deploy-product-staging.yml"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Why deploying (e.g. kernel change affecting PG)
+        required: false
+        type: string
+      seed_demo:
+        description: Re-seed pg-demo demo data (~3–5 min)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: write
+
+  deploy:
+    needs: ci
+    uses: ./.github/workflows/deploy-product-staging.yml
+    with:
+      product_label: PG Management
+      environment_name: staging
+      azure_resource_group: rg-saasstack-staging
+      expected_env: staging
+      frontend_deploy: static_web_app
+      run_pg_demo_seed: true
+      seed_demo: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.seed_demo == 'true' }}
+      smoke_script: smoke_test.sh
+    secrets: inherit

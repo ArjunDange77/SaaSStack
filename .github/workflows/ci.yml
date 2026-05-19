@@ -52,7 +52,8 @@ jobs:
             apps/registry/storage.py apps/registry/tests/test_health.py config/health.py \
             apps/tenancy/middleware.py \
             apps/products/pg_management/views.py apps/products/pg_management/serializers.py \
-            apps/products/pg_management/throttles.py apps/products/pg_management/validators.py
+            apps/products/pg_management/throttles.py apps/products/pg_management/validators.py \
+            apps/products/school_bus/
       - name: Pytest
         env:
           DJANGO_SECRET_KEY: ci-secret

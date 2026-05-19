@@ -9,15 +9,31 @@
    Optional overrides: `AZURE_APP_LOCATION=southindia`, `AZURE_SWA_LOCATION=eastasia` (defaults — cheapest layout when centralindia cannot host API/SWA)
 3. `az login` then read **`deploy/docs/cost-guardrails.md`**
 4. `./deploy/scripts/cost-guardrails-setup.sh`
-5. `./deploy/scripts/provision-staging-india.sh`
+5. `./deploy/scripts/provision-staging-india.sh` (PG Management)
+
+**School Bus (separate RG):** see [`deploy/azure/PLANNING.md`](azure/PLANNING.md) and [`deploy/azure/RUNBOOK-schoolbus.md`](azure/RUNBOOK-schoolbus.md).
+
+```bash
+./deploy/scripts/provision-shared-network.sh
+./deploy/scripts/provision-schoolbus-staging.sh
+GITHUB_ENVIRONMENT=schoolbus-staging ./deploy/scripts/setup-github-oidc.sh
+./deploy/scripts/sync-github-schoolbus-staging-secrets.sh
+```
 
 ## Scripts (safe to commit — no secrets)
 
 | Script | Purpose |
 |--------|---------|
 | `scripts/cost-guardrails-setup.sh` | Budget alerts before deploy |
-| `scripts/provision-staging-india.sh` | Bicep + staging RG |
-| `scripts/setup-github-oidc.sh` | GitHub federated login |
+| `scripts/provision-staging-india.sh` | PG Bicep + `rg-saasstack-staging` |
+| `scripts/provision-shared-network.sh` | Shared VNet + NAT (`rg-saasstack-shared`) |
+| `scripts/provision-schoolbus-staging.sh` | School Bus stack + secrets file |
+| `scripts/provision-schoolbus-production.sh` | School Bus prod RG |
+| `scripts/setup-github-oidc.sh` | GitHub federated login (set `GITHUB_ENVIRONMENT`) |
+| `scripts/sync-github-staging-secrets.sh` | PG staging secrets → GitHub |
+| `scripts/sync-github-schoolbus-staging-secrets.sh` | School Bus staging secrets |
+| `scripts/smoke_schoolbus_staging.sh` | School Bus API smoke |
+| `scripts/coexistence_smoke.sh` | PG + Bus URLs together |
 | `scripts/stop-staging-india.sh` / `start-staging-india.sh` | Save money when idle |
 | `scripts/teardown-staging-india.sh` | Delete entire staging RG |
 
@@ -35,7 +51,9 @@ Public booking rate limits use the Postgres `django_cache` table. `createcacheta
 | **Full smoke** | Login, catalog, dashboard, public booking at end |
 | **Entrypoint** | `createcachetable` must succeed or container startup fails |
 
-**Staging demo seed:** deploy runs `ensure_staging_demo_seed.sh` after the API is up — if the public seatmap has fewer than 48 rooms, it triggers `seed_staging_demo.sh` automatically (~3–5 min one-time restart). Manual override: **Actions → Deploy Staging → Run workflow** with **Re-seed pg-demo** checked, or `bash deploy/scripts/seed_staging_demo.sh` locally with `az login`.
+**PG staging demo seed:** `deploy-pg-staging` runs `ensure_staging_demo_seed.sh` after the API is up. Manual re-seed: **Actions → Deploy PG Staging → Re-seed pg-demo**.
+
+**School Bus:** `deploy-schoolbus-staging` deploys to App Service slot `staging`. Runs `ensure_staging_sb_demo_seed.sh` after API is up. Manual re-seed: **Actions → Deploy School Bus Staging → Re-seed sb-demo**.
 
 **Staging smoke secrets:** operator login uses `SMOKE_USERNAME` / `SMOKE_PASSWORD` secrets. Resident login uses workflow defaults `resident` / `admin` (do not add empty `SMOKE_RESIDENT_*` GitHub secrets — they used to override defaults and caused `login ()` 400).
 

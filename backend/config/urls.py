@@ -21,6 +21,7 @@ urlpatterns = [
     path("api/meta/", include("apps.registry.urls")),
     path("api/cosmetix/", include("apps.cosmetix.urls")),
     path("api/pg/", include("apps.products.pg_management.urls")),
+    path("api/sb/", include("apps.products.school_bus.urls")),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,83 @@
+# School Bus — staging deploy (path-isolated; deploys to deployment slot "staging").
+name: Deploy School Bus Staging
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - "backend/apps/products/school_bus/**"
+      - "frontend/src/pages/school_bus/**"
+      - "frontend/src/pages/__tests__/Sb*.test.tsx"
+      - "frontend/src/hooks/useSchoolBus.ts"
+      - "frontend/src/components/school_bus/**"
+      - "frontend/src/App.tsx"
+      - "frontend/src/auth/AuthContext.tsx"
+      - "frontend/src/pages/LoginPage.tsx"
+      - "deploy/azure/schoolbus.bicep"
+      - "deploy/azure/schoolbus*.bicepparam"
+      - "deploy/nginx/**"
+      - ".github/workflows/deploy-schoolbus-staging.yml"
+      - ".github/workflows/deploy-product-staging.yml"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Why deploying (e.g. kernel change affecting School Bus)
+        required: false
+        type: string
+      run_infra:
+        description: Apply Bicep to rg-saasstack-sb-staging before app deploy
+        type: boolean
+        default: false
+      seed_demo:
+        description: Force re-seed sb-demo (~3–5 min restart)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: write
+
+  infra:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_infra == true
+    runs-on: ubuntu-latest
+    environment: schoolbus-staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Apply School Bus Bicep
+        env:
+          RG: rg-saasstack-sb-staging
+        run: |
+          set -euo pipefail
+          # Requires deploy/.secrets/shared-network.env on self-hosted runner or pre-provisioned subnets in secrets.
+          echo "Run provision-schoolbus-staging.sh locally for full infra, or pass subnet IDs via pipeline variables."
+
+  deploy:
+    needs: ci
+    uses: ./.github/workflows/deploy-product-staging.yml
+    with:
+      product_label: School Bus
+      environment_name: schoolbus-staging
+      azure_resource_group: rg-saasstack-sb-staging
+      expected_env: staging
+      frontend_deploy: app_service_zip
+      deploy_slot: staging
+      run_migrations: true
+      run_pg_demo_seed: false
+      run_sb_demo_seed: true
+      seed_demo: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.seed_demo == 'true' }}
+      smoke_script: smoke_schoolbus_staging.sh
+    secrets: inherit

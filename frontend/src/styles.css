@@ -2255,11 +2255,14 @@ td {
 .public-booking-rooms-page.public-booking.booking-wrap {
   max-width: 640px;
   margin: 0 auto;
-  padding: 0.5rem 0.75rem 0.75rem;
+  padding: 0.5rem 0.75rem 0;
+  background: #0d1117;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .public-booking-rooms-page.has-list-action-bar .booking-rooms-body {
-  padding-bottom: 8.5rem;
+  padding-bottom: 0.5rem;
 }
 
 .booking-rooms-header {
@@ -2268,7 +2271,11 @@ td {
   z-index: 20;
   flex-shrink: 0;
   padding-bottom: 0.35rem;
-  background: var(--bg);
+  background: #0d1117;
+}
+
+.public-booking-rooms-page.public-booking.booking-wrap .booking-rooms-header {
+  background: #0d1117;
 }
 
 .public-booking-rooms-page.public-booking-seatmap-page .booking-rooms-header {
@@ -2288,38 +2295,94 @@ td {
 }
 
 .booking-list-action-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
+  position: sticky;
   bottom: 0;
   z-index: 30;
-  padding: 0.75rem 1rem;
+  flex-shrink: 0;
+  width: 100%;
+  margin-top: auto;
+  padding: 0.75rem 0;
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
+  background: #0d1117;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.booking-list-action-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .booking-list-action-summary {
-  margin: 0 0 0.5rem;
+  margin: 0;
   font-size: 0.9rem;
   font-weight: 500;
+  color: #fff;
 }
 
 .booking-list-action-buttons {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 0.35rem;
+  align-items: center;
 }
 
 .booking-list-action-buttons .continue-btn {
   flex: 1;
   margin: 0;
+  min-height: var(--touch-min, 44px);
 }
 
-.booking-list-action-bar .skip-btn {
-  width: 100%;
+.booking-list-action-secondary {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.booking-list-action-bar .skip-link {
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
   margin: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.booking-list-action-bar .skip-link:hover {
+  color: rgba(165, 180, 252, 0.9);
+}
+
+@media (min-width: 768px) {
+  .booking-list-action-main {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .booking-list-action-summary {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .booking-list-action-buttons {
+    flex: 0 0 auto;
+    gap: 0.5rem;
+  }
+
+  .booking-list-action-buttons .continue-btn {
+    flex: 0 0 auto;
+    min-width: 9rem;
+    max-width: 15rem;
+    width: auto;
+  }
+
+  .booking-list-action-secondary {
+    margin-top: 0.35rem;
+    text-align: right;
+  }
 }
 
 .booking-duration-field .duration-mode-fieldset {
@@ -3482,4 +3545,251 @@ td {
   width: 1px;
   height: 1px;
   overflow: hidden;
+}
+
+/* School Bus operator dashboard */
+.sb-dashboard .sb-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.sb-kpi-row-secondary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.sb-kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+}
+
+.sb-kpi-skeleton {
+  min-height: 72px;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.sb-kpi-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sb-kpi-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+}
+
+.sb-kpi-sub {
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.sb-tables {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .sb-tables {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sb-panel-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.sb-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.sb-panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.sb-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sb-list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-quick-links {
+  margin-top: 1.5rem;
+}
+
+/* School Bus driver (mobile-first) */
+.sb-driver-page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.sb-driver-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.sb-driver-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.sb-trip-chip {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: var(--border);
+  white-space: nowrap;
+}
+
+.sb-trip-chip--pickup_in_progress,
+.sb-trip-chip--started {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.sb-trip-chip--completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.sb-driver-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.sb-driver-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.95rem;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sb-driver-btn-primary {
+  background: var(--accent, #4f46e5);
+  border-color: transparent;
+  color: #fff;
+}
+
+.sb-driver-btn-sm {
+  min-height: 40px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.sb-driver-btn-muted {
+  opacity: 0.85;
+}
+
+.sb-driver-section h2 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.sb-driver-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sb-driver-checklist-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-driver-checklist-item--actions {
+  flex-wrap: wrap;
+}
+
+.sb-attendance-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.sb-attendance-badge {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.sb-driver-signout {
+  margin-top: 2rem;
+  width: 100%;
+  min-height: 44px;
+}
+
+.sb-incident-form .field {
+  margin-bottom: 0.85rem;
+}
+
+.sb-incident-form textarea,
+.sb-incident-form select,
+.sb-incident-form input[type="text"] {
+  width: 100%;
+}
+
+/* School Bus parent portal */
+.sb-parent-alerts .sb-alert-banner {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  background: #fef3c7;
+  font-size: 0.9rem;
+}
+
+.sb-alert-banner--incident {
+  background: #fee2e2;
+}
+
+.sb-fee-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: var(--border);
+}
+
+.sb-fee-badge--unpaid,
+.sb-fee-badge--partial {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.sb-fee-badge--paid {
+  background: #dcfce7;
+  color: #166534;
 }

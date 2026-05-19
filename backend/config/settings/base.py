@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.registry",
     "apps.demo",
     "apps.products.pg_management",
+    "apps.products.school_bus",
     "apps.cosmetix",
 ]
 
