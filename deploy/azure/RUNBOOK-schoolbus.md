@@ -17,8 +17,10 @@ App Service VNet integration must use the **same region** as the shared VNet (`c
 
 1. Merge to `staging` with paths under `school_bus/` **or** run **Deploy School Bus Staging** (`workflow_dispatch`).
 2. Workflow deploys backend + frontend to App Service **slot `staging`**.
-3. Verify: `https://<api-app>-staging.azurewebsites.net/api/health/`
-4. Run `bash deploy/scripts/smoke_schoolbus_staging.sh` locally if needed.
+3. Open the **staging slot** frontend (not the production hostname): `https://<web-app>-staging.azurewebsites.net`
+4. Verify API: `https://<api-app>-staging.azurewebsites.net/api/health/`
+5. If you see **Welcome to nginx!**, the zip is on `wwwroot` but the container was not configured — run `bash deploy/scripts/fix_schoolbus_frontend_nginx.sh` and redeploy the frontend zip (workflow includes `deploy/nginx/app-service-startup.sh`).
+6. Run `bash deploy/scripts/smoke_schoolbus_staging.sh` locally if needed.
 
 ## Production promotion (slot swap)
 

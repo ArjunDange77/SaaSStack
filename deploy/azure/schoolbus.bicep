@@ -245,9 +245,9 @@ output githubSecretsHint object = {
   AZURE_WEBAPP_NAME: apiApp.outputs.appName
   AZURE_WEBAPP_NAME_FRONTEND: frontendApp.outputs.appName
   AZURE_RESOURCE_GROUP: resourceGroup().name
-  STAGING_API_URL: 'https://${apiHost}'
-  VITE_API_BASE: 'https://${apiHost}'
-  SMOKE_WEB_URL: 'https://${feHost}'
+  STAGING_API_URL: 'https://${namePrefix}-api-staging.azurewebsites.net'
+  VITE_API_BASE: 'https://${namePrefix}-api-staging.azurewebsites.net'
+  SMOKE_WEB_URL: 'https://${namePrefix}-web-staging.azurewebsites.net'
   POSTGRES_DB: postgresDbName
   POSTGRES_USER: postgres.outputs.administratorLogin
   DB_HOST: postgres.outputs.fqdn

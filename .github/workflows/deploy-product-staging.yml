@@ -216,6 +216,8 @@ jobs:
       - name: Package frontend zip
         if: inputs.frontend_deploy == 'app_service_zip'
         run: |
+          cp "$GITHUB_WORKSPACE/deploy/nginx/app-service-startup.sh" frontend/dist/
+          chmod +x frontend/dist/app-service-startup.sh
           cd frontend/dist
           zip -r "$GITHUB_WORKSPACE/frontend-dist.zip" .
 
