@@ -68,6 +68,12 @@ if [ "${SEED_SB_STAGING_DEMO:-false}" = "true" ]; then
   python manage.py seed_school_bus || true
 fi
 
+if [ "${SEED_GOA_PILOT_STAGING:-false}" = "true" ]; then
+  echo "SEED_GOA_PILOT_STAGING=true — seeding goa-bus pilot (reset)..."
+  python manage.py seed_kernel || true
+  python manage.py seed_goa_pilot --reset || true
+fi
+
 if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] && [ -n "$DJANGO_SUPERUSER_USERNAME" ]; then
   echo "Creating superuser (if not exists)..."
   python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); \

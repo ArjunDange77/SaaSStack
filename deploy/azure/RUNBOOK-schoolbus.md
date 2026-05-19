@@ -55,7 +55,29 @@ GITHUB_ENVIRONMENT=schoolbus-staging ./deploy/scripts/setup-github-oidc.sh
 
 ## Goa pilot client demo (`goa-bus`) — 15 minutes
 
-**Setup:** `cd backend && python manage.py migrate && python manage.py seed_goa_pilot --reset`. Tenant slug **`goa-bus`**. Three browser tabs: operator (desktop), driver (narrow/mobile), parent.
+**Setup (staging):** from repo root, with `az login` and School Bus API deployed to the **staging** slot:
+
+```bash
+# From repo root (Mac/Linux), after az login
+export DEPLOY_SLOT=staging   # optional; defaults to staging
+bash deploy/scripts/seed_staging_goa_pilot.sh
+```
+
+Sets `SEED_GOA_PILOT_STAGING=true`, restarts the **API staging slot**, runs `seed_goa_pilot --reset` on boot, then verifies **kamlesh** @ **goa-bus** (≥15 students).
+
+**Requires:** deploy the latest API to staging first (includes `seed_goa_pilot` and `entrypoint.sh` hook). Push/merge to `staging` and wait for **Deploy School Bus Staging** to finish, then run the script.
+
+**Manual fallback:** Portal → `saasstack-sb-staging-api` → **SSH** (staging slot) → `python manage.py migrate --noinput && python manage.py seed_goa_pilot --reset`
+
+**Setup (local Docker):**
+
+```bash
+docker compose up -d db redis backend
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py seed_goa_pilot --reset
+```
+
+Tenant slug **`goa-bus`**. Three browser tabs: operator (desktop), driver (narrow/mobile), parent.
 
 | User | Password | Role |
 |------|----------|------|
