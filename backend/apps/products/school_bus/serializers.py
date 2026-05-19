@@ -219,6 +219,7 @@ class AttendanceMarkSerializer(serializers.Serializer):
     student_id = serializers.IntegerField()
     pickup_status = serializers.ChoiceField(choices=TripAttendance.STATUS_CHOICES, required=False)
     drop_status = serializers.ChoiceField(choices=TripAttendance.STATUS_CHOICES, required=False)
+    pickup_absent_reason = serializers.CharField(max_length=32, required=False, allow_blank=True)
 
 
 class BulkAttendanceSerializer(serializers.Serializer):

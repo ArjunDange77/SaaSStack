@@ -3547,6 +3547,26 @@ td {
   overflow: hidden;
 }
 
+/* School Bus design tokens */
+:root {
+  --sb-status-safe: #16a34a;
+  --sb-status-warning: #d97706;
+  --sb-status-danger: #dc2626;
+  --sb-status-neutral: #6b7280;
+  --sb-tap-min: 48px;
+  --sb-card-radius: 12px;
+}
+
+/* School Bus design tokens */
+:root {
+  --sb-status-safe: #34d399;
+  --sb-status-warning: #f59e0b;
+  --sb-status-danger: #f87171;
+  --sb-status-neutral: rgba(255, 255, 255, 0.45);
+  --sb-tap-min: 48px;
+  --sb-card-radius: 12px;
+}
+
 /* School Bus operator dashboard */
 .sb-dashboard .sb-kpi-grid {
   display: grid;
@@ -3822,4 +3842,669 @@ td {
 .sb-fee-badge--paid {
   background: #dcfce7;
   color: #166534;
+}
+
+.sb-dashboard--briefing .sb-briefing-layout {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+@media (min-width: 900px) {
+  .sb-dashboard--briefing .sb-briefing-layout {
+    grid-template-columns: 1fr 320px;
+    align-items: start;
+  }
+}
+
+.sb-briefing-main h2,
+.sb-briefing-side h2 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.sb-trip-cards {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.sb-briefing-banner {
+  padding: 0.75rem 1rem;
+  border-radius: var(--sb-card-radius);
+  margin: 0.75rem 0;
+  font-weight: 500;
+}
+
+.sb-briefing-banner--safe {
+  background: color-mix(in srgb, var(--sb-status-safe) 18%, transparent);
+  color: var(--sb-status-safe);
+}
+
+.sb-briefing-banner--warning {
+  background: color-mix(in srgb, var(--sb-status-warning) 18%, transparent);
+  color: var(--sb-status-warning);
+}
+
+.sb-briefing-banner--danger {
+  background: color-mix(in srgb, var(--sb-status-danger) 18%, transparent);
+  color: var(--sb-status-danger);
+}
+
+.sb-trip-progress-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--sb-card-radius);
+  padding: 0.85rem 1rem;
+}
+
+.sb-trip-progress-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.sb-trip-progress-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.sb-progress-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.sb-progress-bar-fill {
+  height: 100%;
+  background: var(--brand-primary);
+}
+
+.sb-kpi-grid--compact {
+  margin-top: 0.5rem;
+}
+
+.sb-briefing-side {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--sb-card-radius);
+  padding: 1rem;
+}
+
+.sb-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sb-action-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-action-buttons {
+  flex-shrink: 0;
+}
+
+.sb-refresh-age {
+  display: inline;
+  margin-left: 0.25rem;
+}
+
+.sb-student-mark-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--sb-card-radius);
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.sb-mark-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.sb-mark-btn {
+  flex: 1;
+  min-height: var(--sb-tap-min);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sb-mark-btn--present {
+  background: color-mix(in srgb, var(--sb-status-safe) 20%, transparent);
+  color: var(--sb-status-safe);
+}
+
+.sb-mark-btn--absent {
+  background: color-mix(in srgb, var(--sb-status-danger) 15%, transparent);
+  color: var(--sb-status-danger);
+}
+
+.sb-absent-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.sb-reason-chip {
+  min-height: 36px;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  cursor: pointer;
+}
+
+.sb-stop-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.sb-stop-nav-btn {
+  min-width: var(--sb-tap-min);
+  min-height: var(--sb-tap-min);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.sb-stop-nav-label {
+  flex: 1;
+  text-align: center;
+}
+
+.sb-stop-nav-title {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.sb-stop-next {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.sb-trip-complete {
+  text-align: center;
+  padding: 2rem 1rem;
+  background: color-mix(in srgb, var(--sb-status-safe) 12%, transparent);
+  border-radius: var(--sb-card-radius);
+}
+
+.sb-trip-complete-icon {
+  font-size: 2.5rem;
+  color: var(--sb-status-safe);
+}
+
+.sb-incident-fab {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.5rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--sb-status-danger);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 50;
+}
+
+.sb-gps-placeholder {
+  margin: 0.75rem 0 1rem;
+}
+
+.sb-gps-placeholder-map {
+  min-height: 140px;
+  border: 1px dashed var(--border);
+  border-radius: var(--sb-card-radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.sb-child-hero {
+  padding: 0.85rem 1rem;
+  border-radius: var(--sb-card-radius);
+  margin-bottom: 0.75rem;
+}
+
+.sb-child-hero--safe {
+  background: color-mix(in srgb, var(--sb-status-safe) 15%, transparent);
+}
+
+.sb-child-hero--warning {
+  background: color-mix(in srgb, var(--sb-status-warning) 15%, transparent);
+}
+
+.sb-child-hero--danger {
+  background: color-mix(in srgb, var(--sb-status-danger) 15%, transparent);
+}
+
+.sb-child-hero--neutral {
+  background: var(--surface-raised);
+}
+
+.sb-child-hero-headline {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.sb-child-hero-detail {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.sb-alert-drawer-inline {
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--sb-card-radius);
+  margin-bottom: 0.5rem;
+  background: #fef3c7;
+}
+
+.sb-alert-drawer-inline--incident {
+  background: color-mix(in srgb, var(--sb-status-danger) 20%, transparent);
+}
+
+.sb-alert-drawer-more {
+  background: none;
+  border: none;
+  color: var(--brand-primary);
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+
+.sb-attendance-calendar {
+  margin-top: 1rem;
+}
+
+.sb-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+
+.sb-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.sb-calendar-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+}
+
+.sb-calendar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 2px;
+}
+
+.sb-calendar-dot--present {
+  background: var(--sb-status-safe);
+}
+
+.sb-calendar-dot--absent {
+  background: var(--sb-status-danger);
+}
+
+.sb-calendar-dot--none {
+  background: var(--border);
+}
+
+.sb-calendar-legend {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.sb-fee-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+}
+
+.sb-fee-pill {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.sb-fee-pill--paid {
+  background: color-mix(in srgb, var(--sb-status-safe) 20%, transparent);
+}
+
+.sb-fee-pill--unpaid,
+.sb-fee-pill--partial {
+  background: color-mix(in srgb, var(--sb-status-warning) 20%, transparent);
+}
+
+.sb-parent-child-name {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.sb-fee-pill-tag {
+  font-size: 0.75rem;
+  margin-left: 0.35rem;
+}
+
+.sb-fee-pill-tag--due a {
+  color: var(--brand-primary);
+}
+
+.sb-fee-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border-radius: var(--sb-card-radius);
+  border: 1px solid var(--border);
+}
+
+.sb-fee-group {
+  margin-bottom: 1.25rem;
+}
+
+.sb-fee-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sb-fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-notif-table-wrap {
+  overflow-x: auto;
+}
+
+.sb-notif-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.sb-notif-table th,
+.sb-notif-table td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-driver-btn {
+  min-height: var(--sb-tap-min);
+}
+
+.sb-dashboard--briefing .sb-briefing-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin: 1rem 0;
+}
+
+@media (min-width: 900px) {
+  .sb-dashboard--briefing .sb-briefing-layout {
+    grid-template-columns: 3fr 2fr;
+  }
+}
+
+.sb-briefing-banner {
+  padding: 0.85rem 1rem;
+  border-radius: var(--sb-card-radius);
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.sb-briefing-banner--safe {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.sb-briefing-banner--warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.sb-briefing-banner--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.sb-trip-progress-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--sb-card-radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.sb-progress-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.sb-progress-bar-fill {
+  height: 100%;
+  background: var(--sb-status-safe);
+}
+
+.sb-action-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sb-action-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-mark-btn {
+  min-height: var(--sb-tap-min);
+  min-width: calc(var(--sb-tap-min) * 2);
+  border-radius: var(--sb-card-radius);
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sb-mark-btn--present {
+  background: var(--sb-status-safe);
+  color: #fff;
+}
+
+.sb-mark-btn--absent {
+  background: var(--sb-status-danger);
+  color: #fff;
+}
+
+.sb-student-mark-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--sb-card-radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.sb-stop-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sb-stop-nav-btn {
+  min-width: var(--sb-tap-min);
+  min-height: var(--sb-tap-min);
+  font-size: 1.25rem;
+}
+
+.sb-trip-complete {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.sb-trip-complete-icon {
+  font-size: 3rem;
+  color: var(--sb-status-safe);
+}
+
+.sb-child-hero {
+  padding: 1.25rem;
+  border-radius: var(--sb-card-radius);
+  margin-bottom: 1rem;
+}
+
+.sb-child-hero--safe {
+  background: #dcfce7;
+}
+
+.sb-child-hero--warning {
+  background: #fef3c7;
+}
+
+.sb-child-hero--danger {
+  background: #fee2e2;
+}
+
+.sb-child-hero--neutral {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.sb-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 0.5rem;
+}
+
+.sb-calendar-day {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+
+.sb-calendar-day--present {
+  background: var(--sb-status-safe);
+  color: #fff;
+}
+
+.sb-calendar-day--absent {
+  background: var(--sb-status-danger);
+  color: #fff;
+}
+
+.sb-gps-placeholder {
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--sb-card-radius);
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.sb-incident-fab {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--sb-status-danger);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.sb-start-trip {
+  width: 100%;
+  min-height: 56px;
+  margin-bottom: 1rem;
+}
+
+.sb-fee-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.sb-fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.sb-notif-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.sb-notif-table th,
+.sb-notif-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
 }

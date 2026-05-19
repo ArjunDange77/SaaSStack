@@ -172,6 +172,39 @@ class OperatorDashboardView(APIView):
         return Response(services.operator_dashboard_payload(tenant))
 
 
+class OperatorBriefingView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        return Response(services.operator_briefing_payload(tenant, request.user))
+
+
+class OperatorFeesGroupedView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        return Response(services.operator_fees_grouped_payload(tenant))
+
+
+class OperatorNotificationsLogView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        from .notifications.dispatch import notifications_log_payload
+
+        limit = min(int(request.query_params.get("limit", 100)), 500)
+        return Response({"results": notifications_log_payload(tenant, limit=limit)})
+
+
 class OperatorAttendanceHistoryView(APIView):
     permission_classes = [IsAuthenticated, SBOperatorPermission]
 
@@ -230,6 +263,23 @@ class DriverTripAttendanceView(APIView):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
         return Response({"updated": count, "status": trip.status})
+
+
+class DriverTripLocationView(APIView):
+    permission_classes = [IsAuthenticated, SBDriverPermission]
+
+    def post(self, request, trip_id):
+        tenant = request.tenant
+        driver = get_driver_for_user(request)
+        trip = Trip.objects.filter(tenant=tenant, id=trip_id, driver=driver).first()
+        if trip is None:
+            return Response({"detail": "Not found"}, status=404)
+        lat = request.data.get("latitude")
+        lng = request.data.get("longitude")
+        if lat is None or lng is None:
+            return Response({"detail": "latitude and longitude required"}, status=400)
+        loc = services.record_trip_location(trip, Decimal(str(lat)), Decimal(str(lng)))
+        return Response({"id": loc.id, "recorded_at": loc.recorded_at})
 
 
 class DriverTripCompleteView(APIView):
@@ -314,6 +364,34 @@ class OperatorReminderBroadcastView(APIView):
             parent=parent,
         )
         return Response({"created": len(created)}, status=status.HTTP_201_CREATED)
+
+
+class WhatsAppWebhookView(APIView):
+    """Phase 2 stub — Meta delivery receipts."""
+
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request):
+        return Response({"ok": True})
+
+
+class RazorpayWebhookView(APIView):
+    """Phase 3 stub — mark fee paid from payment link webhook."""
+
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request):
+        payment_link_id = request.data.get("payload", {}).get("payment_link", {}).get("entity", {}).get("id")
+        if not payment_link_id:
+            return Response({"detail": "ignored"}, status=200)
+        fee = FeeRecord.objects.filter(razorpay_payment_link_id=payment_link_id).first()
+        if fee and fee.status != FeeRecord.STATUS_PAID:
+            services.record_fee_payment(fee, fee.amount, note="Razorpay webhook")
+            fee.paid_via = "razorpay"
+            fee.save(update_fields=["paid_via", "updated_at"])
+        return Response({"ok": True})
 
 
 # Legacy stub — redirect consumers to operator dashboard

@@ -74,6 +74,7 @@ export function AppShell() {
     myTenants?.find((t) => t.slug === tenantSlug)?.name ?? tenantSlug;
   const isSchoolBus =
     tenantSlug === "sb-demo" ||
+    tenantSlug === "goa-bus" ||
     tenantSlug.startsWith("sb-") ||
     location.pathname.startsWith("/sb/");
   const productLabel = isSchoolBus ? "School Bus" : "PG Management";

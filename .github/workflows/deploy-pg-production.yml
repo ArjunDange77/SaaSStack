@@ -10,7 +10,6 @@ on:
       - "frontend/src/pages/PublicBookingPage.tsx"
       - "frontend/src/pages/ResidentPortal.tsx"
       - "frontend/src/components/pg/**"
-      - "frontend/src/App.tsx"
       - ".github/workflows/deploy-pg-production.yml"
   workflow_dispatch:
     inputs:

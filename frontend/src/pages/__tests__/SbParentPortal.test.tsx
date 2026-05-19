@@ -20,6 +20,8 @@ describe("SbParentPortal", () => {
           {
             id: 1,
             full_name: "Aarav Sharma",
+            school_name: "Goa School",
+            class_grade: "5A",
             route_name: "Morning Route A",
             bus_number: "BUS-101",
             pickup_stop: "Oak Street",
@@ -28,6 +30,21 @@ describe("SbParentPortal", () => {
             drop_status: "not_marked",
             fee_status: "unpaid",
             fee_overdue_amount: "1500.00",
+            hero_status: {
+              level: "safe",
+              headline: "Aarav Sharma is on the bus",
+              detail: "Picked up at Oak Street",
+            },
+            calendar_days: [{ date: "2026-05-01", status: "present" }],
+            fees: [
+              {
+                month: "May 2026",
+                amount: "1500.00",
+                status: "unpaid",
+                due_date: "2026-05-10",
+                payment_link_url: "",
+              },
+            ],
           },
         ],
         reminders: [{ id: 1, kind: "fee_due", title: "Fee due", body: "Please pay", created_at: "" }],
@@ -38,14 +55,15 @@ describe("SbParentPortal", () => {
     } as unknown as ReturnType<typeof useSbParentMe>);
   });
 
-  it("renders child card and fee badge", () => {
+  it("renders hero, fee pills, and calendar", () => {
     renderWithQuery(
       <MemoryRouter>
         <SbParentPortal />
       </MemoryRouter>
     );
     expect(screen.getByText(/Hello, Priya/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Aarav Sharma" })).toBeInTheDocument();
+    expect(screen.getByText(/on the bus/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Aarav Sharma is on the bus/i })).toBeInTheDocument();
     expect(screen.getByText(/1500/)).toBeInTheDocument();
     expect(screen.getByText(/Fee due/i)).toBeInTheDocument();
   });

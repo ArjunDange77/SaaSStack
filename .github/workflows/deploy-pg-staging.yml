@@ -14,7 +14,6 @@ on:
       - "frontend/src/pages/PublicBookingPage.tsx"
       - "frontend/src/pages/ResidentPortal.tsx"
       - "frontend/src/components/pg/**"
-      - "frontend/src/App.tsx"
       - "deploy/azure/main.bicep"
       - "deploy/azure/staging.india.bicepparam"
       # Do not use deploy/azure/modules/** — shared modules also used by School Bus.

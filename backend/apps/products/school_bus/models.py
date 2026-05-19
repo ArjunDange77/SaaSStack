@@ -257,6 +257,7 @@ class TripAttendance(TenantDomainModel):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="attendance_records")
     pickup_status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=NOT_MARKED)
     drop_status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=NOT_MARKED)
+    pickup_absent_reason = models.CharField(max_length=32, blank=True)
     marked_at = models.DateTimeField(null=True, blank=True)
     marked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -293,6 +294,14 @@ class FeeRecord(TenantDomainModel):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     due_date = models.DateField()
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_UNPAID)
+    razorpay_payment_link_id = models.CharField(max_length=128, blank=True)
+    payment_link_url = models.URLField(blank=True)
+    paid_via = models.CharField(
+        max_length=16,
+        choices=[("manual", "Manual"), ("razorpay", "Razorpay")],
+        default="manual",
+        blank=True,
+    )
 
     class Meta:
         ordering = ["-month", "student__full_name"]
@@ -312,6 +321,7 @@ class FeePayment(TenantDomainModel):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     paid_at = models.DateTimeField(default=timezone.now)
     note = models.CharField(max_length=255, blank=True)
+    paid_via = models.CharField(max_length=16, blank=True, default="manual")
 
     class Meta:
         ordering = ["-paid_at"]
@@ -381,6 +391,59 @@ class Reminder(TenantDomainModel):
     title = models.CharField(max_length=200)
     body = models.TextField(blank=True)
     read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class TripLocation(TenantDomainModel):
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="locations")
+    latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    recorded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-recorded_at"]
+
+
+class TenantMessagingConfig(TenantDomainModel):
+    demo_mode = models.BooleanField(default=True)
+    whatsapp_phone_number_id = models.CharField(max_length=64, blank=True)
+    whatsapp_access_token = models.CharField(max_length=512, blank=True)
+    razorpay_key_id = models.CharField(max_length=128, blank=True)
+    razorpay_key_secret = models.CharField(max_length=256, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant"],
+                name="school_bus_unique_messaging_config_per_tenant",
+            )
+        ]
+
+
+class OutboundMessage(TenantDomainModel):
+    STATUS_PENDING = "pending"
+    STATUS_SENT = "sent"
+    STATUS_FAILED = "failed"
+    STATUS_DEMO = "demo"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_SENT, "Sent"),
+        (STATUS_FAILED, "Failed"),
+        (STATUS_DEMO, "Demo"),
+    ]
+
+    channel = models.CharField(max_length=32, default="whatsapp")
+    event_type = models.CharField(max_length=64)
+    to_phone = models.CharField(max_length=20)
+    student = models.ForeignKey(Student, null=True, blank=True, on_delete=models.SET_NULL)
+    template_key = models.CharField(max_length=64, blank=True)
+    body = models.TextField(blank=True)
+    payload_json = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    provider_ref = models.CharField(max_length=512, blank=True)
+    error = models.TextField(blank=True)
 
     class Meta:
         ordering = ["-created_at"]

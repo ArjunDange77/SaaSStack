@@ -10,6 +10,8 @@ import { SbDashboard } from "@/pages/school_bus/SbDashboard";
 import { SbDriverIncident } from "@/pages/school_bus/SbDriverIncident";
 import { SbDriverToday } from "@/pages/school_bus/SbDriverToday";
 import { SbDriverTrip } from "@/pages/school_bus/SbDriverTrip";
+import { SbFees } from "@/pages/school_bus/SbFees";
+import { SbNotifications } from "@/pages/school_bus/SbNotifications";
 import { SbParentPortal } from "@/pages/school_bus/SbParentPortal";
 import { PublicBookingPage } from "@/pages/PublicBookingPage";
 import { ResidentPortal } from "@/pages/ResidentPortal";
@@ -109,6 +111,8 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="dashboard" element={<PgDashboard />} />
         <Route path="sb/dashboard" element={<SbDashboard />} />
+        <Route path="sb/fees" element={<SbFees />} />
+        <Route path="sb/notifications" element={<SbNotifications />} />
         <Route path="sb/attendance" element={<SbAttendanceHistory />} />
         <Route path="r/:slug" element={<ResourceListRoute />} />
         <Route path="r/:slug/:id" element={<ResourceDetailRoute />} />

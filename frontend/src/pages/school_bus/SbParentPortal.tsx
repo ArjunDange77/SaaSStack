@@ -1,17 +1,15 @@
 import { apiErrorMessage } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
+import { AlertDrawer } from "@/components/school_bus/AlertDrawer";
+import { AttendanceCalendar } from "@/components/school_bus/AttendanceCalendar";
+import { ChildStatusHero } from "@/components/school_bus/ChildStatusHero";
+import { GPSMapPlaceholder } from "@/components/school_bus/GPSMapPlaceholder";
 import { PortalCardSkeleton } from "@/components/pg/PortalCardSkeleton";
 import { useSbParentMe } from "@/hooks/useSchoolBus";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || fullName;
-}
-
-function feeBadge(status: string, overdue: string): string {
-  if (status === "paid") return "Paid";
-  if (parseFloat(overdue) > 0) return `₹${overdue} overdue`;
-  return "Fee due";
 }
 
 export function SbParentPortal() {
@@ -29,7 +27,6 @@ export function SbParentPortal() {
           </div>
         </header>
         <PortalCardSkeleton />
-        <PortalCardSkeleton />
       </div>
     );
   }
@@ -46,9 +43,19 @@ export function SbParentPortal() {
   }
 
   const greeting = firstName(data.parent.full_name);
+  const alerts = [
+    ...data.reminders.map((r) => ({ id: r.id, title: r.title, body: r.body })),
+    ...data.recent_incidents.map((inc) => ({
+      id: `inc-${inc.id}`,
+      title: inc.category || "Incident",
+      body: inc.description,
+      variant: "incident" as const,
+    })),
+  ];
+  const monthLabel = new Date().toLocaleString("default", { month: "long", year: "numeric" });
 
   return (
-    <div className="portal-page">
+    <div className="portal-page sb-parent-page">
       <header className="portal-header">
         <div>
           <h1>School Bus</h1>
@@ -59,49 +66,46 @@ export function SbParentPortal() {
         </button>
       </header>
 
-      {(data.reminders.length > 0 || data.recent_incidents.length > 0) && (
-        <section className="portal-card sb-parent-alerts">
-          <h2>Alerts</h2>
-          {data.reminders.map((r) => (
-            <p key={r.id} className="sb-alert-banner">
-              <strong>{r.title}</strong> — {r.body}
-            </p>
-          ))}
-          {data.recent_incidents.map((inc) => (
-            <p key={inc.id} className="sb-alert-banner sb-alert-banner--incident">
-              <strong>{inc.category || "Incident"}</strong> ({inc.severity}): {inc.description}
-            </p>
-          ))}
-        </section>
-      )}
+      <AlertDrawer alerts={alerts} />
 
       {data.children.length === 0 ? (
         <p className="muted">No children linked to your account.</p>
       ) : (
         data.children.map((child) => (
-          <article key={child.id} className="portal-card">
-            <h2>{child.full_name}</h2>
-            <p className="muted">
-              {child.route_name} · Bus {child.bus_number}
-            </p>
-            <p>
-              Pickup: {child.pickup_stop} — <span className="badge">{child.pickup_status}</span>
-            </p>
-            <p>
-              Drop: {child.drop_stop} — <span className="badge">{child.drop_status}</span>
-            </p>
-            <p>
-              <span className={`sb-fee-badge sb-fee-badge--${child.fee_status}`}>
-                {feeBadge(child.fee_status, child.fee_overdue_amount)}
-              </span>
-            </p>
+          <article key={child.id} className="portal-card sb-parent-child-card">
+            <h2 className="sb-parent-child-name">{child.full_name}</h2>
+            <ChildStatusHero status={child.hero_status} />
+            <GPSMapPlaceholder
+              title="Bus location"
+              subtitle="Live tracking will appear here in a future release."
+            />
+            <AttendanceCalendar days={child.calendar_days} monthLabel={monthLabel} />
+            <div className="sb-parent-fees">
+              <h3>Fees</h3>
+              {child.fees.map((f) => (
+                <div key={f.month} className={`sb-fee-pill sb-fee-pill--${f.status}`}>
+                  <span>
+                    {f.month} — ₹{f.amount}
+                  </span>
+                  {f.status === "paid" ? (
+                    <span className="sb-fee-pill-tag">Paid</span>
+                  ) : (
+                    <span className="sb-fee-pill-tag sb-fee-pill-tag--due">
+                      {f.payment_link_url ? (
+                        <a href={f.payment_link_url}>Pay now</a>
+                      ) : (
+                        "Due"
+                      )}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </article>
         ))
       )}
 
-      <p className="muted portal-link">
-        Questions? Contact your transport operator.
-      </p>
+      <p className="muted portal-link">Questions? Contact your transport operator.</p>
     </div>
   );
 }

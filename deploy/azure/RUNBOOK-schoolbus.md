@@ -53,6 +53,42 @@ GITHUB_ENVIRONMENT=schoolbus-staging ./deploy/scripts/setup-github-oidc.sh
 - Application Insights: `saasstack-sb-staging-insights` in product RG.
 - Optional metric alerts: enable `actionGroupId` in Bicep `alerts` module when action group exists.
 
+## Goa pilot client demo (`goa-bus`) — 15 minutes
+
+**Setup:** `cd backend && python manage.py migrate && python manage.py seed_goa_pilot --reset`. Tenant slug **`goa-bus`**. Three browser tabs: operator (desktop), driver (narrow/mobile), parent.
+
+| User | Password | Role |
+|------|----------|------|
+| `kamlesh` | `admin` | Operator (owner) |
+| `suresh` | `admin` | Driver |
+| `priya` | `admin` | Parent (Rahul Naik) |
+
+### Act 1 — Operator morning briefing (3 min)
+
+1. Sign in as **kamlesh**, tenant **goa-bus**.
+2. Open **Command center** (`/sb/dashboard`): morning greeting, green/amber/red banner, trip progress cards, action items (overdue fees, absent students, today’s incidents).
+3. Open **Fees** (`/sb/fees`): overdue → due this month → paid; use **Send reminder** (opens WhatsApp).
+4. Mention yesterday’s seeded incident in the briefing list.
+
+### Act 2 — Driver stop-by-stop (4 min)
+
+1. Sign in as **suresh** on a phone-sized window → **Today's trip**.
+2. **Start trip** → stop-by-stop attendance: mark PRESENT/ABSENT (48px), optional absent reason.
+3. **Next stop** through the route; **Complete trip** (success state).
+4. Operator opens **Notifications** (`/sb/notifications`): pickup message logged; **Open WhatsApp** for wa.me link.
+
+### Act 3 — Parent portal (4 min)
+
+1. Sign in as **priya** → `/sb/parent`.
+2. **Child status hero** (on bus / en route / absent).
+3. **Attendance calendar** (month dots); **Alerts** drawer (not a wall of banners).
+4. Fee card at bottom (paid / unpaid).
+
+### Act 4 — Trends & close (4 min)
+
+1. Back to **kamlesh**: 3-month seed KPIs (~₹1.25L collected, ~₹37.5K outstanding April, 6 incidents).
+2. Collection % on fees page; “live tracking coming soon” on parent map placeholder.
+
 ## Local demo (`sb-demo`)
 
 After `python manage.py seed_school_bus` (tenant slug `sb-demo`, password `admin` for all):

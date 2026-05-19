@@ -3,15 +3,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { SbDashboard } from "../school_bus/SbDashboard";
 import { renderWithQuery } from "@/test/test-utils";
-import { useSbOperatorDashboard } from "@/hooks/useSchoolBus";
+import { useSbOperatorBriefing } from "@/hooks/useSchoolBus";
 
 vi.mock("@/hooks/useSchoolBus", () => ({
-  useSbOperatorDashboard: vi.fn(),
+  useSbOperatorBriefing: vi.fn(),
 }));
 
-const mockDashboard = vi.mocked(useSbOperatorDashboard);
+const mockBriefing = vi.mocked(useSbOperatorBriefing);
 
-const sample = {
+const sampleDashboard = {
   active_buses: 1,
   ongoing_trips: 1,
   students_onboard: 12,
@@ -22,43 +22,75 @@ const sample = {
   pending_fees_total: "12000",
   late_routes: [],
   pending_collections: [],
-  recent_incidents: [{ id: 1, category: "delay", severity: "low", description: "Late 10m", created_at: "" }],
+  recent_incidents: [],
   total_students: 18,
   total_drivers: 2,
 };
 
+const sample = {
+  greeting: "Good morning, Kamlesh. Here's your Wednesday.",
+  banner: { level: "warning" as const, message: "1 route delayed" },
+  trips: [
+    {
+      id: 1,
+      route_name: "Route A",
+      driver_name: "Suresh",
+      onboard: 10,
+      total: 12,
+      stop_index: 2,
+      stop_total: 5,
+      elapsed: "15 min",
+      status: "pickup_in_progress",
+    },
+  ],
+  action_items: [
+    {
+      type: "fee" as const,
+      id: 1,
+      title: "Student — ₹500",
+      subtitle: "5 days overdue",
+      phone: "+919999999999",
+    },
+  ],
+  dashboard: sampleDashboard,
+};
+
 describe("SbDashboard", () => {
   beforeEach(() => {
-    mockDashboard.mockReturnValue({
+    mockBriefing.mockReturnValue({
       data: sample,
       isLoading: false,
       error: null,
-    } as unknown as ReturnType<typeof useSbOperatorDashboard>);
+      dataUpdatedAt: Date.now() - 5000,
+      isFetching: false,
+    } as unknown as ReturnType<typeof useSbOperatorBriefing>);
   });
 
-  it("renders command center KPIs", () => {
+  it("renders briefing layout with trips and action items", () => {
     renderWithQuery(
       <MemoryRouter>
         <SbDashboard />
       </MemoryRouter>
     );
     expect(screen.getByRole("heading", { name: /School Bus Command Center/i })).toBeInTheDocument();
-    expect(screen.getByText("12")).toBeInTheDocument();
-    expect(screen.getByText(/Recent incidents/i)).toBeInTheDocument();
-    expect(screen.getByText(/Late 10m/)).toBeInTheDocument();
+    expect(screen.getByText(/Good morning, Kamlesh/i)).toBeInTheDocument();
+    expect(screen.getByText(/Route A/)).toBeInTheDocument();
+    expect(screen.getByText(/Action items/i)).toBeInTheDocument();
+    expect(screen.getByText(/Student — ₹500/)).toBeInTheDocument();
+    expect(screen.getByText(/Updated \d+s ago/)).toBeInTheDocument();
   });
 
-  it("shows loading skeletons", () => {
-    mockDashboard.mockReturnValue({
+  it("shows loading state", () => {
+    mockBriefing.mockReturnValue({
       data: undefined,
       isLoading: true,
       error: null,
-    } as unknown as ReturnType<typeof useSbOperatorDashboard>);
+    } as unknown as ReturnType<typeof useSbOperatorBriefing>);
     renderWithQuery(
       <MemoryRouter>
         <SbDashboard />
       </MemoryRouter>
     );
-    expect(screen.getByText(/Loading operations/i)).toBeInTheDocument();
+    expect(screen.getByText(/Loading briefing/i)).toBeInTheDocument();
   });
 });

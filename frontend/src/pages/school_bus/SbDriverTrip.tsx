@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiErrorMessage } from "@/api/client";
+import { StopByStopAttendance } from "@/components/school_bus/StopByStopAttendance";
+import type { AbsentReason } from "@/components/school_bus/StudentMarkCard";
 import { useSbDriverToday, useSbTripActions } from "@/hooks/useSchoolBus";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-
-type AttendanceStatus = "present" | "absent";
 
 export function SbDriverTrip() {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +12,7 @@ export function SbDriverTrip() {
   const { data, isLoading, error, refetch } = useSbDriverToday();
   const { start, attendance, complete } = useSbTripActions(tripId);
   const [actionError, setActionError] = useState("");
+  const [gpsOn, setGpsOn] = useState(false);
   useDocumentTitle("Driver — Trip");
 
   if (isLoading || !data) {
@@ -33,8 +34,9 @@ export function SbDriverTrip() {
 
   const canStart = data.trip_status === "scheduled" || data.trip_status === "delayed";
   const canMark = ["started", "pickup_in_progress", "incident_reported"].includes(data.trip_status);
-  const canComplete = ["pickup_in_progress", "started", "incident_reported"].includes(data.trip_status);
-  const canMarkDrop = canMark && data.trip_status === "pickup_in_progress";
+  const elapsedMins = data.started_at
+    ? Math.max(0, Math.floor((Date.now() - new Date(data.started_at).getTime()) / 60000))
+    : 0;
 
   const onStart = async () => {
     setActionError("");
@@ -56,23 +58,19 @@ export function SbDriverTrip() {
     }
   };
 
-  const markPickup = async (studentId: number, status: AttendanceStatus) => {
+  const onMarkPickup = async (studentId: number, status: "present" | "absent", reason?: AbsentReason) => {
     setActionError("");
     try {
-      await attendance.mutateAsync([{ student_id: studentId, pickup_status: status }]);
+      await attendance.mutateAsync([
+        {
+          student_id: studentId,
+          pickup_status: status,
+          pickup_absent_reason: reason,
+        },
+      ]);
       await refetch();
     } catch (err) {
-      setActionError(apiErrorMessage(err, "Could not save pickup."));
-    }
-  };
-
-  const markDrop = async (studentId: number, status: AttendanceStatus) => {
-    setActionError("");
-    try {
-      await attendance.mutateAsync([{ student_id: studentId, drop_status: status }]);
-      await refetch();
-    } catch (err) {
-      setActionError(apiErrorMessage(err, "Could not save drop."));
+      setActionError(apiErrorMessage(err, "Could not save attendance."));
     }
   };
 
@@ -83,99 +81,51 @@ export function SbDriverTrip() {
       </p>
       <header className="sb-driver-header">
         <div>
-          <h1>Trip checklist</h1>
-          <p className="muted">{data.route.name}</p>
+          <h1>{data.route.name}</h1>
+          <p className="muted">
+            {data.bus.fleet_number} · {elapsedMins > 0 ? `${elapsedMins} min elapsed` : data.trip_date}
+          </p>
         </div>
-        <span className={`sb-trip-chip sb-trip-chip--${data.trip_status}`}>{data.trip_status}</span>
+        <span className={`sb-trip-chip sb-trip-chip--${data.trip_status}`}>
+          {data.trip_status.replace(/_/g, " ")}
+        </span>
       </header>
+
+      <div className="sb-gps-pills">
+        <button
+          type="button"
+          className={`sb-gps-pill ${gpsOn ? "sb-gps-pill--on" : ""}`}
+          onClick={() => setGpsOn(!gpsOn)}
+        >
+          {gpsOn ? "Sharing live" : "Location off"}
+        </button>
+      </div>
 
       {actionError && <p className="error">{actionError}</p>}
 
-      <div className="sb-driver-actions">
-        {canStart && (
-          <button
-            type="button"
-            className="sb-driver-btn sb-driver-btn-primary"
-            disabled={start.isPending}
-            onClick={onStart}
-          >
-            Start trip
-          </button>
-        )}
-        {canComplete && (
-          <button
-            type="button"
-            className="sb-driver-btn"
-            disabled={complete.isPending}
-            onClick={onComplete}
-          >
-            Complete trip
-          </button>
-        )}
-        <Link to="/sb/driver/incident" className="sb-driver-btn sb-driver-btn-muted">
-          Report incident
-        </Link>
-      </div>
+      {canStart && (
+        <button
+          type="button"
+          className="sb-driver-btn sb-driver-btn-primary sb-start-trip"
+          disabled={start.isPending}
+          onClick={onStart}
+        >
+          Start trip
+        </button>
+      )}
 
-      <ul className="sb-driver-checklist">
-        {data.checklist.map((row) => (
-          <li key={row.student_id} className="sb-driver-checklist-item sb-driver-checklist-item--actions">
-            <div>
-              <strong>{row.full_name}</strong>
-              <div className="muted">{row.stop_name}</div>
-            </div>
-            {canMark ? (
-              <div className="sb-attendance-stack">
-                <div className="sb-attendance-actions">
-                  <span className="sb-attendance-phase">Pickup</span>
-                  <button
-                    type="button"
-                    className="sb-driver-btn sb-driver-btn-sm"
-                    disabled={attendance.isPending}
-                    onClick={() => markPickup(row.student_id, "present")}
-                  >
-                    Present
-                  </button>
-                  <button
-                    type="button"
-                    className="sb-driver-btn sb-driver-btn-sm sb-driver-btn-muted"
-                    disabled={attendance.isPending}
-                    onClick={() => markPickup(row.student_id, "absent")}
-                  >
-                    Absent
-                  </button>
-                </div>
-                {canMarkDrop && row.pickup_status === "present" && (
-                  <div className="sb-attendance-actions">
-                    <span className="sb-attendance-phase">Drop</span>
-                    <button
-                      type="button"
-                      className="sb-driver-btn sb-driver-btn-sm"
-                      disabled={attendance.isPending}
-                      onClick={() => markDrop(row.student_id, "present")}
-                    >
-                      Dropped
-                    </button>
-                    <button
-                      type="button"
-                      className="sb-driver-btn sb-driver-btn-sm sb-driver-btn-muted"
-                      disabled={attendance.isPending}
-                      onClick={() => markDrop(row.student_id, "absent")}
-                    >
-                      No show
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="sb-attendance-badges">
-                <span className="sb-attendance-badge">Pickup: {row.pickup_status.replace(/_/g, " ")}</span>
-                <span className="sb-attendance-badge">Drop: {row.drop_status.replace(/_/g, " ")}</span>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
+      <StopByStopAttendance
+        checklist={data.checklist}
+        canMark={canMark}
+        disabled={attendance.isPending}
+        onMarkPickup={onMarkPickup}
+        onCompleteTrip={onComplete}
+        completePending={complete.isPending}
+      />
+
+      <Link to="/sb/driver/incident" className="sb-incident-fab" aria-label="Report incident">
+        !
+      </Link>
     </div>
   );
 }
