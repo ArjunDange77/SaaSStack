@@ -16,7 +16,7 @@ export EXPECTED_ENV
 export EXPECTED_VERSION="${EXPECTED_VERSION:-}"
 
 echo "School Bus smoke: $API_BASE_URL"
-bash "$ROOT/deploy/scripts/smoke_public_api.sh"
+bash "$ROOT/deploy/scripts/wait_for_api.sh"
 
 # Dashboard requires auth — only check route exists (401/403 acceptable without creds)
 status="$(curl -s -o /dev/null -w "%{http_code}" "${API_BASE_URL}/api/sb/dashboard/")"

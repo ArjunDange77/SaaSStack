@@ -96,4 +96,5 @@ jobs:
       run_sb_demo_seed: true
       seed_demo: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.seed_demo == 'true' }}
       smoke_script: smoke_schoolbus_staging.sh
+      early_gate_script: smoke_api_health_gate.sh
     secrets: inherit

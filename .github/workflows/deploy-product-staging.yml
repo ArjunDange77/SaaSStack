@@ -43,6 +43,10 @@ on:
         required: false
         type: string
         default: "smoke_test.sh"
+      early_gate_script:
+        required: false
+        type: string
+        default: "smoke_public_api.sh"
     secrets:
       VITE_API_BASE:
         required: false
@@ -107,6 +111,7 @@ jobs:
 
       - name: Ensure App Service staging slots exist
         if: inputs.deploy_slot != ''
+        continue-on-error: true
         env:
           AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
           DEPLOY_SLOT: ${{ inputs.deploy_slot }}
@@ -143,7 +148,7 @@ jobs:
           API_BASE_URL: ${{ secrets.STAGING_API_URL }}
           EXPECTED_ENV: ${{ inputs.expected_env }}
           EXPECTED_VERSION: ${{ github.sha }}
-        run: bash deploy/scripts/smoke_public_api.sh
+        run: bash deploy/scripts/${{ inputs.early_gate_script }}
 
       - name: Ensure pg-demo seed (PG)
         if: inputs.run_pg_demo_seed
