@@ -1,8 +1,11 @@
+from datetime import datetime
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import pytest
+from django.utils import timezone
 
-from apps.products.school_bus.models import Bus, FeeRecord, Student, Trip, TripAttendance
+from apps.products.school_bus.models import Bus, FeeRecord, RouteStop, Stop, Student, Trip, TripAttendance
 from apps.products.school_bus import services
 
 
@@ -68,3 +71,75 @@ def test_annotate_student_fee_status(sb_tenant):
     qs = services.annotate_student_fee_status(Student.objects.filter(pk=student.pk))
     row = qs.first()
     assert row.current_fee_status == FeeRecord.STATUS_PAID
+
+
+@pytest.mark.django_db
+def test_record_fee_payment_marks_paid(sb_tenant):
+    student = Student.objects.create(tenant=sb_tenant, full_name="Payer")
+    fee = FeeRecord.objects.create(
+        tenant=sb_tenant,
+        student=student,
+        month=timezone.localdate().strftime("%Y-%m"),
+        amount=Decimal("1000"),
+        due_date=timezone.localdate(),
+        status=FeeRecord.STATUS_UNPAID,
+    )
+    services.record_fee_payment(fee, Decimal("1000"))
+    fee.refresh_from_db()
+    student.refresh_from_db()
+    assert fee.status == FeeRecord.STATUS_PAID
+    assert student.fee_status == Student.FEE_PAID
+
+
+@pytest.mark.django_db
+def test_operator_briefing_completed_trip(sb_tenant, sb_driver_setup):
+    from django.contrib.auth import get_user_model
+
+    user = get_user_model().objects.create_user(username="brief-op", password="x")
+    trip = services.ensure_trip_for_driver(sb_tenant, sb_driver_setup["driver"])
+    trip.status = Trip.STATUS_COMPLETED
+    trip.completed_at = timezone.now()
+    trip.save(update_fields=["status", "completed_at"])
+    stop = Stop.objects.create(tenant=sb_tenant, name="Stop A")
+    RouteStop.objects.create(
+        tenant=sb_tenant,
+        route=sb_driver_setup["route"],
+        stop=stop,
+        sequence=1,
+    )
+    payload = services.operator_briefing_payload(sb_tenant, user)
+    assert payload["trips"]
+    card = next(t for t in payload["trips"] if t["id"] == trip.id)
+    assert card["status"] == Trip.STATUS_COMPLETED
+    assert card["elapsed"] == ""
+    assert card["completed_at_display"]
+
+
+@pytest.mark.django_db
+def test_parent_hero_pickup_time_ist(sb_tenant, sb_driver_setup, sb_parent_setup):
+    parent = sb_parent_setup["parent"]
+    stop = Stop.objects.create(tenant=sb_tenant, name="Mapusa")
+    child = Student.objects.create(
+        tenant=sb_tenant,
+        full_name="Child IST",
+        parent=parent,
+        assigned_route=sb_driver_setup["route"],
+        assigned_bus=sb_driver_setup["bus"],
+        pickup_stop=stop,
+    )
+    trip = services.ensure_trip_for_driver(sb_tenant, sb_driver_setup["driver"])
+    services.start_trip(trip)
+    marked_at = timezone.make_aware(datetime(2026, 5, 20, 8, 15, 0), ZoneInfo("Asia/Kolkata"))
+    att, _ = TripAttendance.objects.get_or_create(
+        tenant=sb_tenant,
+        trip=trip,
+        student=child,
+    )
+    att.pickup_status = TripAttendance.PRESENT
+    att.marked_at = marked_at
+    att.save(update_fields=["pickup_status", "marked_at", "updated_at"])
+    payload = services.parent_me_payload(sb_tenant, parent)
+    hero = payload["children"][0]["hero_status"]
+    assert hero["level"] == "safe"
+    assert "Mapusa" in hero["detail"]
+    assert "8:15 AM" in hero["detail"]

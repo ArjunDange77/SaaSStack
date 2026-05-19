@@ -69,3 +69,46 @@ def test_parent_me_api(sb_parent_client, sb_tenant, sb_parent_setup):
 @pytest.mark.django_db
 def test_parent_me_requires_parent_role(sb_operator_client):
     assert sb_operator_client.get("/api/sb/parent/me/").status_code == 403
+
+
+@pytest.mark.django_db
+def test_operator_briefing_api(sb_operator_client, sb_tenant, sb_driver_setup):
+    services.ensure_trip_for_driver(sb_tenant, sb_driver_setup["driver"])
+    response = sb_operator_client.get("/api/sb/operator/briefing/")
+    assert response.status_code == 200
+    data = response.json()
+    assert "greeting" in data
+    assert "trips" in data
+
+
+@pytest.mark.django_db
+def test_operator_fees_grouped_api(sb_operator_client, sb_tenant):
+    response = sb_operator_client.get("/api/sb/operator/fees/")
+    assert response.status_code == 200
+    data = response.json()
+    assert "overdue" in data
+    assert "paid" in data
+    assert "due_this_month" in data
+
+
+@pytest.mark.django_db
+def test_student_list_current_fee_status(sb_operator_client, sb_tenant):
+    from decimal import Decimal
+    from django.utils import timezone
+
+    from apps.products.school_bus.models import FeeRecord, Student
+
+    student = Student.objects.create(tenant=sb_tenant, full_name="List Fee Kid")
+    month = timezone.localdate().strftime("%Y-%m")
+    FeeRecord.objects.create(
+        tenant=sb_tenant,
+        student=student,
+        month=month,
+        amount=Decimal("2500"),
+        due_date=timezone.localdate(),
+        status=FeeRecord.STATUS_PAID,
+    )
+    response = sb_operator_client.get("/api/meta/resources/sb-students/")
+    assert response.status_code == 200
+    row = next(r for r in response.json()["results"] if r["id"] == student.id)
+    assert row["current_fee_status"] == FeeRecord.STATUS_PAID

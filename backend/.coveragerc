@@ -2,6 +2,7 @@
 source = apps
 omit =
     */migrations/*
+    */management/commands/*
     */tests/*
     config/settings/*
     config/settings.py

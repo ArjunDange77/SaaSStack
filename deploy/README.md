@@ -59,4 +59,4 @@ Public booking rate limits use the Postgres `django_cache` table. `createcacheta
 
 **Typical staging deploy time:** ~4–6 min (was ~9–10 min) — no per-push seed restart, no duplicate Docker/frontend builds.
 
-**Before you push:** `cd backend && pytest` and `cd frontend && npm run test:run && npm run build`.
+**Before you push:** `bash scripts/test-all.sh` (or `cd backend && pytest` — coverage floor 70% is enforced in `pytest.ini`) and `cd frontend && npm run build`.
