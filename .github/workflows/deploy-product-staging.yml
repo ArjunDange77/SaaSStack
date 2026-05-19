@@ -51,6 +51,10 @@ on:
         required: false
         type: string
         default: "smoke_public_api.sh"
+      deploy_profile:
+        required: false
+        type: string
+        default: ""
     secrets:
       VITE_API_BASE:
         required: false
@@ -76,6 +80,14 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Preflight deploy target
+        env:
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
+          DEPLOY_PROFILE: ${{ inputs.deploy_profile }}
+        run: bash deploy/scripts/preflight_deploy_target.sh
 
       - name: Run migrations
         if: inputs.run_migrations
@@ -115,7 +127,6 @@ jobs:
 
       - name: Ensure App Service staging slots exist
         if: inputs.deploy_slot != ''
-        continue-on-error: true
         env:
           AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
           DEPLOY_SLOT: ${{ inputs.deploy_slot }}
@@ -278,6 +289,7 @@ jobs:
           SB_SMOKE_USER: kamlesh
           SB_SMOKE_PASSWORD: admin
           SB_SMOKE_TENANT: sai-baba-school-bus
+          GOA_MIN_STUDENTS: ${{ inputs.run_goa_pilot_seed && '15' || '' }}
         run: bash deploy/scripts/${{ inputs.smoke_script }}
 
       - name: Deployment summary

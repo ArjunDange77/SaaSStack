@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
-# Seed goa-bus on School Bus staging API (restarts the staging slot).
+# Seed sai-baba-school-bus on unified staging API (rg-saasstack-staging; no deployment slot).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-DEPLOY_SLOT="${DEPLOY_SLOT:-staging}"
+# Unified stack uses production slot only. Set DEPLOY_SLOT=staging only for legacy saasstack-sb-staging-api.
+DEPLOY_SLOT="${DEPLOY_SLOT:-}"
 # shellcheck source=lib/app_service_slot_args.sh
 source "$ROOT/deploy/scripts/lib/app_service_slot_args.sh"
 
 RG="${AZURE_RESOURCE_GROUP:-rg-saasstack-staging}"
 APP="${AZURE_WEBAPP_NAME:-saasstack-staging-api}"
+
+if ! command -v az >/dev/null 2>&1; then
+  echo "Install Azure CLI and run: az login" >&2
+  exit 1
+fi
+
+reconcile_deploy_slot_or_fail "$RG" "$APP"
 API_URL="${STAGING_API_URL:-https://saasstack-staging-api.azurewebsites.net}"
 
 GOA_TENANT="${GOA_TENANT:-sai-baba-school-bus}"
@@ -18,18 +26,14 @@ MIN_STUDENTS="${GOA_MIN_STUDENTS:-15}"
 MAX_ATTEMPTS="${SEED_MAX_ATTEMPTS:-60}"
 SLEEP_SECS="${SEED_SLEEP_SECS:-10}"
 
-if ! command -v az >/dev/null 2>&1; then
-  echo "Install Azure CLI and run: az login" >&2
-  exit 1
-fi
-
-slot_label="${DEPLOY_SLOT:-production}"
-echo "School Bus staging Goa seed"
+slot_label="production"
+[[ -n "$DEPLOY_SLOT" ]] && slot_label="$DEPLOY_SLOT"
+echo "Unified staging Goa pilot seed"
 echo "  Resource group: $RG"
-echo "  API app:        $APP (${slot_label} slot)"
+echo "  API app:        $APP (slot: ${slot_label})"
 echo "  API URL:        $API_URL"
 echo ""
-echo "Requires API image with seed_goa_pilot + entrypoint SEED_GOA_PILOT_STAGING (deploy staging branch first)."
+echo "Requires API image with seed_goa_pilot + entrypoint SEED_GOA_PILOT_STAGING (run Deploy Staging on main first)."
 echo "Enabling SEED_GOA_PILOT_STAGING and restarting (seed may take 2–5 min on boot)..."
 
 az webapp config appsettings set \

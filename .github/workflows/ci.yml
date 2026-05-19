@@ -94,6 +94,21 @@ jobs:
           path: frontend/dist
           retention-days: 1
 
+  deploy-scripts:
+    if: ${{ github.event_name != 'workflow_call' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+      - name: Shellcheck deploy scripts
+        run: |
+          find deploy/scripts -name '*.sh' -print0 | xargs -0 shellcheck -x
+      - name: Bash syntax check (deploy scripts)
+        run: find deploy/scripts -name '*.sh' -exec bash -n {} \;
+      - name: Validate deploy profiles
+        run: python3 deploy/scripts/validate_deploy_profile.py --all-profiles
+
   docker-backend:
     if: ${{ github.event_name != 'workflow_call' }}
     runs-on: ubuntu-latest

@@ -14,7 +14,21 @@ Login at `http://localhost:5173`: `kamlesh` / `admin` @ `sai-baba-school-bus`; P
 
 ## Tier 2 — CI
 
-Green **Deploy Staging** on GitHub (includes `ci.yml`).
+Green **Deploy Staging** on GitHub (includes `ci.yml` with deploy script shellcheck + profile validation).
+
+## Tier 2.5 — Pre-push (Azure CLI)
+
+After `az login` and subscription set, validate the deploy target **before** pushing (same checks as the first step in Deploy Staging):
+
+```bash
+export AZURE_RESOURCE_GROUP=rg-saasstack-staging
+export AZURE_WEBAPP_NAME=saasstack-staging-api
+export DEPLOY_SLOT=
+export DEPLOY_PROFILE=unified-staging
+bash deploy/scripts/preflight_deploy_target.sh
+```
+
+Offline (no Azure): `python3 deploy/scripts/validate_deploy_profile.py --all-profiles`
 
 ## Tier 3 — API smoke
 

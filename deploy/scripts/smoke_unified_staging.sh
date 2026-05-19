@@ -3,6 +3,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=lib/goa_pilot_count.sh
+source "$ROOT/deploy/scripts/lib/goa_pilot_count.sh"
+
 API_BASE_URL="${API_BASE_URL:-${STAGING_API_URL:-}}"
 
 if [[ -z "$API_BASE_URL" ]]; then
@@ -31,5 +34,14 @@ export SB_SMOKE_USER="${SB_SMOKE_USER:-kamlesh}"
 export SB_SMOKE_PASSWORD="${SB_SMOKE_PASSWORD:-admin}"
 export SB_SMOKE_TENANT="${SB_SMOKE_TENANT:-sai-baba-school-bus}"
 API_BASE_URL="$API_BASE_URL" bash "$ROOT/deploy/scripts/smoke_schoolbus_staging.sh"
+
+if [[ -n "${GOA_MIN_STUDENTS:-}" ]]; then
+  echo "--- Goa pilot data (min ${GOA_MIN_STUDENTS} students) ---"
+  export API_URL="$API_BASE_URL"
+  export GOA_TENANT="${SB_SMOKE_TENANT:-sai-baba-school-bus}"
+  export GOA_USER="${SB_SMOKE_USER:-kamlesh}"
+  export GOA_PASSWORD="${SB_SMOKE_PASSWORD:-admin}"
+  assert_goa_pilot_min_students "$API_BASE_URL"
+fi
 
 echo "Unified staging smoke passed."
