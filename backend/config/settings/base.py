@@ -92,7 +92,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 
@@ -210,3 +210,12 @@ CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", f"redis://{REDIS_HOST}:{REDIS
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
 CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "True").lower() in ("1", "true", "yes")
 CELERY_TASK_EAGER_PROPAGATES = True
+
+from celery.schedules import crontab  # noqa: E402
+
+CELERY_BEAT_SCHEDULE = {
+    "school-bus-generate-daily-trips": {
+        "task": "apps.products.school_bus.tasks.generate_daily_trips_task",
+        "schedule": crontab(hour=0, minute=0),  # 00:00 UTC ≈ 05:30 IST
+    },
+}

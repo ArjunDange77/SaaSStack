@@ -4,7 +4,7 @@ import calendar
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import Q, Sum
+from django.db.models import OuterRef, Q, Subquery, Sum
 from django.utils import timezone
 
 from apps.registry.activity import log_activity
@@ -17,6 +17,7 @@ from .models import (
     Incident,
     Parent,
     Reminder,
+    Route,
     RouteStop,
     Student,
     Trip,
@@ -27,6 +28,39 @@ from .models import (
 
 def _today():
     return timezone.localdate()
+
+
+DRIVER_ACTIVE_STATUSES = (
+    Trip.STATUS_SCHEDULED,
+    Trip.STATUS_DELAYED,
+    Trip.STATUS_STARTED,
+    Trip.STATUS_PICKUP_IN_PROGRESS,
+    Trip.STATUS_INCIDENT_REPORTED,
+)
+
+
+def get_driver_today_trip(tenant, driver: Driver) -> Trip | None:
+    """Today's active trip for this driver (excludes completed/cancelled)."""
+    return (
+        Trip.objects.filter(
+            tenant=tenant,
+            driver=driver,
+            trip_date=_today(),
+            status__in=DRIVER_ACTIVE_STATUSES,
+        )
+        .select_related("route", "bus")
+        .first()
+    )
+
+
+def _ensure_attendance_for_trip(trip: Trip) -> None:
+    students = Student.objects.filter(tenant=trip.tenant, assigned_route=trip.route)
+    for student in students:
+        TripAttendance.objects.get_or_create(
+            tenant=trip.tenant,
+            trip=trip,
+            student=student,
+        )
 
 
 def ensure_trip_for_driver(tenant, driver: Driver, trip_date: date | None = None) -> Trip:
@@ -43,13 +77,7 @@ def ensure_trip_for_driver(tenant, driver: Driver, trip_date: date | None = None
         trip_date=trip_date,
         defaults={"status": Trip.STATUS_SCHEDULED},
     )
-    students = Student.objects.filter(tenant=tenant, assigned_route=route)
-    for student in students:
-        TripAttendance.objects.get_or_create(
-            tenant=tenant,
-            trip=trip,
-            student=student,
-        )
+    _ensure_attendance_for_trip(trip)
     return trip
 
 
@@ -74,6 +102,7 @@ def flag_delayed_trips(tenant, trip_date: date | None = None) -> int:
 def start_trip(trip: Trip) -> Trip:
     if trip.status not in (Trip.STATUS_SCHEDULED, Trip.STATUS_DELAYED):
         raise ValueError(f"Cannot start trip in status {trip.status}")
+    _ensure_attendance_for_trip(trip)
     trip.status = Trip.STATUS_STARTED
     trip.started_at = timezone.now()
     trip.save(update_fields=["status", "started_at", "updated_at"])
@@ -186,8 +215,7 @@ def broadcast_reminder(tenant, *, kind: str, title: str, body: str, parent: Pare
     return created
 
 
-def driver_today_payload(tenant, driver: Driver) -> dict:
-    trip = ensure_trip_for_driver(tenant, driver)
+def _build_checklist_for_trip(tenant, trip: Trip) -> list[dict]:
     route_stops = (
         RouteStop.objects.filter(tenant=tenant, route=trip.route)
         .select_related("stop")
@@ -228,17 +256,61 @@ def driver_today_payload(tenant, driver: Driver) -> dict:
             }
         )
     checklist.sort(key=lambda x: (x["sequence"], x["full_name"]))
+    return checklist
+
+
+def driver_today_payload(tenant, driver: Driver) -> dict:
+    route = driver.assigned_route
+    bus = driver.assigned_bus
+    today = _today()
+    empty = {
+        "trip_id": None,
+        "trip_status": None,
+        "trip_date": str(today),
+        "started_at": None,
+        "driver_name": driver.full_name,
+        "route_name": route.name if route else "",
+        "bus_fleet_number": bus.fleet_number if bus else "",
+        "route": (
+            {"id": route.id, "name": route.name, "direction": route.direction}
+            if route
+            else {"id": None, "name": "", "direction": ""}
+        ),
+        "bus": (
+            {"id": bus.id, "fleet_number": bus.fleet_number}
+            if bus
+            else {"id": None, "fleet_number": ""}
+        ),
+        "checklist": [],
+        "can_open_checklist": False,
+        "last_location": None,
+    }
+
+    trip = get_driver_today_trip(tenant, driver)
+    if trip is None:
+        return empty
+
+    can_open = trip.status not in (Trip.STATUS_SCHEDULED, Trip.STATUS_DELAYED)
+    checklist = _build_checklist_for_trip(tenant, trip) if can_open else []
     loc = TripLocation.objects.filter(tenant=tenant, trip=trip).order_by("-recorded_at").first()
     return {
         "trip_id": trip.id,
         "trip_status": trip.status,
         "trip_date": str(trip.trip_date),
         "started_at": trip.started_at.isoformat() if trip.started_at else None,
+        "driver_name": driver.full_name,
+        "route_name": trip.route.name,
+        "bus_fleet_number": trip.bus.fleet_number,
         "route": {"id": trip.route_id, "name": trip.route.name, "direction": trip.route.direction},
         "bus": {"id": trip.bus_id, "fleet_number": trip.bus.fleet_number},
         "checklist": checklist,
+        "can_open_checklist": can_open,
         "last_location": (
-            {"latitude": str(loc.latitude), "longitude": str(loc.longitude), "recorded_at": loc.recorded_at.isoformat()}
+            {
+                "latitude": str(loc.latitude),
+                "longitude": str(loc.longitude),
+                "recorded_at": loc.recorded_at.isoformat(),
+            }
             if loc
             else None
         ),
@@ -266,7 +338,11 @@ def _parent_hero_status(trip: Trip | None, att: TripAttendance | None, child: St
         }
     if att and att.pickup_status == TripAttendance.PRESENT:
         stop = child.pickup_stop.name if child.pickup_stop else "stop"
-        t = att.marked_at.strftime("%I:%M %p") if att.marked_at else ""
+        t = (
+            timezone.localtime(att.marked_at).strftime("%I:%M %p").lstrip("0")
+            if att.marked_at
+            else ""
+        )
         return {
             "level": "safe",
             "headline": f"{child.full_name} is on the bus",
@@ -411,6 +487,46 @@ def operator_attendance_history_payload(tenant, limit: int = 50) -> list[dict]:
     return rows
 
 
+def generate_daily_trips(tenant=None, trip_date: date | None = None) -> int:
+    """Create scheduled trips for today (weekdays). Idempotent per route+date."""
+    trip_date = trip_date or _today()
+    if trip_date.weekday() >= 5:
+        return 0
+    routes = Route.objects.filter(active=True)
+    if tenant is not None:
+        routes = routes.filter(tenant=tenant)
+    created = 0
+    for route in routes.select_related("tenant", "default_driver", "default_driver__assigned_bus"):
+        driver = route.default_driver
+        bus = driver.assigned_bus if driver else None
+        if not driver or not bus:
+            continue
+        trip, was_created = Trip.objects.get_or_create(
+            tenant=route.tenant,
+            route=route,
+            bus=bus,
+            driver=driver,
+            trip_date=trip_date,
+            defaults={"status": Trip.STATUS_SCHEDULED},
+        )
+        if was_created:
+            created += 1
+        _ensure_attendance_for_trip(trip)
+    return created
+
+
+def annotate_student_fee_status(queryset):
+    """Annotate queryset with current_fee_status from this month's FeeRecord."""
+    current_month = _today().strftime("%Y-%m")
+    latest_fee = FeeRecord.objects.filter(
+        student=OuterRef("pk"),
+        month=current_month,
+    ).order_by("-id")
+    return queryset.annotate(
+        current_fee_status=Subquery(latest_fee.values("status")[:1]),
+    )
+
+
 def operator_dashboard_payload(tenant) -> dict:
     today = _today()
     flag_delayed_trips(tenant, today)
@@ -525,7 +641,11 @@ def operator_briefing_payload(tenant, user) -> dict:
         marked = TripAttendance.objects.filter(trip=trip).exclude(pickup_status=TripAttendance.NOT_MARKED).count()
         stop_idx = min(marked, stop_count) if stop_count else 0
         elapsed = ""
-        if trip.started_at:
+        completed_at_display = ""
+        if trip.status == Trip.STATUS_COMPLETED:
+            if trip.completed_at:
+                completed_at_display = timezone.localtime(trip.completed_at).strftime("%I:%M %p").lstrip("0")
+        elif trip.started_at:
             mins = int((timezone.now() - trip.started_at).total_seconds() // 60)
             elapsed = f"{mins} min"
         trip_cards.append(
@@ -538,6 +658,7 @@ def operator_briefing_payload(tenant, user) -> dict:
                 "stop_index": stop_idx,
                 "stop_total": stop_count,
                 "elapsed": elapsed,
+                "completed_at_display": completed_at_display,
                 "status": trip.status,
             }
         )

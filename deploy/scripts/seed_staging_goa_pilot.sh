@@ -11,7 +11,7 @@ RG="${AZURE_RESOURCE_GROUP:-rg-saasstack-sb-staging}"
 APP="${AZURE_WEBAPP_NAME:-saasstack-sb-staging-api}"
 API_URL="${STAGING_API_URL:-https://saasstack-sb-staging-api-staging.azurewebsites.net}"
 
-GOA_TENANT="${GOA_TENANT:-goa-bus}"
+GOA_TENANT="${GOA_TENANT:-sai-baba-school-bus}"
 GOA_USER="${GOA_USER:-kamlesh}"
 GOA_PASSWORD="${GOA_PASSWORD:-admin}"
 MIN_STUDENTS="${GOA_MIN_STUDENTS:-15}"
@@ -86,7 +86,7 @@ PY
     SEEDED=1
     break
   fi
-  echo "Waiting for goa-bus (students=${STUDENTS:-0}, need ${MIN_STUDENTS}, attempt ${i}/${MAX_ATTEMPTS})..."
+  echo "Waiting for sai-baba-school-bus (students=${STUDENTS:-0}, need ${MIN_STUDENTS}, attempt ${i}/${MAX_ATTEMPTS})..."
   sleep "$SLEEP_SECS"
 done
 

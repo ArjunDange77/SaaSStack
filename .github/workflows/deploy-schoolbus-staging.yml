@@ -9,6 +9,9 @@ on:
   push:
     branches: [staging]
     paths:
+      - "backend/entrypoint.sh"
+      - "backend/Dockerfile"
+      - "backend/config/**"
       - "backend/apps/products/school_bus/**"
       - "frontend/src/pages/school_bus/**"
       - "frontend/src/pages/__tests__/Sb*.test.tsx"
@@ -29,6 +32,8 @@ on:
       - "deploy/azure/modules/key-vault-rbac.bicep"
       - "deploy/scripts/provision-schoolbus-staging.sh"
       - "deploy/scripts/seed_staging_sb_demo.sh"
+      - "deploy/scripts/seed_staging_goa_pilot.sh"
+      - "backend/apps/products/school_bus/management/commands/generate_today_trips.py"
       - "deploy/scripts/ensure_staging_sb_demo_seed.sh"
       - "deploy/scripts/ensure_app_service_staging_slot.sh"
       - "deploy/nginx/**"

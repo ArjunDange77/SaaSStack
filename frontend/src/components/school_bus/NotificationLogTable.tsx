@@ -1,17 +1,5 @@
 import type { SbNotificationRow } from "@/hooks/useSchoolBus";
-
-function formatWhen(iso: string) {
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
+import { formatIST } from "@/utils/datetime";
 
 export function NotificationLogTable({ rows }: { rows: SbNotificationRow[] }) {
   if (rows.length === 0) {
@@ -33,7 +21,7 @@ export function NotificationLogTable({ rows }: { rows: SbNotificationRow[] }) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.id}>
-              <td>{formatWhen(row.created_at)}</td>
+              <td>{formatIST(row.created_at, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
               <td>{row.student_name || "—"}</td>
               <td>
                 <div>{row.event_type.replace(/_/g, " ")}</div>

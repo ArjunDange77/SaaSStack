@@ -53,7 +53,7 @@ GITHUB_ENVIRONMENT=schoolbus-staging ./deploy/scripts/setup-github-oidc.sh
 - Application Insights: `saasstack-sb-staging-insights` in product RG.
 - Optional metric alerts: enable `actionGroupId` in Bicep `alerts` module when action group exists.
 
-## Goa pilot client demo (`goa-bus`) — 15 minutes
+## Goa pilot client demo (`sai-baba-school-bus`) — 15 minutes
 
 **Setup (staging):** from repo root, with `az login` and School Bus API deployed to the **staging** slot:
 
@@ -63,11 +63,13 @@ export DEPLOY_SLOT=staging   # optional; defaults to staging
 bash deploy/scripts/seed_staging_goa_pilot.sh
 ```
 
-Sets `SEED_GOA_PILOT_STAGING=true`, restarts the **API staging slot**, runs `seed_goa_pilot --reset` on boot, then verifies **kamlesh** @ **goa-bus** (≥15 students).
+Sets `SEED_GOA_PILOT_STAGING=true`, restarts the **API staging slot**, runs `seed_goa_pilot --reset` on boot, then verifies **kamlesh** @ **sai-baba-school-bus** (≥15 students).
 
 **Requires:** deploy the latest API to staging first (includes `seed_goa_pilot` and `entrypoint.sh` hook). Push/merge to `staging` and wait for **Deploy School Bus Staging** to finish, then run the script.
 
 **Manual fallback:** Portal → `saasstack-sb-staging-api` → **SSH** (staging slot) → `python manage.py migrate --noinput && python manage.py seed_goa_pilot --reset`
+
+**Daily trips (weekdays):** `python manage.py generate_today_trips` (or `--tenant=sai-baba-school-bus`)
 
 **Setup (local Docker):**
 
@@ -77,7 +79,7 @@ docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py seed_goa_pilot --reset
 ```
 
-Tenant slug **`goa-bus`**. Three browser tabs: operator (desktop), driver (narrow/mobile), parent.
+Tenant slug **`sai-baba-school-bus`**. Three browser tabs: operator (desktop), driver (narrow/mobile), parent.
 
 | User | Password | Role |
 |------|----------|------|
@@ -87,7 +89,7 @@ Tenant slug **`goa-bus`**. Three browser tabs: operator (desktop), driver (narro
 
 ### Act 1 — Operator morning briefing (3 min)
 
-1. Sign in as **kamlesh**, tenant **goa-bus**.
+1. Sign in as **kamlesh**, tenant **sai-baba-school-bus**.
 2. Open **Command center** (`/sb/dashboard`): morning greeting, green/amber/red banner, trip progress cards, action items (overdue fees, absent students, today’s incidents).
 3. Open **Fees** (`/sb/fees`): overdue → due this month → paid; use **Send reminder** (opens WhatsApp).
 4. Mention yesterday’s seeded incident in the briefing list.

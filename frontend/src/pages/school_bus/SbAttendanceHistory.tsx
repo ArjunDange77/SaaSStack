@@ -3,6 +3,7 @@ import { apiErrorMessage } from "@/api/client";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useSbAttendanceHistory } from "@/hooks/useSchoolBus";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { formatIST } from "@/utils/datetime";
 
 function statusLabel(s: string) {
   return s.replace(/_/g, " ");
@@ -49,7 +50,9 @@ export function SbAttendanceHistory() {
                   <td>
                     <span className="badge">{statusLabel(row.drop_status)}</span>
                   </td>
-                  <td className="muted">{row.marked_at ? row.marked_at.slice(0, 16) : "—"}</td>
+                  <td className="muted">
+                    {row.marked_at ? formatIST(row.marked_at) : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>

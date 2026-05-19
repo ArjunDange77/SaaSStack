@@ -1,5 +1,5 @@
 """
-Seed Goa pilot tenant (goa-bus) with ~3 months of realistic school-bus operations data.
+Seed Goa pilot tenant (sai-baba-school-bus) with ~3 months of realistic school-bus operations data.
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from apps.tenancy.models import Tenant, TenantMembership
 
 User = get_user_model()
 
-TENANT_SLUG = "goa-bus"
+TENANT_SLUG = "sai-baba-school-bus"
 TENANT_NAME = "Sai Baba School Bus Service"
 
 HOLIDAYS = {
@@ -98,7 +98,7 @@ def _progress_bar(current: int, total: int, width: int = 20) -> str:
 
 
 class Command(BaseCommand):
-    help = "Seed goa-bus tenant with Goa pilot data (3 months history)."
+    help = "Seed sai-baba-school-bus tenant with Goa pilot data (3 months history)."
 
     def add_arguments(self, parser):
         parser.add_argument("--tenant", default=TENANT_SLUG)
@@ -135,6 +135,7 @@ class Command(BaseCommand):
             school_days = _school_days(start, end)
             self._generate_trips(tenant, fleet, school_days, students)
             self._generate_fees(tenant, students)
+            self._sync_student_fee_status(tenant, students)
             self._generate_incidents(tenant, fleet)
 
         self._print_summary(slug, start, end)
@@ -177,10 +178,10 @@ class Command(BaseCommand):
             TenantMembership.objects.get_or_create(user=u, tenant=tenant, defaults={"role": role})
             return u
 
-        kamlesh = _user("kamlesh", "kamlesh@goa-bus.test", TenantMembership.ROLE_OWNER)
-        suresh_u = _user("suresh", "suresh@goa-bus.test", TenantMembership.ROLE_STAFF)
-        arun_u = _user("arun", "arun@goa-bus.test", TenantMembership.ROLE_STAFF)
-        priya_u = _user("priya", "priya@goa-bus.test", TenantMembership.ROLE_PARENT)
+        kamlesh = _user("kamlesh", "kamlesh@sai-baba-school-bus.test", TenantMembership.ROLE_OWNER)
+        suresh_u = _user("suresh", "suresh@sai-baba-school-bus.test", TenantMembership.ROLE_STAFF)
+        arun_u = _user("arun", "arun@sai-baba-school-bus.test", TenantMembership.ROLE_STAFF)
+        priya_u = _user("priya", "priya@sai-baba-school-bus.test", TenantMembership.ROLE_PARENT)
         return {"kamlesh": kamlesh, "suresh": suresh_u, "arun": arun_u, "priya": priya_u}
 
     def _ensure_nav(self, tenant: Tenant) -> None:
@@ -516,6 +517,16 @@ class Command(BaseCommand):
                 },
             )
 
+    def _sync_student_fee_status(self, tenant: Tenant, students: list) -> None:
+        current_month = timezone.localdate().strftime("%Y-%m")
+        for _, student in students:
+            fr = FeeRecord.objects.filter(
+                tenant=tenant, student=student, month=current_month
+            ).first()
+            if fr and student.fee_status != fr.status:
+                student.fee_status = fr.status
+                student.save(update_fields=["fee_status"])
+
     def _generate_incidents(self, tenant: Tenant, fleet: dict) -> None:
         route1 = fleet["route1"]
         suresh = fleet["suresh"]
@@ -558,4 +569,6 @@ class Command(BaseCommand):
         self.stdout.write(f"  Collected (all time): ₹{collected}")
         self.stdout.write(f"  Unpaid fee records: {pending} (₹{pending_amt})")
         self.stdout.write(f"  Incidents: {incidents}")
-        self.stdout.write("  Logins: kamlesh / suresh / priya — password: admin — tenant: goa-bus")
+        self.stdout.write(
+            "  Logins: kamlesh / suresh / priya — password: admin — tenant: sai-baba-school-bus"
+        )

@@ -32,8 +32,9 @@ export function SbDriverTrip() {
     );
   }
 
-  const canStart = data.trip_status === "scheduled" || data.trip_status === "delayed";
-  const canMark = ["started", "pickup_in_progress", "incident_reported"].includes(data.trip_status);
+  const tripStatus = data.trip_status ?? "";
+  const canStart = tripStatus === "scheduled" || tripStatus === "delayed";
+  const canMark = ["started", "pickup_in_progress", "incident_reported"].includes(tripStatus);
   const elapsedMins = data.started_at
     ? Math.max(0, Math.floor((Date.now() - new Date(data.started_at).getTime()) / 60000))
     : 0;
@@ -86,8 +87,8 @@ export function SbDriverTrip() {
             {data.bus.fleet_number} · {elapsedMins > 0 ? `${elapsedMins} min elapsed` : data.trip_date}
           </p>
         </div>
-        <span className={`sb-trip-chip sb-trip-chip--${data.trip_status}`}>
-          {data.trip_status.replace(/_/g, " ")}
+        <span className={`sb-trip-chip sb-trip-chip--${tripStatus}`}>
+          {tripStatus.replace(/_/g, " ")}
         </span>
       </header>
 

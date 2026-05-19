@@ -46,6 +46,7 @@ export interface SbBriefingTrip {
   stop_index: number;
   stop_total: number;
   elapsed: string;
+  completed_at_display?: string;
   status: string;
 }
 
@@ -111,13 +112,17 @@ export interface SbDriverChecklistRow {
 }
 
 export interface SbDriverToday {
-  trip_id: number;
-  trip_status: string;
+  trip_id: number | null;
+  trip_status: string | null;
   trip_date: string;
   started_at: string | null;
-  route: { id: number; name: string; direction: string };
-  bus: { id: number; fleet_number: string };
+  driver_name: string;
+  route_name: string;
+  bus_fleet_number: string;
+  route: { id: number | null; name: string; direction: string };
+  bus: { id: number | null; fleet_number: string };
   checklist: SbDriverChecklistRow[];
+  can_open_checklist: boolean;
   last_location: { latitude: string; longitude: string; recorded_at: string } | null;
 }
 

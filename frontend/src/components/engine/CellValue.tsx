@@ -22,11 +22,15 @@ function choiceLabel(field: FieldMeta, raw: string): string {
   return field.ui?.label_map?.[raw] ?? raw.replace(/_/g, " ");
 }
 
+const IST = "Asia/Kolkata";
+
 function formatDateTimeValue(value: unknown, type: "datetime" | "date"): string {
   if (value === null || value === undefined || value === "") return "";
   const d = new Date(String(value));
   if (Number.isNaN(d.getTime())) return String(value);
-  return type === "date" ? d.toLocaleDateString() : d.toLocaleString();
+  return type === "date"
+    ? d.toLocaleDateString("en-IN", { timeZone: IST })
+    : d.toLocaleString("en-IN", { timeZone: IST });
 }
 
 function parseOccupancyFraction(value: unknown): { current: number; limit: number } | null {

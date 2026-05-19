@@ -84,6 +84,8 @@ class ParentSerializer(serializers.ModelSerializer):
 
 
 class StudentSerializer(serializers.ModelSerializer):
+    current_fee_status = serializers.SerializerMethodField()
+
     class Meta:
         model = Student
         fields = (
@@ -98,11 +100,12 @@ class StudentSerializer(serializers.ModelSerializer):
             "assigned_bus",
             "parent",
             "fee_status",
+            "current_fee_status",
             "emergency_notes",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("tenant", "created_at", "updated_at")
+        read_only_fields = ("tenant", "created_at", "updated_at", "current_fee_status")
         extra_kwargs = {
             "full_name": {"label": "Full name"},
             "school_name": {"label": "School"},
@@ -112,9 +115,16 @@ class StudentSerializer(serializers.ModelSerializer):
             "assigned_route": {"label": "Route"},
             "assigned_bus": {"label": "Bus"},
             "parent": {"label": "Parent"},
-            "fee_status": {"label": "Fee status"},
+            "fee_status": {"label": "Fee status (stored)"},
+            "current_fee_status": {"label": "Fee status"},
             "emergency_notes": {"label": "Emergency notes"},
         }
+
+    def get_current_fee_status(self, obj):
+        annotated = getattr(obj, "current_fee_status", None)
+        if annotated:
+            return annotated
+        return obj.fee_status
 
 
 class TripSerializer(serializers.ModelSerializer):

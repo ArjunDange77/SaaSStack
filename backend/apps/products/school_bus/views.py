@@ -109,15 +109,33 @@ class StudentViewSet(SBViewSet):
         "class_grade",
         "assigned_route",
         "assigned_bus",
-        "fee_status",
+        "current_fee_status",
     )
     search_fields = ("full_name", "school_name", "class_grade")
+
+    def get_queryset(self):
+        return services.annotate_student_fee_status(super().get_queryset())
 
 
 class TripViewSet(SBViewSet):
     resource_slug = "sb-trips"
-    queryset = Trip.objects.all()
+    queryset = Trip.objects.select_related("route", "bus", "driver")
     serializer_class = TripSerializer
+    relation_display_fields = {
+        "route": "name",
+        "bus": "fleet_number",
+        "driver": "full_name",
+    }
+    resource_list_display = (
+        "id",
+        "trip_date",
+        "route",
+        "bus",
+        "driver",
+        "status",
+        "started_at",
+        "completed_at",
+    )
 
 
 class TripAttendanceViewSet(SBViewSet):
