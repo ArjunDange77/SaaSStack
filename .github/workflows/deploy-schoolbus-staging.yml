@@ -30,6 +30,7 @@ on:
       - "deploy/scripts/provision-schoolbus-staging.sh"
       - "deploy/scripts/seed_staging_sb_demo.sh"
       - "deploy/scripts/ensure_staging_sb_demo_seed.sh"
+      - "deploy/scripts/ensure_app_service_staging_slot.sh"
       - "deploy/nginx/**"
       # Workflow YAML changes: use workflow_dispatch only.
   workflow_dispatch:

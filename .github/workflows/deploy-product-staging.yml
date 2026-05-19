@@ -105,11 +105,30 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy backend to App Service
+      - name: Ensure App Service staging slots exist
+        if: inputs.deploy_slot != ''
+        env:
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          AZURE_WEBAPP_NAME_FRONTEND: ${{ secrets.AZURE_WEBAPP_NAME_FRONTEND }}
+        run: bash deploy/scripts/ensure_app_service_staging_slot.sh
+
+      - name: Deploy backend to App Service (staging slot)
+        if: inputs.deploy_slot != ''
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          resource-group-name: ${{ inputs.azure_resource_group }}
           slot-name: ${{ inputs.deploy_slot }}
+          images: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy backend to App Service (production slot)
+        if: inputs.deploy_slot == ''
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          resource-group-name: ${{ inputs.azure_resource_group }}
           images: ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Seed pg-demo (manual)
@@ -193,12 +212,21 @@ jobs:
           cd frontend/dist
           zip -r "$GITHUB_WORKSPACE/frontend-dist.zip" .
 
-      - name: Deploy frontend to App Service
-        if: inputs.frontend_deploy == 'app_service_zip'
+      - name: Deploy frontend to App Service (staging slot)
+        if: inputs.frontend_deploy == 'app_service_zip' && inputs.deploy_slot != ''
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME_FRONTEND }}
+          resource-group-name: ${{ inputs.azure_resource_group }}
           slot-name: ${{ inputs.deploy_slot }}
+          package: frontend-dist.zip
+
+      - name: Deploy frontend to App Service (production slot)
+        if: inputs.frontend_deploy == 'app_service_zip' && inputs.deploy_slot == ''
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME_FRONTEND }}
+          resource-group-name: ${{ inputs.azure_resource_group }}
           package: frontend-dist.zip
 
       - name: Smoke tests
