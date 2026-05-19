@@ -1,0 +1,2 @@
+# Lib files are sourced; paths like $ROOT/deploy/scripts/lib/... are runtime-only.
+disable=SC1091

@@ -38,5 +38,6 @@ reconcile_deploy_slot_or_fail() {
     return 0
   fi
   assert_deploy_slot_exists "$rg" "$app" "$DEPLOY_SLOT"
+  # shellcheck disable=SC2034 # SLOT_ARGS consumed by scripts that source this library
   SLOT_ARGS=(--slot "$DEPLOY_SLOT")
 }
