@@ -18,8 +18,7 @@ on:
       - "deploy/azure/main.bicep"
       - "deploy/azure/staging.india.bicepparam"
       # Do not use deploy/azure/modules/** — shared modules also used by School Bus.
-      - ".github/workflows/deploy-pg-staging.yml"
-      - ".github/workflows/deploy-product-staging.yml"
+      # Workflow YAML changes: use workflow_dispatch (avoids dual deploy with School Bus).
   workflow_dispatch:
     inputs:
       reason:

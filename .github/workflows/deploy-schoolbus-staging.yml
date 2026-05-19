@@ -31,8 +31,7 @@ on:
       - "deploy/scripts/seed_staging_sb_demo.sh"
       - "deploy/scripts/ensure_staging_sb_demo_seed.sh"
       - "deploy/nginx/**"
-      - ".github/workflows/deploy-schoolbus-staging.yml"
-      - ".github/workflows/deploy-product-staging.yml"
+      # Workflow YAML changes: use workflow_dispatch only.
   workflow_dispatch:
     inputs:
       reason:
