@@ -82,4 +82,6 @@ Same keys as staging with production values; add approval gate on environment.
 ## Deploy triggers
 
 - Push to `staging` deploys **one product** via path filters (see `.github/workflows/deploy-pg-staging.yml` and `deploy-schoolbus-staging.yml`).
+- **Do not** use `deploy/azure/modules/**` on PG paths — shared modules (e.g. `key-vault.bicep`) also affect School Bus and would deploy both products.
 - Kernel-only changes: manual `workflow_dispatch` per product.
+- Each workflow has a `concurrency` group so duplicate School Bus runs cancel the older in-progress job.

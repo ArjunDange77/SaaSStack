@@ -1,6 +1,10 @@
 # School Bus — staging deploy (path-isolated; deploys to deployment slot "staging").
 name: Deploy School Bus Staging
 
+concurrency:
+  group: deploy-schoolbus-staging
+  cancel-in-progress: true
+
 on:
   push:
     branches: [staging]
@@ -15,6 +19,17 @@ on:
       - "frontend/src/pages/LoginPage.tsx"
       - "deploy/azure/schoolbus.bicep"
       - "deploy/azure/schoolbus*.bicepparam"
+      - "deploy/azure/modules/key-vault.bicep"
+      - "deploy/azure/modules/app-service-api.bicep"
+      - "deploy/azure/modules/app-service-frontend.bicep"
+      - "deploy/azure/modules/app-service-plan.bicep"
+      - "deploy/azure/modules/postgres.bicep"
+      - "deploy/azure/modules/postgres-private-endpoint.bicep"
+      - "deploy/azure/modules/monitoring.bicep"
+      - "deploy/azure/modules/key-vault-rbac.bicep"
+      - "deploy/scripts/provision-schoolbus-staging.sh"
+      - "deploy/scripts/seed_staging_sb_demo.sh"
+      - "deploy/scripts/ensure_staging_sb_demo_seed.sh"
       - "deploy/nginx/**"
       - ".github/workflows/deploy-schoolbus-staging.yml"
       - ".github/workflows/deploy-product-staging.yml"

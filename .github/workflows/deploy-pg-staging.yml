@@ -1,6 +1,10 @@
 # PG Management — staging deploy only (path-isolated from School Bus).
 name: Deploy PG Staging
 
+concurrency:
+  group: deploy-pg-staging
+  cancel-in-progress: false
+
 on:
   push:
     branches: [staging]
@@ -13,7 +17,7 @@ on:
       - "frontend/src/App.tsx"
       - "deploy/azure/main.bicep"
       - "deploy/azure/staging.india.bicepparam"
-      - "deploy/azure/modules/**"
+      # Do not use deploy/azure/modules/** — shared modules also used by School Bus.
       - ".github/workflows/deploy-pg-staging.yml"
       - ".github/workflows/deploy-product-staging.yml"
   workflow_dispatch:
