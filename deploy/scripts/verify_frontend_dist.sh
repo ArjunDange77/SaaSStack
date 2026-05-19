@@ -16,4 +16,5 @@ fi
 
 echo "OK: frontend dist ready for SWA upload"
 echo "  index.html: $(wc -c <"$DIST/index.html" | tr -d ' ') bytes"
-ls -la "$DIST" | head -15
+echo "  sample files:"
+find "$DIST" -type f | head -15
