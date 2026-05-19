@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 
-from django.db.models import Count, Q, Sum
+from django.db.models import Q, Sum
 from django.utils import timezone
 
 from apps.registry.activity import log_activity
-from apps.registry.models import ActivityLog
 
 from .models import (
     Bus,
@@ -17,7 +16,6 @@ from .models import (
     Incident,
     Parent,
     Reminder,
-    Route,
     RouteStop,
     Student,
     Trip,

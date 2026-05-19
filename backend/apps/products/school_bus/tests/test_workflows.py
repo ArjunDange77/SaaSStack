@@ -1,6 +1,6 @@
 import pytest
 
-from apps.products.school_bus.models import Parent, Student, Trip
+from apps.products.school_bus.models import Student
 
 
 @pytest.mark.django_db

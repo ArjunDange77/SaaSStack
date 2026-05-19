@@ -1,7 +1,6 @@
 import pytest
-from django.utils import timezone
 
-from apps.products.school_bus.models import Bus, Driver, Route, Student, Trip, TripAttendance
+from apps.products.school_bus.models import Bus, Student, Trip, TripAttendance
 from apps.products.school_bus import services
 
 
