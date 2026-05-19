@@ -22,6 +22,9 @@ Before merge, ask: **What broke before? What does this change touch?** Add or ex
 ## Local commands
 
 ```bash
+# Backend Ruff (mirrors CI; run before push)
+bash scripts/ruff-check.sh
+
 # Backend (70% line coverage floor on apps/)
 cd backend && pip install -r requirements-dev.txt && pytest --cov-fail-under=70
 
@@ -29,11 +32,11 @@ cd backend && pip install -r requirements-dev.txt && pytest --cov-fail-under=70
 cd frontend && npm run test:coverage
 ```
 
-Or from repo root: `bash scripts/test-all.sh`
+Or from repo root: `bash scripts/test-all.sh` (runs Ruff, then pytest + vitest)
 
 ## CI and deploy gates
 
-- **CI** (`ci.yml`): `pytest --cov-fail-under=70`, `npm run test:coverage`
+- **CI** (`ci.yml`): Ruff (scoped paths), `pytest --cov-fail-under=70`, `npm run test:coverage`
 - **Staging smoke** (`smoke_test.py`): operator + resident auth, `/api/accounts/me/`, `/api/pg/resident/me/`, catalog/schema/dashboard/public rooms
 
 ## E2E

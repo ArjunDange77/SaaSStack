@@ -133,7 +133,7 @@ class Command(BaseCommand):
             TenantMessagingConfig.objects.get_or_create(tenant=tenant, defaults={"demo_mode": True})
 
             school_days = _school_days(start, end)
-            trip_count = self._generate_trips(tenant, fleet, school_days, students)
+            self._generate_trips(tenant, fleet, school_days, students)
             self._generate_fees(tenant, students)
             self._generate_incidents(tenant, fleet)
 

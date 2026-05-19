@@ -95,6 +95,9 @@ Before shipping UI changes, check **375px**, **768px**, and **1280px** in browse
 **Contracts are the spec; tests prove the code matches.** New work is not done until touched behavior has a regression test. See [`.cursor/rules/testing.mdc`](.cursor/rules/testing.mdc) for the full policy.
 
 ```bash
+# Backend lint (same paths as CI; also runs in ci.yml)
+bash scripts/ruff-check.sh
+
 # Backend (70% line coverage floor on apps/)
 cd backend
 pip install -r requirements-dev.txt

@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import os
 
-from apps.products.school_bus.models import OutboundMessage, Parent, Student, TenantMessagingConfig, TripAttendance
+from apps.products.school_bus.models import OutboundMessage, Student, TenantMessagingConfig, TripAttendance
 
-from .log_sender import LogSender
 from .meta_whatsapp import MetaWhatsAppSender
 from .whatsapp_click import WhatsAppClickSender
 
