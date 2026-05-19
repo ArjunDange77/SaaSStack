@@ -164,6 +164,7 @@ jobs:
           AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
           STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
           AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
         run: bash deploy/scripts/seed_staging_sb_demo.sh
 
       - name: Ensure sb-demo seed (School Bus)
@@ -172,6 +173,7 @@ jobs:
           AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
           STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
           AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
           SB_SMOKE_USER: sb-operator
           SB_SMOKE_PASSWORD: admin
           SB_SMOKE_TENANT: sb-demo

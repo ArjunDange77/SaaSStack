@@ -14,11 +14,13 @@ ensure_slot() {
     return 0
   fi
   echo "Creating deployment slot ${SLOT} on ${app}..."
-  az webapp deployment slot create \
+  if ! az webapp deployment slot create \
     --resource-group "$RG" \
     --name "$app" \
     --slot "$SLOT" \
-    --configuration-source "$app"
+    --configuration-source "$app" 2>/dev/null; then
+    echo "WARN: could not create slot (may already exist or RBAC pending); continuing."
+  fi
 }
 
 ensure_slot "$API_APP"

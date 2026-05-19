@@ -55,6 +55,9 @@ if [ "$TOTAL" -ge "$MIN_STUDENTS" ]; then
 fi
 
 echo "Sparse sb-demo data — seeding..."
+export DEPLOY_SLOT="${DEPLOY_SLOT:-staging}"
+export AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-rg-saasstack-sb-staging}"
+export AZURE_WEBAPP_NAME="${AZURE_WEBAPP_NAME:?AZURE_WEBAPP_NAME required}"
 bash "$ROOT/deploy/scripts/seed_staging_sb_demo.sh"
 
 export API_URL SB_TENANT SB_USER SB_PASSWORD
