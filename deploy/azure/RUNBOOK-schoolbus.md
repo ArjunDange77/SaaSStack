@@ -1,26 +1,30 @@
 # School Bus release runbook
 
-## Staging deploy
+## Staging deploy (unified with PG)
+
+School Bus staging uses **`rg-saasstack-staging`** (same API/DB/frontend as PG Management). Tenants: `pg-demo`, `sai-baba-school-bus`.
+
+| Item | Value |
+|------|--------|
+| API | `https://saasstack-staging-api.azurewebsites.net` |
+| Frontend | Static Web App (`saasstack-staging-web`) |
+| GitHub workflow | **Deploy Staging** (`.github/workflows/deploy-staging.yml`) |
+| GitHub environment | `staging` |
 
 ### GitHub OIDC (required once)
 
-The `schoolbus-staging` environment must have `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`. If **Azure login** fails with “Not all values are present”, run locally:
-
 ```bash
-# After rg-saasstack-sb-staging exists:
-GITHUB_ENVIRONMENT=schoolbus-staging AZURE_RESOURCE_GROUP=rg-saasstack-sb-staging \
+GITHUB_ENVIRONMENT=staging AZURE_RESOURCE_GROUP=rg-saasstack-staging \
   bash deploy/scripts/setup-github-oidc.sh
-bash deploy/scripts/sync-github-schoolbus-staging-secrets.sh
+bash deploy/scripts/sync-github-staging-secrets.sh
 ```
 
-App Service VNet integration must use the **same region** as the shared VNet (`centralindia`). Do not set `AZURE_APP_LOCATION=southindia` for School Bus unless the shared VNet is also in that region.
+See [STAGING-SECRETS.md](STAGING-SECRETS.md).
 
-1. Merge to `staging` with paths under `school_bus/` **or** run **Deploy School Bus Staging** (`workflow_dispatch`).
-2. Workflow deploys backend + frontend to App Service **slot `staging`**.
-3. Open the **staging slot** frontend (not the production hostname): `https://<web-app>-staging.azurewebsites.net`
-4. Verify API: `https://<api-app>-staging.azurewebsites.net/api/health/`
-5. If you see **Welcome to nginx!**, the zip is on `wwwroot` but the container was not configured — run `bash deploy/scripts/fix_schoolbus_frontend_nginx.sh` and redeploy the frontend zip (workflow includes `deploy/nginx/app-service-startup.sh`).
-6. Run `bash deploy/scripts/smoke_schoolbus_staging.sh` locally if needed.
+1. Merge to **`main`** or **`staging`** **or** run **Deploy Staging** (`workflow_dispatch`).
+2. Workflow deploys API (GHCR image) + SWA frontend; runs migrations; ensures pg-demo + Goa pilot seeds.
+3. Verify API: `https://saasstack-staging-api.azurewebsites.net/api/health/`
+4. Run `bash deploy/scripts/smoke_unified_staging.sh` locally if needed.
 
 ## Production promotion (slot swap)
 
@@ -55,19 +59,17 @@ GITHUB_ENVIRONMENT=schoolbus-staging ./deploy/scripts/setup-github-oidc.sh
 
 ## Goa pilot client demo (`sai-baba-school-bus`) — 15 minutes
 
-**Setup (staging):** from repo root, with `az login` and School Bus API deployed to the **staging** slot:
+**Setup (staging):** from repo root, with `az login`:
 
 ```bash
-# From repo root (Mac/Linux), after az login
-export DEPLOY_SLOT=staging   # optional; defaults to staging
 bash deploy/scripts/seed_staging_goa_pilot.sh
 ```
 
-Sets `SEED_GOA_PILOT_STAGING=true`, restarts the **API staging slot**, runs `seed_goa_pilot --reset` on boot, then verifies **kamlesh** @ **sai-baba-school-bus** (≥15 students).
+Defaults: `rg-saasstack-staging`, `saasstack-staging-api`. Sets `SEED_GOA_PILOT_STAGING=true`, restarts API, verifies **kamlesh** @ **sai-baba-school-bus** (≥15 students).
 
-**Requires:** deploy the latest API to staging first (includes `seed_goa_pilot` and `entrypoint.sh` hook). Push/merge to `staging` and wait for **Deploy School Bus Staging** to finish, then run the script.
+**Requires:** latest API deployed via **Deploy Staging**.
 
-**Manual fallback:** Portal → `saasstack-sb-staging-api` → **SSH** (staging slot) → `python manage.py migrate --noinput && python manage.py seed_goa_pilot --reset`
+**Manual fallback:** Portal → `saasstack-staging-api` → **SSH** → `python manage.py migrate --noinput && python manage.py seed_goa_pilot --reset`
 
 **Daily trips (weekdays):** `python manage.py generate_today_trips` (or `--tenant=sai-baba-school-bus`)
 

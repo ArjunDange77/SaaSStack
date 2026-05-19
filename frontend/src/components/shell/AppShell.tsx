@@ -5,6 +5,7 @@ import { api } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { scopeTenant } from "@/lib/queryKeys";
+import { isSchoolBusTenant } from "@/lib/schoolBusTenant";
 import { useMyTenants, usePgDashboard } from "@/hooks/useResource";
 import { MobileHeader } from "./MobileHeader";
 import { NavBar } from "./NavBar";
@@ -13,7 +14,8 @@ import { NotificationBell } from "./NotificationBell";
 export function AppShell() {
   const { user, logout, tenantSlug, setTenantSlug, role } = useAuth();
   const isOperator = role === "owner" || role === "staff";
-  const { data: dashboardStats } = usePgDashboard(isOperator);
+  const schoolBusTenant = isSchoolBusTenant(tenantSlug);
+  const { data: dashboardStats } = usePgDashboard(isOperator && !schoolBusTenant);
   const navBadges = isOperator
     ? { "/r/pg-booking-requests": dashboardStats?.pending_bookings ?? 0 }
     : undefined;
@@ -72,13 +74,9 @@ export function AppShell() {
   const headerTitle = branding?.name ?? "SaaSStack";
   const tenantLabel =
     myTenants?.find((t) => t.slug === tenantSlug)?.name ?? tenantSlug;
-  const isSchoolBus =
-    tenantSlug === "sb-demo" ||
-    tenantSlug === "sai-baba-school-bus" ||
-    tenantSlug === "goa-bus" ||
-    tenantSlug.startsWith("sb-") ||
-    location.pathname.startsWith("/sb/");
-  const productLabel = isSchoolBus ? "School Bus" : "PG Management";
+  const showSchoolBusChrome =
+    isSchoolBusTenant(tenantSlug) || location.pathname.startsWith("/sb/");
+  const productLabel = showSchoolBusChrome ? "School Bus" : "PG Management";
 
   const tenantSelect = (
     <>

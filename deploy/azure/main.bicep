@@ -135,6 +135,14 @@ var apiAppSettings = concat(
       value: 'false'
     }
     {
+      name: 'SEED_GOA_PILOT_STAGING'
+      value: 'false'
+    }
+    {
+      name: 'SEED_SB_STAGING_DEMO'
+      value: 'false'
+    }
+    {
       name: 'USE_AZURE_STORAGE'
       value: string(useAzureStorage)
     }

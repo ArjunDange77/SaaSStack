@@ -1,3 +1,5 @@
+// DEPRECATED for staging — use main.bicep on rg-saasstack-staging (unified multi-tenant).
+// Retained for reference / optional Phase 2 only if private Postgres is required.
 targetScope = 'resourceGroup'
 
 @description('Environment: staging or prod')

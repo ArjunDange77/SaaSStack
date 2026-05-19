@@ -3,34 +3,37 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { useToast } from "@/components/ui/ToastProvider";
 import { apiErrorMessage } from "@/api/client";
+import { postLoginPath } from "@/lib/postLoginPath";
+
+const DEFAULT_TENANT = "sai-baba-school-bus";
 
 export function LoginPage() {
-  const { login, isAuthenticated, role, driverId } = useAuth();
+  const { login, isAuthenticated, role, driverId, parentId, tenantSlug } = useAuth();
   const { success, error: toastError } = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [tenant, setTenant] = useState(
-    () => localStorage.getItem("tenant_slug") || "sb-demo"
+    () => localStorage.getItem("tenant_slug") || DEFAULT_TENANT
   );
   const [error, setError] = useState("");
 
   if (isAuthenticated) {
-    const dest =
-      role === "resident"
-        ? "/resident"
-        : role === "parent"
-          ? "/sb/parent"
-          : driverId
-            ? "/sb/driver"
-            : "/dashboard";
-    return <Navigate to={dest} replace />;
+    return <Navigate to={postLoginPath(role, tenantSlug, driverId, parentId)} replace />;
   }
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
+    const u = username.trim();
+    const p = password;
+    if (!u || !p) {
+      const msg = "Enter username and password.";
+      setError(msg);
+      toastError(msg);
+      return;
+    }
     try {
-      await login(username, password, tenant);
+      await login(u, p, tenant.trim());
       success("Signed in successfully");
     } catch (err) {
       const msg = apiErrorMessage(err, "Login failed. Check credentials and that the API is running.");
@@ -45,7 +48,11 @@ export function LoginPage() {
       <form onSubmit={onSubmit}>
         <div className="field">
           <label>Tenant slug (X-Tenant)</label>
-          <input value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="sb-demo" />
+          <input
+            value={tenant}
+            onChange={(e) => setTenant(e.target.value)}
+            placeholder={DEFAULT_TENANT}
+          />
         </div>
         <div className="field">
           <label>Username</label>
@@ -67,6 +74,10 @@ export function LoginPage() {
         {error && <p className="error">{error}</p>}
         <button type="submit">Login</button>
       </form>
+      <p className="muted login-hint">
+        Goa pilot (local): <strong>kamlesh</strong> / <strong>suresh</strong> / <strong>priya</strong> — password{" "}
+        <strong>admin</strong>
+      </p>
     </div>
   );
 }

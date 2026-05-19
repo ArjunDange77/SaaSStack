@@ -112,12 +112,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await apiLogin(username, password);
       setAccessToken(localStorage.getItem("access"));
       setTenantSlug(tenant);
-      try {
-        const me = await fetchMe();
-        applyMe(me);
-      } catch {
-        setUser({ username });
+      const me = await fetchMe();
+      if (!me.role) {
+        clearAuthStorage();
+        setAccessToken(null);
+        throw new Error(
+          `No access to tenant "${tenant}". Check the tenant slug, or ask your operator to add your account.`
+        );
       }
+      applyMe(me);
     },
     [setTenantSlug, applyMe]
   );

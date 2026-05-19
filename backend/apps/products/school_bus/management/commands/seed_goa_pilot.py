@@ -36,6 +36,9 @@ User = get_user_model()
 
 TENANT_SLUG = "sai-baba-school-bus"
 TENANT_NAME = "Sai Baba School Bus Service"
+# Older local seeds used this slug; cleared on --reset so pilot users bind to TENANT_SLUG.
+LEGACY_TENANT_SLUGS = ("goa-bus",)
+PILOT_USERNAMES = ("kamlesh", "suresh", "arun", "priya")
 
 HOLIDAYS = {
     date(2026, 4, 14),
@@ -124,6 +127,9 @@ class Command(BaseCommand):
         with transaction.atomic():
             if options["reset"]:
                 self._reset_tenant(slug)
+                for legacy in LEGACY_TENANT_SLUGS:
+                    if legacy != slug:
+                        self._reset_tenant(legacy)
 
             tenant = self._ensure_tenant(slug)
             users = self._ensure_users(tenant)
@@ -175,7 +181,14 @@ class Command(BaseCommand):
             u, _ = User.objects.get_or_create(username=username, defaults={"email": email})
             u.set_password(password)
             u.save()
-            TenantMembership.objects.get_or_create(user=u, tenant=tenant, defaults={"role": role})
+            TenantMembership.objects.filter(
+                user=u, tenant__slug__in=LEGACY_TENANT_SLUGS
+            ).delete()
+            TenantMembership.objects.update_or_create(
+                user=u,
+                tenant=tenant,
+                defaults={"role": role, "is_active": True},
+            )
             return u
 
         kamlesh = _user("kamlesh", "kamlesh@sai-baba-school-bus.test", TenantMembership.ROLE_OWNER)
@@ -218,23 +231,23 @@ class Command(BaseCommand):
         )
 
         suresh, _ = Driver.objects.update_or_create(
-            tenant=tenant,
-            full_name="Suresh Naik",
+            user=users["suresh"],
             defaults={
+                "tenant": tenant,
+                "full_name": "Suresh Naik",
                 "phone": "+919876543210",
                 "license_number": "MH-14-20180023",
                 "assigned_bus": bus101,
-                "user": users["suresh"],
             },
         )
         arun, _ = Driver.objects.update_or_create(
-            tenant=tenant,
-            full_name="Arun Salgaonkar",
+            user=users["arun"],
             defaults={
+                "tenant": tenant,
+                "full_name": "Arun Salgaonkar",
                 "phone": "+919823456789",
                 "license_number": "GA-01-20190045",
                 "assigned_bus": bus102,
-                "user": users["arun"],
             },
         )
 
@@ -332,11 +345,17 @@ class Command(BaseCommand):
         users = {u.username: u for u in User.objects.filter(username__in=["priya"])}
         for i, (name, phone, user_key) in enumerate(parents_data, start=1):
             user = users.get(user_key) if user_key else None
-            p, _ = Parent.objects.update_or_create(
-                tenant=tenant,
-                full_name=name,
-                defaults={"phone": phone, "user": user},
-            )
+            if user:
+                p, _ = Parent.objects.update_or_create(
+                    user=user,
+                    defaults={"tenant": tenant, "full_name": name, "phone": phone},
+                )
+            else:
+                p, _ = Parent.objects.update_or_create(
+                    tenant=tenant,
+                    full_name=name,
+                    defaults={"phone": phone},
+                )
             parent_by_idx[i] = p
 
         # parent index mapping for students

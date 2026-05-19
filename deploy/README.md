@@ -9,16 +9,17 @@
    Optional overrides: `AZURE_APP_LOCATION=southindia`, `AZURE_SWA_LOCATION=eastasia` (defaults — cheapest layout when centralindia cannot host API/SWA)
 3. `az login` then read **`deploy/docs/cost-guardrails.md`**
 4. `./deploy/scripts/cost-guardrails-setup.sh`
-5. `./deploy/scripts/provision-staging-india.sh` (PG Management)
+5. `./deploy/scripts/provision-staging-india.sh` (unified staging: PG + School Bus)
 
-**School Bus (separate RG):** see [`deploy/azure/PLANNING.md`](azure/PLANNING.md) and [`deploy/azure/RUNBOOK-schoolbus.md`](azure/RUNBOOK-schoolbus.md).
+**School Bus** uses the same stack (multi-tenant). See [`deploy/azure/PLANNING.md`](azure/PLANNING.md) and [`deploy/azure/RUNBOOK-schoolbus.md`](azure/RUNBOOK-schoolbus.md).
+
+After unified staging is verified, remove old SB-only Azure RGs:
 
 ```bash
-./deploy/scripts/provision-shared-network.sh
-./deploy/scripts/provision-schoolbus-staging.sh
-GITHUB_ENVIRONMENT=schoolbus-staging ./deploy/scripts/setup-github-oidc.sh
-./deploy/scripts/sync-github-schoolbus-staging-secrets.sh
+bash deploy/scripts/teardown-schoolbus-staging.sh
 ```
+
+GitHub: use **Deploy Staging** workflow and the `staging` environment ([STAGING-SECRETS.md](azure/STAGING-SECRETS.md)).
 
 ## Scripts (safe to commit — no secrets)
 
@@ -26,9 +27,11 @@ GITHUB_ENVIRONMENT=schoolbus-staging ./deploy/scripts/setup-github-oidc.sh
 |--------|---------|
 | `scripts/cost-guardrails-setup.sh` | Budget alerts before deploy |
 | `scripts/provision-staging-india.sh` | PG Bicep + `rg-saasstack-staging` |
-| `scripts/provision-shared-network.sh` | Shared VNet + NAT (`rg-saasstack-shared`) |
-| `scripts/provision-schoolbus-staging.sh` | School Bus stack + secrets file |
-| `scripts/provision-schoolbus-production.sh` | School Bus prod RG |
+| `scripts/teardown-schoolbus-staging.sh` | Delete retired SB/shared RGs after cutover |
+| `scripts/smoke_unified_staging.sh` | PG + School Bus smoke on one API URL |
+| `scripts/ensure_staging_goa_pilot_seed.sh` | Idempotent Goa pilot seed on unified API |
+| `scripts/provision-schoolbus-staging.sh` | **Deprecated** — do not use for staging |
+| `scripts/provision-schoolbus-production.sh` | School Bus prod RG (Phase 2, minimal) |
 | `scripts/setup-github-oidc.sh` | GitHub federated login (set `GITHUB_ENVIRONMENT`) |
 | `scripts/sync-github-staging-secrets.sh` | PG staging secrets → GitHub |
 | `scripts/sync-github-schoolbus-staging-secrets.sh` | School Bus staging secrets |
@@ -51,9 +54,7 @@ Public booking rate limits use the Postgres `django_cache` table. `createcacheta
 | **Full smoke** | Login, catalog, dashboard, public booking at end |
 | **Entrypoint** | `createcachetable` must succeed or container startup fails |
 
-**PG staging demo seed:** `deploy-pg-staging` runs `ensure_staging_demo_seed.sh` after the API is up. Manual re-seed: **Actions → Deploy PG Staging → Re-seed pg-demo**.
-
-**School Bus:** `deploy-schoolbus-staging` deploys to App Service slot `staging`. Runs `ensure_staging_sb_demo_seed.sh` after API is up. Manual re-seed: **Actions → Deploy School Bus Staging → Re-seed sb-demo**.
+**Unified staging:** `deploy-staging` runs CI, deploys to `rg-saasstack-staging`, migrates, ensures pg-demo + Goa pilot seeds, runs `smoke_unified_staging.sh`. Manual re-seed: **Actions → Deploy Staging** → check seed_pg_demo / seed_goa_pilot.
 
 **Staging smoke secrets:** operator login uses `SMOKE_USERNAME` / `SMOKE_PASSWORD` secrets. Resident login uses workflow defaults `resident` / `admin` (do not add empty `SMOKE_RESIDENT_*` GitHub secrets — they used to override defaults and caused `login ()` 400).
 

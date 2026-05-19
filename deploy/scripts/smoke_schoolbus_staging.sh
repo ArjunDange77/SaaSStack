@@ -18,27 +18,27 @@ export EXPECTED_VERSION="${EXPECTED_VERSION:-}"
 echo "School Bus smoke: $API_BASE_URL"
 bash "$ROOT/deploy/scripts/wait_for_api.sh"
 
-# Dashboard requires auth — only check route exists (401/403 acceptable without creds)
-status="$(curl -s -o /dev/null -w "%{http_code}" "${API_BASE_URL}/api/sb/dashboard/")"
+# Operator routes require auth — unauthenticated 401/403 is OK
+status="$(curl -s -o /dev/null -w "%{http_code}" "${API_BASE_URL}/api/sb/operator/briefing/")"
 if [[ "$status" == "401" || "$status" == "403" || "$status" == "200" ]]; then
-  echo "OK: /api/sb/dashboard/ responded with $status"
+  echo "OK: /api/sb/operator/briefing/ responded with $status"
 else
-  echo "FAIL: /api/sb/dashboard/ returned $status"
+  echo "FAIL: /api/sb/operator/briefing/ returned $status"
   exit 1
 fi
 
-# Optional authenticated smoke when SB_SMOKE_USER / SB_SMOKE_PASSWORD are set (tenant sb-demo)
+# Authenticated smoke when SB_SMOKE_USER / SB_SMOKE_PASSWORD are set
 if [[ -n "${SB_SMOKE_USER:-}" && -n "${SB_SMOKE_PASSWORD:-}" ]]; then
-  token="$(curl -s -X POST "${API_BASE_URL}/api/accounts/token/" \
+  token="$(curl -s -X POST "${API_BASE_URL}/api/auth/login/" \
     -H "Content-Type: application/json" \
     -d "{\"username\":\"${SB_SMOKE_USER}\",\"password\":\"${SB_SMOKE_PASSWORD}\"}" \
     | python3 -c "import sys,json; print(json.load(sys.stdin).get('access',''))" 2>/dev/null || true)"
   if [[ -n "$token" ]]; then
-    tenant="${SB_SMOKE_TENANT:-sb-demo}"
+    tenant="${SB_SMOKE_TENANT:-sai-baba-school-bus}"
     case "${SB_SMOKE_USER}" in
-      sb-parent) paths="parent/me" ;;
-      sb-driver) paths="driver/today" ;;
-      *) paths="operator/dashboard" ;;
+      sb-parent|priya) paths="parent/me" ;;
+      sb-driver|suresh|arun) paths="driver/today" ;;
+      *) paths="operator/briefing" ;;
     esac
     for path in $paths; do
       code="$(curl -s -o /dev/null -w "%{http_code}" \

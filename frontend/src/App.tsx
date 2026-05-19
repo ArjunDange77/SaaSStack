@@ -4,7 +4,8 @@ import { useAuth } from "@/auth/AuthContext";
 import { AppShell } from "@/components/shell/AppShell";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
-import { PgDashboard } from "@/pages/PgDashboard";
+import { DashboardRoute } from "@/pages/DashboardRoute";
+import { isSchoolBusTenant } from "@/lib/schoolBusTenant";
 import { SbAttendanceHistory } from "@/pages/school_bus/SbAttendanceHistory";
 import { SbDashboard } from "@/pages/school_bus/SbDashboard";
 import { SbDriverIncident } from "@/pages/school_bus/SbDriverIncident";
@@ -18,7 +19,7 @@ import { ResidentPortal } from "@/pages/ResidentPortal";
 import { ResourceDetailRoute, ResourceListRoute } from "@/pages/ResourceRoute";
 
 function Protected({ children }: { children: ReactNode }) {
-  const { isAuthenticated, role, driverId } = useAuth();
+  const { isAuthenticated, role, driverId, tenantSlug } = useAuth();
   const location = useLocation();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -52,6 +53,13 @@ function Protected({ children }: { children: ReactNode }) {
     if (onOperatorShell && !onDriver) {
       return <Navigate to="/sb/driver" replace />;
     }
+  }
+  if (
+    isSchoolBusTenant(tenantSlug) &&
+    (role === "owner" || role === "staff") &&
+    location.pathname === "/dashboard"
+  ) {
+    return <Navigate to="/sb/dashboard" replace />;
   }
   return <>{children}</>;
 }
@@ -109,7 +117,7 @@ export default function App() {
         }
       >
         <Route index element={<HomePage />} />
-        <Route path="dashboard" element={<PgDashboard />} />
+        <Route path="dashboard" element={<DashboardRoute />} />
         <Route path="sb/dashboard" element={<SbDashboard />} />
         <Route path="sb/fees" element={<SbFees />} />
         <Route path="sb/notifications" element={<SbNotifications />} />

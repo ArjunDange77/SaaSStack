@@ -35,6 +35,10 @@ on:
         required: false
         type: boolean
         default: false
+      run_goa_pilot_seed:
+        required: false
+        type: boolean
+        default: false
       seed_demo:
         required: false
         type: boolean
@@ -167,7 +171,7 @@ jobs:
           DEPLOY_SLOT: ${{ inputs.deploy_slot }}
         run: bash deploy/scripts/seed_staging_sb_demo.sh
 
-      - name: Ensure sb-demo seed (School Bus)
+      - name: Ensure sb-demo seed (School Bus legacy)
         if: inputs.run_sb_demo_seed
         env:
           AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
@@ -178,6 +182,27 @@ jobs:
           SB_SMOKE_PASSWORD: admin
           SB_SMOKE_TENANT: sb-demo
         run: bash deploy/scripts/ensure_staging_sb_demo_seed.sh
+
+      - name: Seed Goa pilot (manual)
+        if: inputs.run_goa_pilot_seed && inputs.seed_demo
+        env:
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
+        run: bash deploy/scripts/seed_staging_goa_pilot.sh
+
+      - name: Ensure Goa pilot seed (sai-baba-school-bus)
+        if: inputs.run_goa_pilot_seed
+        env:
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
+          GOA_TENANT: sai-baba-school-bus
+          GOA_USER: kamlesh
+          GOA_PASSWORD: admin
+        run: bash deploy/scripts/ensure_staging_goa_pilot_seed.sh
 
       - uses: actions/download-artifact@v4
         id: frontend_artifact
@@ -241,6 +266,7 @@ jobs:
       - name: Smoke tests
         env:
           API_BASE_URL: ${{ secrets.STAGING_API_URL }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
           SMOKE_SWA_URL: ${{ secrets.SMOKE_SWA_URL }}
           SMOKE_WEB_URL: ${{ secrets.SMOKE_WEB_URL }}
           EXPECTED_ENV: ${{ inputs.expected_env }}
@@ -249,6 +275,9 @@ jobs:
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
           SMOKE_RESIDENT_USER: resident
           SMOKE_RESIDENT_PASSWORD: admin
+          SB_SMOKE_USER: kamlesh
+          SB_SMOKE_PASSWORD: admin
+          SB_SMOKE_TENANT: sai-baba-school-bus
         run: bash deploy/scripts/${{ inputs.smoke_script }}
 
       - name: Deployment summary

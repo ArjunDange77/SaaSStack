@@ -7,9 +7,9 @@ DEPLOY_SLOT="${DEPLOY_SLOT:-staging}"
 # shellcheck source=lib/app_service_slot_args.sh
 source "$ROOT/deploy/scripts/lib/app_service_slot_args.sh"
 
-RG="${AZURE_RESOURCE_GROUP:-rg-saasstack-sb-staging}"
-APP="${AZURE_WEBAPP_NAME:-saasstack-sb-staging-api}"
-API_URL="${STAGING_API_URL:-https://saasstack-sb-staging-api-staging.azurewebsites.net}"
+RG="${AZURE_RESOURCE_GROUP:-rg-saasstack-staging}"
+APP="${AZURE_WEBAPP_NAME:-saasstack-staging-api}"
+API_URL="${STAGING_API_URL:-https://saasstack-staging-api.azurewebsites.net}"
 
 GOA_TENANT="${GOA_TENANT:-sai-baba-school-bus}"
 GOA_USER="${GOA_USER:-kamlesh}"
@@ -110,5 +110,5 @@ fi
 
 echo ""
 echo "Done. Log in:"
-echo "  https://saasstack-sb-staging-web-staging.azurewebsites.net"
+echo "  https://saasstack-staging-web.azurestaticapps.net (or SMOKE_SWA_URL)"
 echo "  Tenant: ${GOA_TENANT}  |  kamlesh / suresh / priya  |  password: ${GOA_PASSWORD}"

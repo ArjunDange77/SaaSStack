@@ -2,86 +2,66 @@
 
 Operator-specific notes (subscription IDs, live URLs) belong in gitignored `deploy/docs/`.
 
-## PG Management staging (current — do not rename)
+## Unified staging (Phase 1 — current)
+
+**One resource group** hosts PG Management and School Bus via **multi-tenancy** (`X-Tenant`: `pg-demo`, `sai-baba-school-bus`).
 
 | Item | Value |
 |------|--------|
 | Resource group | `rg-saasstack-staging` |
 | App Service plan | `saasstack-staging-plan` (B1 Linux) |
 | API | `saasstack-staging-api` |
-| Frontend | `saasstack-staging-web` (Static Web App, `eastasia`) |
-| Postgres | `saasstack-staging-pg` / DB `saasstack_staging` (public + Azure services firewall) |
-| Key Vault | Not enabled (`enableKeyVault=false`) |
+| Frontend | `saasstack-staging-web` (Static Web App) |
+| Postgres | `saasstack-staging-pg` / DB `saasstack_staging` (public) |
 | GitHub environment | `staging` |
-| Deploy workflow | `deploy-pg-staging.yml` |
+| Deploy workflow | [`.github/workflows/deploy-staging.yml`](../../.github/workflows/deploy-staging.yml) |
+| Smoke | `deploy/scripts/smoke_unified_staging.sh` |
 
-## School Bus staging (target)
+**~USD/month:** $25–35 (single stack).
 
-| Item | Value |
-|------|--------|
-| Resource group | `rg-saasstack-sb-staging` |
-| Shared network RG | `rg-saasstack-shared` |
-| App Service plan | `saasstack-sb-staging-plan` (S1 Linux) |
-| API | `saasstack-sb-staging-api` (+ slot `staging`) |
-| Frontend | `saasstack-sb-staging-web` (+ slot `staging`, nginx static) |
-| Postgres | `saasstack-sb-staging-pg` / DB `saasstack_sb_staging` (private endpoint only) |
-| Key Vault | Per-product vault in SB RG |
-| GitHub environment | `schoolbus-staging` |
-| Deploy workflow | `deploy-schoolbus-staging.yml` |
+### Retired staging stacks (delete after cutover verified)
 
-## School Bus production
+| Resource group | Why remove |
+|----------------|------------|
+| `rg-saasstack-sb-staging` | Replaced by tenants on unified API |
+| `rg-saasstack-shared` | VNet/NAT only for old private Postgres |
+| `rg-saasstack-sb-prod` | Empty/test only until minimal prod provision |
 
-| Item | Value |
-|------|--------|
-| Resource group | `rg-saasstack-sb-prod` |
-| GitHub environment | `schoolbus-production` (required reviewers) |
-| Postgres HA | Zone-redundant when `environmentName=prod` |
+```bash
+bash deploy/scripts/teardown-schoolbus-staging.sh
+```
 
-## Network constants (shared VNet)
+### Deprecated IaC (reference only)
 
-| Resource | CIDR / name |
-|----------|-------------|
-| VNet | `10.20.0.0/16` — `saasstack-shared-vnet` |
-| App Service integration subnet | `10.20.1.0/24` — `apps-integration` |
-| Private endpoints subnet | `10.20.2.0/24` — `private-endpoints` |
-| Postgres delegated subnet (optional) | `10.20.3.0/24` — reserved |
+- [`schoolbus.bicep`](schoolbus.bicep) — heavy SB layout (private PG, VNet). **Do not provision for staging.**
+- [`provision-schoolbus-staging.sh`](../scripts/provision-schoolbus-staging.sh) — retired for staging.
+
+Use [`main.bicep`](main.bicep) for staging and future minimal production.
+
+## Phase 2 — Production (later, per product)
+
+When a product goes live, add a **dedicated production RG** with the **same minimal pattern** as unified staging (B1, public Postgres, SWA)—not the old SB VNet stack.
+
+| Product | Suggested RG | Workflow | IaC |
+|---------|--------------|----------|-----|
+| PG Management | `rg-saasstack-prod` (existing) | `deploy-pg-production.yml` | `main.bicep` `environmentName=prod` |
+| School Bus | `rg-saasstack-sb-prod` (re-provision minimal) | `deploy-schoolbus-production.yml` | `main.bicep` + `productSlug` or separate param file |
+
+Staging remains **one shared RG** for cost and velocity.
 
 ## Regions (India pilot default)
 
 | Layer | Region |
 |-------|--------|
-| Postgres / shared RG | `centralindia` |
-| App Services | `southindia` |
+| Postgres | `centralindia` |
+| App Services / SWA | `eastasia` (SWA) / `centralindia` or `southindia` (API) |
 
-Override via `AZURE_LOCATION`, `AZURE_APP_LOCATION` in provision scripts.
+## GitHub `staging` environment secrets
 
-## GitHub environments & secrets checklist
-
-### `schoolbus-staging`
-
-- `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
-- `AZURE_WEBAPP_NAME` (API)
-- `AZURE_WEBAPP_NAME_FRONTEND`
-- `AZURE_RESOURCE_GROUP` = `rg-saasstack-sb-staging`
-- `STAGING_API_URL`, `VITE_API_BASE`, `SMOKE_WEB_URL`
-- `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DB_HOST`, `DB_PORT`
-- `DJANGO_SECRET_KEY` (migrate job / validate)
-- `SMOKE_USERNAME`, `SMOKE_PASSWORD` (optional)
-
-### `schoolbus-production`
-
-Same keys as staging with production values; add approval gate on environment.
-
-## Cost estimate (order of magnitude)
-
-| Stack | ~USD/month |
-|-------|------------|
-| PG pilot (B1 + B1ms PG + free SWA) | $25–35 |
-| SB staging (S1 + 2 apps + NAT + private PG + KV) | $80–120 |
+See [STAGING-SECRETS.md](STAGING-SECRETS.md).
 
 ## Deploy triggers
 
-- Push to `staging` deploys **one product** via path filters (see `.github/workflows/deploy-pg-staging.yml` and `deploy-schoolbus-staging.yml`).
-- **Do not** use `deploy/azure/modules/**` on PG paths — shared modules (e.g. `key-vault.bicep`) also affect School Bus and would deploy both products.
-- Kernel-only changes: manual `workflow_dispatch` per product.
-- Each workflow has a `concurrency` group so duplicate School Bus runs cancel the older in-progress job.
+- Push to **`main`** or **`staging`** → **Deploy Staging** (unified).
+- `deploy-pg-staging.yml` and `deploy-schoolbus-staging.yml` are **retired** (manual dispatch shows error).
+- Production: separate workflows on `main` per product (Phase 2).

@@ -1,57 +1,19 @@
-# PG Management — staging deploy only (path-isolated from School Bus).
-name: Deploy PG Staging
-
-concurrency:
-  group: deploy-pg-staging
-  cancel-in-progress: false
+# Deprecated — use deploy-staging.yml (unified PG + School Bus on rg-saasstack-staging).
+name: Deploy PG Staging (deprecated)
 
 on:
-  push:
-    branches: [staging]
-    paths:
-      - "backend/apps/products/pg_management/**"
-      - "frontend/src/pages/Pg*.tsx"
-      - "frontend/src/pages/PublicBookingPage.tsx"
-      - "frontend/src/pages/ResidentPortal.tsx"
-      - "frontend/src/components/pg/**"
-      - "deploy/azure/main.bicep"
-      - "deploy/azure/staging.india.bicepparam"
-      # Do not use deploy/azure/modules/** — shared modules also used by School Bus.
-      # Workflow YAML changes: use workflow_dispatch (avoids dual deploy with School Bus).
   workflow_dispatch:
     inputs:
-      reason:
-        description: Why deploying (e.g. kernel change affecting PG)
+      note:
+        description: This workflow is retired; run "Deploy Staging" instead
         required: false
         type: string
-      seed_demo:
-        description: Re-seed pg-demo demo data (~3–5 min)
-        type: boolean
-        default: false
-
-permissions:
-  contents: read
-  id-token: write
-  packages: write
 
 jobs:
-  ci:
-    uses: ./.github/workflows/ci.yml
-    secrets: inherit
-    permissions:
-      contents: read
-      actions: write
-
-  deploy:
-    needs: ci
-    uses: ./.github/workflows/deploy-product-staging.yml
-    with:
-      product_label: PG Management
-      environment_name: staging
-      azure_resource_group: rg-saasstack-staging
-      expected_env: staging
-      frontend_deploy: static_web_app
-      run_pg_demo_seed: true
-      seed_demo: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.seed_demo == 'true' }}
-      smoke_script: smoke_test.sh
-    secrets: inherit
+  retired:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::deploy-pg-staging.yml is deprecated."
+          echo "Use .github/workflows/deploy-staging.yml (unified staging on main/staging)."
+          exit 1
