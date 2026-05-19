@@ -238,6 +238,10 @@ jobs:
           npm ci
           npm run build
 
+      - name: Verify frontend dist before SWA upload
+        if: inputs.frontend_deploy == 'static_web_app'
+        run: bash deploy/scripts/verify_frontend_dist.sh frontend/dist
+
       - name: Deploy frontend to Static Web Apps
         if: inputs.frontend_deploy == 'static_web_app'
         uses: Azure/static-web-apps-deploy@v1
@@ -245,7 +249,8 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: frontend/dist
+          app_location: frontend
+          output_location: dist
           skip_app_build: true
 
       - name: Package frontend zip
@@ -277,6 +282,7 @@ jobs:
         env:
           API_BASE_URL: ${{ secrets.STAGING_API_URL }}
           STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          UNIFIED_SWA_URL: https://saasstack-staging-web.azurestaticapps.net
           SMOKE_SWA_URL: ${{ secrets.SMOKE_SWA_URL }}
           SMOKE_WEB_URL: ${{ secrets.SMOKE_WEB_URL }}
           EXPECTED_ENV: ${{ inputs.expected_env }}
@@ -292,7 +298,12 @@ jobs:
         run: bash deploy/scripts/${{ inputs.smoke_script }}
 
       - name: Deployment summary
+        env:
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          SMOKE_SWA_URL: ${{ secrets.SMOKE_SWA_URL }}
         run: |
           echo "## ${{ inputs.product_label }} staging" >> $GITHUB_STEP_SUMMARY
           echo "- Version: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- RG: \`${{ inputs.azure_resource_group }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- API: \`${STAGING_API_URL:-https://saasstack-staging-api.azurewebsites.net}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- SWA: \`${SMOKE_SWA_URL:-https://saasstack-staging-web.azurestaticapps.net}\`" >> $GITHUB_STEP_SUMMARY

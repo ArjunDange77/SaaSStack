@@ -21,7 +21,11 @@ done
 echo ""
 echo "Keep: rg-saasstack-staging (unified PG + School Bus staging)"
 echo ""
-read -r -p "Type 'delete-sb-stacks' to confirm: " CONFIRM
+
+CONFIRM="${TEARDOWN_CONFIRM:-}"
+if [[ -z "$CONFIRM" ]]; then
+  read -r -p "Type 'delete-sb-stacks' to confirm: " CONFIRM
+fi
 
 if [[ "$CONFIRM" != "delete-sb-stacks" ]]; then
   echo "Aborted."

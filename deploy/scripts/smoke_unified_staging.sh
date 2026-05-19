@@ -17,7 +17,31 @@ export API_BASE_URL
 export EXPECTED_ENV="${EXPECTED_ENV:-staging}"
 export EXPECTED_VERSION="${EXPECTED_VERSION:-}"
 
+UNIFIED_SWA_URL="${UNIFIED_SWA_URL:-https://saasstack-staging-web.azurestaticapps.net}"
+LEGACY_SWA_URL="${SMOKE_SWA_URL:-${SMOKE_WEB_URL:-}}"
+
 echo "=== Unified staging smoke: $API_BASE_URL ==="
+
+check_swa_url() {
+  local url=$1
+  local label=$2
+  local status
+  status="$(curl -sS -o /dev/null -w "%{http_code}" "${url%/}/" 2>/dev/null || echo "000")"
+  if [[ "$status" == "404" ]] || [[ "$status" == "000" ]] || [[ "$status" -ge 400 ]]; then
+    echo "FAIL: ${label} SWA HTTP ${status} at ${url}/" >&2
+    return 1
+  fi
+  echo "OK: ${label} SWA HTTP ${status} at ${url}/"
+  return 0
+}
+
+echo "--- Static Web App (frontend) ---"
+check_swa_url "$UNIFIED_SWA_URL" "Unified"
+
+if [[ -n "$LEGACY_SWA_URL" && "$LEGACY_SWA_URL" != "$UNIFIED_SWA_URL" ]]; then
+  echo "WARN: SMOKE_SWA_URL is legacy (${LEGACY_SWA_URL}); update GitHub staging secret to ${UNIFIED_SWA_URL}"
+  check_swa_url "$LEGACY_SWA_URL" "Legacy (SMOKE_SWA_URL)" || true
+fi
 
 echo "--- Health / env ---"
 API_BASE_URL="$API_BASE_URL" EXPECTED_ENV="$EXPECTED_ENV" EXPECTED_VERSION="$EXPECTED_VERSION" \

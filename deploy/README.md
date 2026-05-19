@@ -58,6 +58,8 @@ Public booking rate limits use the Postgres `django_cache` table. `createcacheta
 
 **Unified staging:** `deploy-staging` runs CI, deploys to `rg-saasstack-staging`, migrates, ensures pg-demo + Goa pilot seeds, runs `smoke_unified_staging.sh`. Manual re-seed: **Actions → Deploy Staging** → check seed_pg_demo / seed_goa_pilot.
 
+**Verify + client demo:** [deploy/scripts/DEMO-STAGING.md](scripts/DEMO-STAGING.md) and [deploy/azure/TESTING-STAGING.md](azure/TESTING-STAGING.md).
+
 **Staging smoke secrets:** operator login uses `SMOKE_USERNAME` / `SMOKE_PASSWORD` secrets. Resident login uses workflow defaults `resident` / `admin` (do not add empty `SMOKE_RESIDENT_*` GitHub secrets — they used to override defaults and caused `login ()` 400).
 
 **Typical staging deploy time:** ~4–6 min (was ~9–10 min) — no per-push seed restart, no duplicate Docker/frontend builds.
