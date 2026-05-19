@@ -46,6 +46,7 @@ else
   echo "Sparse Goa pilot data — seeding via database..."
 fi
 
+echo "Goa DB seed may take several minutes on Azure Postgres (progress lines will appear)."
 bash "$ROOT/deploy/scripts/seed_goa_pilot_via_db.sh"
 
 if api_health_ok; then

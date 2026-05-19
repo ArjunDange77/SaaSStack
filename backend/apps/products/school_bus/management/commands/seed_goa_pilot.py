@@ -124,6 +124,11 @@ class Command(BaseCommand):
             self.stdout.write(f"Would seed tenant={slug} from {start} to {end} ({len(days)} school days)")
             return
 
+        self.stdout.write(
+            f"Seeding Goa pilot tenant {slug!r} ({start} to {end}; "
+            f"reset={options['reset']}) — may take several minutes on remote Postgres…"
+        )
+
         with transaction.atomic():
             if options["reset"]:
                 self._reset_tenant(slug)
@@ -139,6 +144,11 @@ class Command(BaseCommand):
             TenantMessagingConfig.objects.get_or_create(tenant=tenant, defaults={"demo_mode": True})
 
             school_days = _school_days(start, end)
+            trip_total = len(school_days) * 2
+            self.stdout.write(
+                f"Fleet and students ready; generating {trip_total} trips "
+                f"({len(school_days)} school days × 2 routes)…"
+            )
             self._generate_trips(tenant, fleet, school_days, students)
             self._generate_fees(tenant, students)
             self._sync_student_fee_status(tenant, students)
@@ -168,6 +178,7 @@ class Command(BaseCommand):
         Driver.objects.filter(tenant=tenant).delete()
         Bus.objects.filter(tenant=tenant).delete()
         NavBarItem.objects.filter(tenant=tenant).delete()
+        self.stdout.write(f"  Reset complete for {slug}.")
 
     def _ensure_tenant(self, slug: str) -> Tenant:
         tenant, _ = Tenant.objects.get_or_create(
@@ -416,7 +427,7 @@ class Command(BaseCommand):
         for trip_date in school_days:
             for route, bus, driver in routes:
                 n += 1
-                if n % 10 == 0 or n == total:
+                if n == 1 or n % 5 == 0 or n == total:
                     self.stdout.write(f"Creating trips… {_progress_bar(n, total)}")
 
                 rng = random.Random(trip_date.toordinal() + route.id)
@@ -455,6 +466,8 @@ class Command(BaseCommand):
                     trip.completed_at = completed_at
                     trip.save()
 
+                marked_at = started_at or timezone.now()
+                attendance_rows: list[TripAttendance] = []
                 for sid, student in students:
                     if student.assigned_route_id != route.id:
                         continue
@@ -467,17 +480,19 @@ class Command(BaseCommand):
                     if not present:
                         absent_reason = srng.choices(ABSENT_REASONS, weights=ABSENT_REASON_WEIGHTS)[0]
 
-                    TripAttendance.objects.update_or_create(
-                        tenant=tenant,
-                        trip=trip,
-                        student=student,
-                        defaults={
-                            "pickup_status": pickup,
-                            "drop_status": drop,
-                            "pickup_absent_reason": absent_reason,
-                            "marked_at": started_at or timezone.now(),
-                        },
+                    attendance_rows.append(
+                        TripAttendance(
+                            tenant=tenant,
+                            trip=trip,
+                            student=student,
+                            pickup_status=pickup,
+                            drop_status=drop,
+                            pickup_absent_reason=absent_reason,
+                            marked_at=marked_at,
+                        )
                     )
+                if attendance_rows:
+                    TripAttendance.objects.bulk_create(attendance_rows, batch_size=200)
                 created += 1
         return created
 
