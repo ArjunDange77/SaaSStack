@@ -73,6 +73,7 @@ class Command(BaseCommand):
 
         nav = [
             ("Command center", "/sb/dashboard", "layout-dashboard", "", "core", 5),
+            ("Attendance", "/sb/attendance", "clipboard-list", "", "operations", 8),
             ("Students", "/r/sb-students", "users", "sb-students", "operations", 10),
             ("Routes", "/r/sb-routes", "route", "sb-routes", "operations", 20),
             ("Drivers", "/r/sb-drivers", "user", "sb-drivers", "operations", 30),

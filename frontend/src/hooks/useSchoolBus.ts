@@ -66,6 +66,32 @@ export interface SbParentMe {
   recent_incidents: { id: number; category: string; severity: string; description: string }[];
 }
 
+export interface SbAttendanceHistoryRow {
+  id: number;
+  trip_id: number;
+  trip_date: string;
+  route_name: string;
+  student_id: number;
+  student_name: string;
+  pickup_status: string;
+  drop_status: string;
+  marked_at: string | null;
+}
+
+export function useSbAttendanceHistory(limit = 50) {
+  const { tenantSlug } = useAuth();
+  return useQuery({
+    queryKey: scopeTenant(tenantSlug, ["sb-attendance-history", limit]),
+    queryFn: async () => {
+      const { data } = await api.get<{ results: SbAttendanceHistoryRow[] }>(
+        "/sb/operator/attendance-history/",
+        { params: { limit } }
+      );
+      return data.results;
+    },
+  });
+}
+
 export function useSbOperatorDashboard() {
   const { tenantSlug } = useAuth();
   return useQuery({
@@ -113,7 +139,9 @@ export function useSbTripActions(tripId: number) {
   });
 
   const attendance = useMutation({
-    mutationFn: async (marks: { student_id: number; pickup_status: string }[]) => {
+    mutationFn: async (
+      marks: { student_id: number; pickup_status?: string; drop_status?: string }[]
+    ) => {
       await api.post(`/sb/driver/trips/${tripId}/attendance/`, { marks });
     },
     onSuccess: invalidate,

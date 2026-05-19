@@ -212,12 +212,14 @@ class Trip(TenantDomainModel):
     STATUS_PICKUP_IN_PROGRESS = "pickup_in_progress"
     STATUS_COMPLETED = "completed"
     STATUS_INCIDENT_REPORTED = "incident_reported"
+    STATUS_DELAYED = "delayed"
     STATUS_CHOICES = [
         (STATUS_SCHEDULED, "Scheduled"),
         (STATUS_STARTED, "Started"),
         (STATUS_PICKUP_IN_PROGRESS, "Pickup in progress"),
         (STATUS_COMPLETED, "Completed"),
         (STATUS_INCIDENT_REPORTED, "Incident reported"),
+        (STATUS_DELAYED, "Delayed"),
     ]
 
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name="trips")

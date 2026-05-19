@@ -63,4 +63,28 @@ After `python manage.py seed_school_bus` (tenant slug `sb-demo`, password `admin
 | `sb-driver` | Staff + driver profile | `/sb/driver` — start trip, mark pickup, complete |
 | `sb-parent` | Parent | `/sb/parent` — children, attendance, fee alerts |
 
-**Morning-ops walkthrough:** Operator opens command center → Driver starts today’s trip and marks pickup at each stop → optional incident → complete trip → Parent refreshes portal for attendance and reminders.
+**Morning-ops walkthrough:** Operator opens command center → Driver starts today’s trip and marks pickup/drop at each stop → optional incident → complete trip → Parent refreshes portal for attendance and reminders.
+
+### Local verification
+
+```bash
+docker compose up -d db backend
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py seed_kernel
+docker compose exec backend python manage.py seed_school_bus
+bash deploy/scripts/verify_sb_local_logins.sh
+cd frontend && npm run dev   # http://localhost:5173
+```
+
+### Client staging URLs
+
+| Service | URL |
+|---------|-----|
+| Frontend (slot) | https://saasstack-sb-staging-web-staging.azurewebsites.net |
+| API (slot) | https://saasstack-sb-staging-api-staging.azurewebsites.net |
+
+Logins: `sb-operator`, `sb-driver`, `sb-parent` — password `admin`, tenant `sb-demo`.
+
+**V1 out of scope:** payment gateway, WhatsApp/SMS, live GPS, PDF reporting.
+
+**Ops:** `python manage.py generate_monthly_fees --tenant sb-demo` for monthly fee rows.

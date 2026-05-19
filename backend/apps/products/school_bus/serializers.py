@@ -103,6 +103,18 @@ class StudentSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = ("tenant", "created_at", "updated_at")
+        extra_kwargs = {
+            "full_name": {"label": "Full name"},
+            "school_name": {"label": "School"},
+            "class_grade": {"label": "Class / grade"},
+            "pickup_stop": {"label": "Pickup stop"},
+            "drop_stop": {"label": "Drop stop"},
+            "assigned_route": {"label": "Route"},
+            "assigned_bus": {"label": "Bus"},
+            "parent": {"label": "Parent"},
+            "fee_status": {"label": "Fee status"},
+            "emergency_notes": {"label": "Emergency notes"},
+        }
 
 
 class TripSerializer(serializers.ModelSerializer):

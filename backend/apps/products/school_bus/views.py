@@ -102,6 +102,16 @@ class StudentViewSet(SBViewSet):
     resource_slug = "sb-students"
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
+    resource_list_display = (
+        "id",
+        "full_name",
+        "school_name",
+        "class_grade",
+        "assigned_route",
+        "assigned_bus",
+        "fee_status",
+    )
+    search_fields = ("full_name", "school_name", "class_grade")
 
 
 class TripViewSet(SBViewSet):
@@ -160,6 +170,17 @@ class OperatorDashboardView(APIView):
         if tenant is None:
             return Response({"detail": "Tenant required"}, status=400)
         return Response(services.operator_dashboard_payload(tenant))
+
+
+class OperatorAttendanceHistoryView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        limit = min(int(request.query_params.get("limit", 50)), 200)
+        return Response({"results": services.operator_attendance_history_payload(tenant, limit=limit)})
 
 
 class DriverTodayView(APIView):

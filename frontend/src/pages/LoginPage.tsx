@@ -9,7 +9,9 @@ export function LoginPage() {
   const { success, error: toastError } = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [tenant, setTenant] = useState("pg-demo");
+  const [tenant, setTenant] = useState(
+    () => localStorage.getItem("tenant_slug") || "sb-demo"
+  );
   const [error, setError] = useState("");
 
   if (isAuthenticated) {
@@ -43,7 +45,7 @@ export function LoginPage() {
       <form onSubmit={onSubmit}>
         <div className="field">
           <label>Tenant slug (X-Tenant)</label>
-          <input value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="pg-demo" />
+          <input value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="sb-demo" />
         </div>
         <div className="field">
           <label>Username</label>

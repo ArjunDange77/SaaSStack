@@ -110,8 +110,10 @@ export function SbDashboard() {
         </section>
       </div>
       <p className="muted sb-quick-links">
-        Manage data via <Link to="/r/sb-students">Students</Link>,{" "}
-        <Link to="/r/sb-routes">Routes</Link>, <Link to="/r/sb-drivers">Drivers</Link>.
+        <Link to="/sb/attendance">Attendance history</Link>
+        {" · "}
+        <Link to="/r/sb-students">Students</Link>, <Link to="/r/sb-routes">Routes</Link>,{" "}
+        <Link to="/r/sb-drivers">Drivers</Link>
       </p>
     </div>
   );

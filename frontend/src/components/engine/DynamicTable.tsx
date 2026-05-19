@@ -15,6 +15,11 @@ function formatColumnLabel(col: string): string {
   return col.replace(/_/g, " ");
 }
 
+function columnLabel(schema: ResourceSchema, col: string): string {
+  const field = fieldByName(schema, col);
+  return field?.label ?? formatColumnLabel(col);
+}
+
 function TableSkeleton({ columns }: { columns: number }) {
   return (
     <>
@@ -61,7 +66,7 @@ export function DynamicTable({ schema, rows, loading, onRowClick }: Props) {
         </div>
         {columns.slice(1).map((col) => (
           <div key={col} className="record-card-row">
-            <span className="record-card-label">{formatColumnLabel(col)}</span>
+            <span className="record-card-label">{columnLabel(schema, col)}</span>
             <span className="record-card-value">
               <CellValue
                 field={fieldByName(schema, col)}
@@ -115,7 +120,7 @@ export function DynamicTable({ schema, rows, loading, onRowClick }: Props) {
           <thead>
             <tr>
               {columns.map((col) => (
-                <th key={col}>{formatColumnLabel(col)}</th>
+                <th key={col}>{columnLabel(schema, col)}</th>
               ))}
               <th>Actions</th>
             </tr>

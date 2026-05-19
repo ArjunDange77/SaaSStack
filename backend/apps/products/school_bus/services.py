@@ -51,8 +51,26 @@ def ensure_trip_for_driver(tenant, driver: Driver, trip_date: date | None = None
     return trip
 
 
+def flag_delayed_trips(tenant, trip_date: date | None = None) -> int:
+    """Mark today's scheduled trips without a start time as delayed (morning ops)."""
+    trip_date = trip_date or _today()
+    now = timezone.localtime()
+    if now.date() != trip_date:
+        return 0
+    # After 07:30 local, unstarted morning trips count as delayed for the dashboard.
+    if (now.hour, now.minute) < (7, 30):
+        return 0
+    updated = Trip.objects.filter(
+        tenant=tenant,
+        trip_date=trip_date,
+        status=Trip.STATUS_SCHEDULED,
+        started_at__isnull=True,
+    ).update(status=Trip.STATUS_DELAYED)
+    return updated
+
+
 def start_trip(trip: Trip) -> Trip:
-    if trip.status not in (Trip.STATUS_SCHEDULED,):
+    if trip.status not in (Trip.STATUS_SCHEDULED, Trip.STATUS_DELAYED):
         raise ValueError(f"Cannot start trip in status {trip.status}")
     trip.status = Trip.STATUS_STARTED
     trip.started_at = timezone.now()
@@ -258,8 +276,33 @@ def parent_me_payload(tenant, parent: Parent) -> dict:
     }
 
 
+def operator_attendance_history_payload(tenant, limit: int = 50) -> list[dict]:
+    qs = (
+        TripAttendance.objects.filter(tenant=tenant)
+        .select_related("student", "trip", "trip__route")
+        .order_by("-marked_at", "-id")[:limit]
+    )
+    rows = []
+    for att in qs:
+        rows.append(
+            {
+                "id": att.id,
+                "trip_id": att.trip_id,
+                "trip_date": str(att.trip.trip_date),
+                "route_name": att.trip.route.name,
+                "student_id": att.student_id,
+                "student_name": att.student.full_name,
+                "pickup_status": att.pickup_status,
+                "drop_status": att.drop_status,
+                "marked_at": att.marked_at.isoformat() if att.marked_at else None,
+            }
+        )
+    return rows
+
+
 def operator_dashboard_payload(tenant) -> dict:
     today = _today()
+    flag_delayed_trips(tenant, today)
     active_buses = Bus.objects.filter(tenant=tenant, active=True).count()
     ongoing_trips = Trip.objects.filter(
         tenant=tenant,
@@ -302,7 +345,7 @@ def operator_dashboard_payload(tenant) -> dict:
     )
     late_routes = list(
         today_trips.filter(
-            status__in=[Trip.STATUS_SCHEDULED, Trip.STATUS_STARTED],
+            status__in=[Trip.STATUS_DELAYED, Trip.STATUS_SCHEDULED],
             started_at__isnull=True,
         ).values("id", "route__name", "status")[:5]
     )

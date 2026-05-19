@@ -6,6 +6,7 @@ from .views import (
     DriverTripAttendanceView,
     DriverTripCompleteView,
     DriverTripStartView,
+    OperatorAttendanceHistoryView,
     OperatorDashboardView,
     OperatorReminderBroadcastView,
     ParentMeView,
@@ -16,6 +17,11 @@ from .views import (
 urlpatterns = [
     path("dashboard/", SchoolBusDashboardView.as_view(), name="school-bus-dashboard"),
     path("operator/dashboard/", OperatorDashboardView.as_view(), name="sb-operator-dashboard"),
+    path(
+        "operator/attendance-history/",
+        OperatorAttendanceHistoryView.as_view(),
+        name="sb-operator-attendance-history",
+    ),
     path("operator/reminders/", OperatorReminderBroadcastView.as_view(), name="sb-operator-reminders"),
     path("driver/today/", DriverTodayView.as_view(), name="sb-driver-today"),
     path("driver/trips/<int:trip_id>/start/", DriverTripStartView.as_view(), name="sb-driver-trip-start"),

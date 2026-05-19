@@ -3738,7 +3738,37 @@ td {
 
 .sb-attendance-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.35rem;
+}
+
+.sb-attendance-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.sb-attendance-phase {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  width: 100%;
+  text-align: right;
+}
+
+.sb-attendance-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-end;
+}
+
+.sb-trip-chip--delayed {
+  background: color-mix(in srgb, var(--warning, #f59e0b) 25%, transparent);
+  color: var(--warning, #f59e0b);
 }
 
 .sb-attendance-badge {

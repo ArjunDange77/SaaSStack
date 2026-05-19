@@ -72,6 +72,11 @@ export function AppShell() {
   const headerTitle = branding?.name ?? "SaaSStack";
   const tenantLabel =
     myTenants?.find((t) => t.slug === tenantSlug)?.name ?? tenantSlug;
+  const isSchoolBus =
+    tenantSlug === "sb-demo" ||
+    tenantSlug.startsWith("sb-") ||
+    location.pathname.startsWith("/sb/");
+  const productLabel = isSchoolBus ? "School Bus" : "PG Management";
 
   const tenantSelect = (
     <>
@@ -107,7 +112,7 @@ export function AppShell() {
       <aside id="app-sidebar" className="sidebar" aria-hidden={isMobile ? !menuOpen : false}>
         <div className="sidebar-brand-block">
           <h1 className="sidebar-brand-name">{branding?.name ?? "SaaSStack"}</h1>
-          <p className="sidebar-brand-sub">PG Management</p>
+          <p className="sidebar-brand-sub">{productLabel}</p>
         </div>
         <div className="sidebar-tenant-block">{tenantSelect}</div>
         <NavBar badges={navBadges} />
