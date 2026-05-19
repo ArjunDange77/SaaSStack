@@ -42,6 +42,8 @@ bash deploy/scripts/refresh-unified-staging-github-secrets.sh --push
 
 This sets `SMOKE_SWA_URL`, `SMOKE_WEB_URL`, `VITE_API_BASE`, `STAGING_API_URL`, and a fresh `AZURE_STATIC_WEB_APPS_API_TOKEN` for **`saasstack-staging-web`** (not the legacy SB App Service URL).
 
+Deploy workflow uses [`deploy_frontend_swa.sh`](../scripts/deploy_frontend_swa.sh), which **reads the SWA token from Azure** during the job (OIDC) so a stale GitHub token cannot deploy to the wrong app.
+
 ## OIDC setup
 
 ```bash

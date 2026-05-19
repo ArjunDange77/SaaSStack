@@ -238,20 +238,14 @@ jobs:
           npm ci
           npm run build
 
-      - name: Verify frontend dist before SWA upload
-        if: inputs.frontend_deploy == 'static_web_app'
-        run: bash deploy/scripts/verify_frontend_dist.sh frontend/dist
-
       - name: Deploy frontend to Static Web Apps
         if: inputs.frontend_deploy == 'static_web_app'
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: upload
-          app_location: frontend
-          output_location: dist
-          skip_app_build: true
+        env:
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          STATIC_WEB_APP_NAME: saasstack-staging-web
+          UNIFIED_SWA_URL: https://saasstack-staging-web.azurestaticapps.net
+          AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        run: bash deploy/scripts/deploy_frontend_swa.sh frontend/dist
 
       - name: Package frontend zip
         if: inputs.frontend_deploy == 'app_service_zip'
