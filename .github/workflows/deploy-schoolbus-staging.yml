@@ -89,7 +89,8 @@ jobs:
       expected_env: staging
       frontend_deploy: app_service_zip
       deploy_slot: staging
-      run_migrations: true
+      # Postgres is private-endpoint only; migrations run in container entrypoint on App Service start.
+      run_migrations: false
       run_pg_demo_seed: false
       run_sb_demo_seed: true
       seed_demo: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.seed_demo == 'true' }}
