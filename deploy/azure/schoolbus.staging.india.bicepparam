@@ -2,7 +2,7 @@ using 'schoolbus.bicep'
 
 param environmentName = 'staging'
 param location = 'centralindia'
-param appServiceLocation = 'southindia'
+param appServiceLocation = 'centralindia'
 param enableMonitoring = true
 param enableKeyVault = true
 param enableDeploymentSlots = true

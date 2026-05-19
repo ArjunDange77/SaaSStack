@@ -9,7 +9,8 @@ load_local_secrets || true
 
 SB_RG="${AZURE_SB_RESOURCE_GROUP:-rg-saasstack-sb-staging}"
 LOCATION="${AZURE_LOCATION:-centralindia}"
-APP_LOCATION="${AZURE_APP_LOCATION:-southindia}"
+# App Service VNet integration requires the same region as the shared VNet (centralindia).
+APP_LOCATION="${AZURE_APP_LOCATION:-centralindia}"
 SHARED_ENV="$ROOT/deploy/.secrets/shared-network.env"
 SECRETS_DIR="$ROOT/deploy/.secrets"
 SECRETS_FILE="$SECRETS_DIR/schoolbus-staging.secrets.env"
@@ -77,9 +78,11 @@ PG_USER="$(az deployment group show --resource-group "$SB_RG" --name "$DEPLOYMEN
 KV_NAME="$(az deployment group show --resource-group "$SB_RG" --name "$DEPLOYMENT_NAME" --query properties.outputs.keyVaultName.value -o tsv)"
 
 if [[ -n "$KV_NAME" ]]; then
-  echo "Seeding Key Vault secrets in $KV_NAME..."
-  az keyvault secret set --vault-name "$KV_NAME" --name django-secret-key --value "$DJANGO_SECRET_KEY" --output none
-  az keyvault secret set --vault-name "$KV_NAME" --name postgres-password --value "$POSTGRES_PASSWORD" --output none
+  echo "Seeding Key Vault secrets in $KV_NAME (optional; RBAC may require Key Vault Secrets Officer)..."
+  az keyvault secret set --vault-name "$KV_NAME" --name django-secret-key --value "$DJANGO_SECRET_KEY" --output none 2>/dev/null \
+    || echo "WARN: skipped django-secret-key in Key Vault (grant yourself Secrets Officer on $KV_NAME if needed)"
+  az keyvault secret set --vault-name "$KV_NAME" --name postgres-password --value "$POSTGRES_PASSWORD" --output none 2>/dev/null \
+    || echo "WARN: skipped postgres-password in Key Vault"
 fi
 
 GITHUB_FILE="$SECRETS_DIR/github-schoolbus-staging-secrets.env"

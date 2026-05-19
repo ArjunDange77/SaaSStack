@@ -2,6 +2,19 @@
 
 ## Staging deploy
 
+### GitHub OIDC (required once)
+
+The `schoolbus-staging` environment must have `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`. If **Azure login** fails with “Not all values are present”, run locally:
+
+```bash
+# After rg-saasstack-sb-staging exists:
+GITHUB_ENVIRONMENT=schoolbus-staging AZURE_RESOURCE_GROUP=rg-saasstack-sb-staging \
+  bash deploy/scripts/setup-github-oidc.sh
+bash deploy/scripts/sync-github-schoolbus-staging-secrets.sh
+```
+
+App Service VNet integration must use the **same region** as the shared VNet (`centralindia`). Do not set `AZURE_APP_LOCATION=southindia` for School Bus unless the shared VNet is also in that region.
+
 1. Merge to `staging` with paths under `school_bus/` **or** run **Deploy School Bus Staging** (`workflow_dispatch`).
 2. Workflow deploys backend + frontend to App Service **slot `staging`**.
 3. Verify: `https://<api-app>-staging.azurewebsites.net/api/health/`
