@@ -38,12 +38,12 @@ describe("SbAttendancePage", () => {
       },
       isLoading: false,
       error: null,
-    } as ReturnType<typeof useSbAttendanceSummary>);
+    } as unknown as ReturnType<typeof useSbAttendanceSummary>);
     mockHistory.mockReturnValue({
       data: [],
       isLoading: false,
       error: null,
-    } as ReturnType<typeof useSbAttendanceHistory>);
+    } as unknown as ReturnType<typeof useSbAttendanceHistory>);
   });
 
   it("renders student attendance row", () => {
