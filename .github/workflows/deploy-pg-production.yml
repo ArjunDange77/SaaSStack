@@ -2,15 +2,7 @@
 name: Deploy PG Production
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "backend/apps/products/pg_management/**"
-      - "frontend/src/pages/Pg*.tsx"
-      - "frontend/src/pages/PublicBookingPage.tsx"
-      - "frontend/src/pages/ResidentPortal.tsx"
-      - "frontend/src/components/pg/**"
-      - ".github/workflows/deploy-pg-production.yml"
+  # Production is manual until release — no deploy on merge to main.
   workflow_dispatch:
     inputs:
       reason:

@@ -62,6 +62,6 @@ See [STAGING-SECRETS.md](STAGING-SECRETS.md).
 
 ## Deploy triggers
 
-- Push to **`main`** or **`staging`** → **Deploy Staging** (unified).
+- Push to **`staging`** → **Deploy Staging** (unified). **`main`** does not auto-deploy.
 - `deploy-pg-staging.yml` and `deploy-schoolbus-staging.yml` are **retired** (manual dispatch shows error).
 - Production: separate workflows on `main` per product (Phase 2).

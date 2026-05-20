@@ -56,7 +56,7 @@ Public booking rate limits use the Postgres `django_cache` table. `createcacheta
 | **Full smoke** | Login, catalog, dashboard, public booking at end |
 | **Entrypoint** | `createcachetable` must succeed or container startup fails |
 
-**Unified staging:** `deploy-staging` runs CI, deploys to `rg-saasstack-staging`, migrates, ensures pg-demo + Goa pilot seeds, runs `smoke_unified_staging.sh`. Manual re-seed: **Actions → Deploy Staging** → check seed_pg_demo / seed_goa_pilot.
+**Unified staging:** `deploy-staging` runs on push to **`staging`** only (not `main`). It runs CI, deploys to `rg-saasstack-staging`, migrates, ensures pg-demo + Goa pilot seeds, runs `smoke_unified_staging.sh`. Manual deploy/re-seed: **Actions → Deploy Staging** → check seed_pg_demo / seed_goa_pilot.
 
 **Verify + client demo:** [deploy/scripts/DEMO-STAGING.md](scripts/DEMO-STAGING.md) and [deploy/azure/TESTING-STAGING.md](azure/TESTING-STAGING.md).
 

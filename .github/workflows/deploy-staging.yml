@@ -6,8 +6,9 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  # Staging only — merges/pushes to main do not deploy (use workflow_dispatch here if needed).
   push:
-    branches: [main, staging]
+    branches: [staging]
     paths:
       - "backend/**"
       - "frontend/**"

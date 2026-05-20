@@ -21,7 +21,7 @@ bash deploy/scripts/sync-github-staging-secrets.sh
 
 See [STAGING-SECRETS.md](STAGING-SECRETS.md).
 
-1. Merge to **`main`** or **`staging`** **or** run **Deploy Staging** (`workflow_dispatch`).
+1. Push to **`staging`** (auto deploy) **or** run **Deploy Staging** manually (`workflow_dispatch`). Merges to **`main`** do not deploy.
 2. Workflow deploys API (GHCR image) + SWA frontend; runs migrations; ensures pg-demo + Goa pilot seeds.
 3. Verify API: `https://saasstack-staging-api.azurewebsites.net/api/health/`
 4. Run `bash deploy/scripts/smoke_unified_staging.sh` locally if needed.

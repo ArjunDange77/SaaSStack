@@ -2,20 +2,7 @@
 name: Deploy School Bus Production
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "backend/apps/products/school_bus/**"
-      - "frontend/src/pages/school_bus/**"
-      - "frontend/src/pages/__tests__/Sb*.test.tsx"
-      - "frontend/src/hooks/useSchoolBus.ts"
-      - "frontend/src/components/school_bus/**"
-      - "frontend/src/App.tsx"
-      - "frontend/src/auth/AuthContext.tsx"
-      - "frontend/src/pages/LoginPage.tsx"
-      - "deploy/azure/schoolbus.bicep"
-      - "deploy/azure/schoolbus.prod.india.bicepparam"
-      - ".github/workflows/deploy-schoolbus-production.yml"
+  # Production is manual until release — no deploy on merge to main.
   workflow_dispatch:
     inputs:
       skip_swap:
