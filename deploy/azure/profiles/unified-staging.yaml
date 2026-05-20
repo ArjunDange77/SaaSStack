@@ -16,5 +16,5 @@ workflow:
   frontend_deploy: static_web_app
   run_goa_pilot_seed: true
   run_sb_demo_seed: false
-  early_gate_script: smoke_unified_staging.sh
+  early_gate_script: smoke_public_api.sh
   smoke_script: smoke_unified_staging.sh

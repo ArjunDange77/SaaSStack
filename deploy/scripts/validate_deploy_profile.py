@@ -26,7 +26,7 @@ WORKFLOW_CHECKS: dict[str, list[tuple[str, str]]] = {
         (ROOT / ".github/workflows/deploy-staging.yml", "deploy_profile: unified-staging"),
         (ROOT / ".github/workflows/deploy-staging.yml", "run_sb_demo_seed: false"),
         (ROOT / ".github/workflows/deploy-staging.yml", "run_goa_pilot_seed: true"),
-        (ROOT / ".github/workflows/deploy-staging.yml", "early_gate_script: smoke_unified_staging.sh"),
+        (ROOT / ".github/workflows/deploy-staging.yml", "early_gate_script: smoke_public_api.sh"),
         (ROOT / ".github/workflows/deploy-staging.yml", "smoke_script: smoke_unified_staging.sh"),
         (
             ROOT / ".github/workflows/deploy-product-staging.yml",
