@@ -2,34 +2,39 @@
 # Count Goa pilot students via operator dashboard (requires API_URL + credentials in env).
 
 goa_pilot_student_count() {
-  python3 - <<'PY'
-import json
-import os
-import urllib.request
+  local api tenant user password token
+  api="${API_URL%/}"
+  tenant="${GOA_TENANT:-sai-baba-school-bus}"
+  user="${GOA_USER:-kamlesh}"
+  password="${GOA_PASSWORD:-admin}"
 
-api = os.environ["API_URL"].rstrip("/")
-tenant = os.environ.get("GOA_TENANT", "sai-baba-school-bus")
-user = os.environ.get("GOA_USER", "kamlesh")
-password = os.environ.get("GOA_PASSWORD", "admin")
+  token="$(curl -sf -X POST "${api}/api/auth/login/" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"${user}\",\"password\":\"${password}\"}" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin).get('access',''))" 2>/dev/null || true)"
+  if [[ -z "$token" ]]; then
+    echo "WARN: Goa pilot login failed for ${user} @ ${tenant}" >&2
+    echo 0
+    return 0
+  fi
 
-try:
-    login_req = urllib.request.Request(
-        f"{api}/api/auth/login/",
-        data=json.dumps({"username": user, "password": password}).encode(),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(login_req, timeout=60) as resp:
-        token = json.load(resp)["access"]
-    dash_req = urllib.request.Request(
-        f"{api}/api/sb/operator/dashboard/",
-        headers={"Authorization": f"Bearer {token}", "X-Tenant": tenant},
-    )
-    with urllib.request.urlopen(dash_req, timeout=60) as resp:
-        print(int(json.load(resp).get("total_students", 0)))
-except Exception:
-    print(0)
-PY
+  local count
+  count="$(curl -sf \
+    -H "Authorization: Bearer ${token}" \
+    -H "X-Tenant: ${tenant}" \
+    "${api}/api/sb/operator/dashboard/" \
+    | python3 -c "import sys,json; print(int(json.load(sys.stdin).get('total_students', 0)))" 2>/dev/null || echo 0)"
+
+  if [[ -z "$count" || "$count" == "0" ]]; then
+    # Fallback: briefing embeds dashboard totals (same auth path as smoke_schoolbus_staging.sh)
+    count="$(curl -sf \
+      -H "Authorization: Bearer ${token}" \
+      -H "X-Tenant: ${tenant}" \
+      "${api}/api/sb/operator/briefing/" \
+      | python3 -c "import sys,json; d=json.load(sys.stdin); print(int(d.get('dashboard',{}).get('total_students', 0)))" 2>/dev/null || echo 0)"
+  fi
+
+  echo "${count:-0}"
 }
 
 assert_goa_pilot_min_students() {
@@ -43,6 +48,7 @@ assert_goa_pilot_min_students() {
   total="$(goa_pilot_student_count)"
   if [[ "$total" -lt "$min" ]]; then
     echo "ERROR: Goa pilot has ${total} students (need >= ${min}) for ${GOA_USER} @ ${GOA_TENANT}" >&2
+    echo "  Hint: run ensure_staging_goa_pilot_seed.sh or Deploy Staging with run_goa_pilot_seed." >&2
     return 1
   fi
   echo "Goa pilot OK: ${total} students (minimum ${min})"
