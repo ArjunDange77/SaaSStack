@@ -10,7 +10,7 @@ export function postLoginPath(
 ): string {
   if (role === "resident") return "/resident";
   if (role === "parent" || parentId) return "/sb/parent";
-  if (role === "driver" || (driverId && role !== "owner" && role !== "staff")) {
+  if (role === "driver" || (driverId != null && role !== "owner")) {
     return "/sb/driver";
   }
   if (role === "owner") {

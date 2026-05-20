@@ -3,8 +3,7 @@
 import pytest
 
 from apps.products.school_bus import services
-from apps.products.school_bus.models import Trip
-from apps.tenancy.models import Tenant, TenantMembership
+from apps.tenancy.models import Tenant
 
 
 @pytest.mark.django_db
