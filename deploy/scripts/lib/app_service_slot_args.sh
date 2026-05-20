@@ -1,5 +1,11 @@
 # shellcheck shell=bash
 # Source to set SLOT_ARGS array for az webapp commands (empty = production slot).
+_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$_LIB_DIR/az_cli.sh" ]]; then
+  # shellcheck source=az_cli.sh
+  source "$_LIB_DIR/az_cli.sh"
+fi
+
 DEPLOY_SLOT="${DEPLOY_SLOT:-}"
 SLOT_ARGS=()
 if [[ -n "$DEPLOY_SLOT" ]]; then
@@ -12,8 +18,13 @@ deploy_slot_exists() {
   if [[ -z "$slot" ]]; then
     return 0
   fi
-  az webapp deployment slot list --resource-group "$rg" --name "$app" \
-    --query "[?name=='${slot}'].name" -o tsv 2>/dev/null | grep -qx "$slot"
+  if declare -F az_run >/dev/null 2>&1; then
+    az_run webapp deployment slot list --resource-group "$rg" --name "$app" \
+      --query "[?name=='${slot}'].name" -o tsv | grep -qx "$slot"
+  else
+    az webapp deployment slot list --resource-group "$rg" --name "$app" \
+      --query "[?name=='${slot}'].name" -o tsv 2>/dev/null | grep -qx "$slot"
+  fi
 }
 
 # Exit 1 when a non-empty deploy slot is configured but missing on the web app.

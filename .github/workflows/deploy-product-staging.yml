@@ -89,8 +89,10 @@ jobs:
         env:
           AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
           AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           DEPLOY_SLOT: ${{ inputs.deploy_slot }}
           DEPLOY_PROFILE: ${{ inputs.deploy_profile }}
+          AZ_CLI_TIMEOUT_SEC: "120"
         run: bash deploy/scripts/preflight_deploy_target.sh
 
       - name: Run migrations
