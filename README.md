@@ -26,6 +26,12 @@ docker compose up --build
 
 After first boot, the entrypoint runs migrations and `seed_kernel` (demo tenant + nav).
 
+If you see `relation "registry_activitylog" does not exist` when creating records, apply pending migrations:
+
+```bash
+docker compose exec backend python manage.py migrate
+```
+
 ### API headers
 
 - `Authorization: Bearer <access_token>` (from `POST /api/auth/login/`)
@@ -54,12 +60,21 @@ After first boot, the entrypoint runs migrations and `seed_kernel` (demo tenant 
 ## Frontend routes
 
 - `/` — home + resource catalog  
-- `/r/:slug` — dynamic list  
-- `/r/:slug/:id` — dynamic detail + `@action` buttons from metadata  
+- `/dashboard` — PG Management dashboard (V1 vertical)  
+- `/r/:slug` — dynamic list (search + pagination)  
+- `/r/:slug/:id` — dynamic detail + `@action` buttons + activity timeline  
+
+## PG Management (V1)
+
+```bash
+python manage.py seed_pg
+```
+
+See `backend/apps/products/pg_management/README.md`. Use `X-Tenant: pg-demo` after seeding.
 
 ## Project layout
 
-- `docs/contracts/` — **platform contracts** (metadata, fields, actions, tenant rules, rendering)
+- `docs/` — **local documentation** (gitignored; contracts, pilot notes, demo scripts)
 - `backend/apps/registry/` — registry, metadata engine, kernel base ViewSet  
 - `backend/apps/demo/` — validation resource (`demo-items`)  
 - `backend/apps/cosmetix/` — shell (branding, nav)  
@@ -67,27 +82,41 @@ After first boot, the entrypoint runs migrations and `seed_kernel` (demo tenant 
 
 ## Contracts and versioning
 
-All kernel payloads include `schema_version` (currently **`1.0`**). See [docs/contracts/README.md](docs/contracts/README.md) before changing APIs or UI behavior.
+All kernel payloads include `schema_version` (currently **`1.0`**). See `docs/contracts/README.md` locally before changing APIs or UI behavior.
+
+## Responsive UI (mobile-first)
+
+Most operators use phones. The app uses a **hamburger drawer** below 768px, **card lists** on mobile (tables on desktop), bottom-sheet modals, and thumb-friendly toasts.
+
+Before shipping UI changes, check **375px**, **768px**, and **1280px** in browser DevTools. See [`.cursor/rules/responsive-ui.mdc`](.cursor/rules/responsive-ui.mdc) for agent/author guidelines.
 
 ## Testing (TDD baseline)
 
-**Contracts are the spec; tests prove the code matches.**
+**Contracts are the spec; tests prove the code matches.** New work is not done until touched behavior has a regression test. See [`.cursor/rules/testing.mdc`](.cursor/rules/testing.mdc) for the full policy.
 
 ```bash
-# Backend (SQLite in-memory for tests)
+# Backend lint (same paths as CI; also runs in ci.yml)
+bash scripts/ruff-check.sh
+
+# Backend (70% line coverage floor on apps/)
 cd backend
 pip install -r requirements-dev.txt
-pytest
+pytest --cov-fail-under=70
 
-# Frontend
+# Frontend (40% line coverage floor)
 cd frontend
 npm install
-npm run test:run
+npm run test:coverage
+
+# Both (from repo root)
+bash scripts/test-all.sh
 ```
+
+**Definition of done:** backend change → pytest in the owning app; frontend change → vitest for changed components/hooks; login/portal/booking flows → extend `deploy/scripts/smoke_test.py` or API integration tests. CI fails if coverage drops below configured floors.
 
 ### Kernel validation checklist (automated)
 
-Green `pytest` + `npm run test:run` means:
+Green `pytest --cov-fail-under=70` + `npm run test:coverage` means:
 
 - [ ] `schema_version` present on catalog and resource metadata  
 - [ ] Registered resource appears in `/api/meta/catalog/`  
@@ -95,11 +124,27 @@ Green `pytest` + `npm run test:run` means:
 - [ ] Tenant-scoped CRUD respects `X-Tenant` (fail closed without tenant)  
 - [ ] `@action` endpoints (e.g. `archive`) work via metadata  
 - [ ] `seed_kernel` creates demo tenant + nav + branding  
-- [ ] React engine renders field types per [rendering-expectations.md](docs/contracts/rendering-expectations.md)  
+- [ ] React engine renders field types per `docs/contracts/rendering-expectations.md` (local)
 
 ### TDD workflow for a new resource
 
-1. Update [docs/contracts/](docs/contracts/) if the contract changes.  
+1. Update `docs/contracts/` locally if the contract changes.  
 2. Copy `backend/apps/demo/tests/` patterns; add tests for your slug.  
 3. Red → implement model + `register_resource` → migrate → green.  
-4. Add optional `NavBarItem` in admin; verify `/r/<slug>` in the app.  
+4. Add optional `NavBarItem` in admin; verify `/r/<slug>` in the app.
+
+## Deployment (Azure + CI/CD)
+
+| Branch | CI | Deploy |
+|--------|-----|--------|
+| `feature/*` | lint, test, build | never |
+| `staging` | on PR + path-filtered push | **PG** → `deploy-pg-staging.yml` · **School Bus** → `deploy-schoolbus-staging.yml` |
+| `main` | on PR + path-filtered push | **PG** → `deploy-pg-production.yml` · **School Bus** → `deploy-schoolbus-production.yml` (slot swap) |
+
+Kernel-only merges do not auto-deploy; use `workflow_dispatch` on the product workflow you need.
+
+- Health: `GET /api/health/` (version, environment, DB/storage checks)
+- **Azure staging (India):** operator guides live in `deploy/docs/` (**local only**, gitignored — not on GitHub). Start with `deploy/docs/india-staging-deploy.md` after copying `deploy/.secrets/azure-account.local.env.example` → `azure-account.local.env`.
+- Scripts: `deploy/scripts/provision-staging-india.sh`, `deploy/scripts/cost-guardrails-setup.sh`
+- Compose: `docker-compose.dev.yml` (dev), `docker-compose.prod.yml` (prod-like)
+- Settings: `DJANGO_SETTINGS_MODULE=config.settings.local|staging|production`

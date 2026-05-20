@@ -1,6 +1,7 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { ResourceForm } from "../ResourceForm";
+import { renderWithQuery } from "@/test/test-utils";
 import schemaFixture from "@/test/fixtures/metadata_demo_items_v1.json";
 import type { ResourceSchema } from "@/types/metadata";
 
@@ -9,7 +10,7 @@ const schema = schemaFixture as ResourceSchema;
 describe("ResourceForm", () => {
   it("submits editable non-tenant fields only", () => {
     const onSubmit = vi.fn();
-    render(
+    renderWithQuery(
       <ResourceForm
         schema={schema}
         onSubmit={onSubmit}

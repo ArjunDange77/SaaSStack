@@ -1,0 +1,69 @@
+# Unified staging deploy — PG + School Bus on rg-saasstack-staging (multi-tenant, one API).
+name: Deploy Staging
+
+concurrency:
+  group: deploy-staging-unified
+  cancel-in-progress: true
+
+on:
+  # Staging only — merges/pushes to main do not deploy (use workflow_dispatch here if needed).
+  push:
+    branches: [staging]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "deploy/**"
+      - "docker-compose*.yml"
+      - "scripts/ruff-check.sh"
+      - "scripts/test-all.sh"
+      - ".github/workflows/deploy-staging.yml"
+      - ".github/workflows/deploy-product-staging.yml"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Why deploying
+        required: false
+        type: string
+      seed_pg_demo:
+        description: Force re-seed pg-demo
+        type: boolean
+        default: false
+      seed_goa_pilot:
+        description: Force re-seed sai-baba-school-bus (Goa pilot)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: write
+
+  deploy:
+    needs: ci
+    uses: ./.github/workflows/deploy-product-staging.yml
+    with:
+      product_label: SaaSStack unified staging
+      environment_name: staging
+      azure_resource_group: rg-saasstack-staging
+      expected_env: staging
+      frontend_deploy: static_web_app
+      deploy_profile: unified-staging
+      run_migrations: true
+      run_pg_demo_seed: true
+      run_goa_pilot_seed: true
+      run_sb_demo_seed: false
+      seed_demo: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.seed_pg_demo == 'true' || github.event.inputs.seed_goa_pilot == 'true') }}
+      seed_goa_force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.seed_goa_pilot == 'true' }}
+      # API-only gate after backend deploy; SWA is checked in final smoke (post deploy_frontend_swa.sh).
+      early_gate_script: smoke_public_api.sh
+      smoke_script: smoke_unified_staging.sh
+    secrets: inherit

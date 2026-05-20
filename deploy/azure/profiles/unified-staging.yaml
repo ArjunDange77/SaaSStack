@@ -1,0 +1,20 @@
+# Expected deploy contract for rg-saasstack-staging (multi-tenant PG + School Bus).
+name: unified-staging
+resource_group: rg-saasstack-staging
+api_app: saasstack-staging-api
+deploy_slot: ""
+frontend: static_web_app
+run_goa_pilot_seed: true
+run_sb_demo_seed: false
+bicep: main.bicep
+enable_staging_slot: false
+
+# Workflow caller expectations (deploy-staging.yml)
+workflow:
+  azure_resource_group: rg-saasstack-staging
+  deploy_slot: ""
+  frontend_deploy: static_web_app
+  run_goa_pilot_seed: true
+  run_sb_demo_seed: false
+  early_gate_script: smoke_public_api.sh
+  smoke_script: smoke_unified_staging.sh

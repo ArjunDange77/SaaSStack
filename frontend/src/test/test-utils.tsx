@@ -1,0 +1,18 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, type RenderOptions } from "@testing-library/react";
+import { AuthProvider } from "@/auth/AuthContext";
+
+export function renderWithQuery(ui: React.ReactElement, options?: RenderOptions) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>, options);
+}
+
+export function renderWithProviders(ui: React.ReactElement, options?: RenderOptions) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <AuthProvider>{ui}</AuthProvider>
+    </QueryClientProvider>,
+    options
+  );
+}

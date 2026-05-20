@@ -12,10 +12,9 @@ def build_resource_router() -> DefaultRouter:
     return router
 
 
-resource_router = build_resource_router()
-
 urlpatterns = [
     path("catalog/", meta_views.ResourceListMetaView.as_view(), name="meta-resource-catalog"),
     path("schema/<slug>/", meta_views.ResourceSchemaView.as_view(), name="meta-schema"),
-    path("resources/", include(resource_router.urls)),
+    path("activity/", meta_views.ActivityListView.as_view(), name="meta-activity"),
+    path("resources/", include(build_resource_router().urls)),
 ]

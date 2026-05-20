@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   db:
     image: postgres:15
@@ -27,6 +26,10 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     env_file: .env
+    environment:
+      RUN_BOOTSTRAP: "true"
+      SEED_PG_DEMO: "true"
+      DJANGO_SETTINGS_MODULE: config.settings.local
     depends_on:
       db:
         condition: service_healthy

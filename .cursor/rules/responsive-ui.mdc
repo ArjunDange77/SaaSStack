@@ -1,0 +1,29 @@
+---
+description: Mobile-first responsive UI for SaaSStack frontend
+globs: frontend/**/*.{tsx,css}
+alwaysApply: false
+---
+
+# Responsive UI (mobile-first)
+
+Primary users are on **phones**. Design for 375px first, then enhance at `768px` (`--bp-md`) and `1024px` (`--bp-lg`).
+
+## Rules
+
+1. **Mobile-first CSS** — default styles for small screens; use `@media (min-width: 768px)` for desktop, not scattered `max-width` overrides.
+2. **No fixed layout widths** without a mobile alternative (sidebar uses drawer; lists use `.record-cards` on mobile via `DynamicTable`).
+3. **Shell** — navigation via hamburger + drawer below `768px`; do not add PG-specific mobile nav.
+4. **Lists** — use [`DynamicTable`](frontend/src/components/engine/DynamicTable.tsx) (card + table dual layout); do not build product-only mobile tables.
+5. **Toolbars** — use `.toolbar-responsive` or `.toolbar-actions-responsive` on new toolbars.
+6. **Modals** — use `.modal-backdrop` + `.modal` (bottom sheet on mobile, centered on desktop).
+7. **Touch** — interactive controls `min-height: 44px` (`--touch-min`); form inputs `font-size: 16px` on mobile to avoid iOS zoom.
+8. **Visibility helpers** — `.mobile-only` / `.desktop-only` for dual layouts; prefer CSS over JS unless `aria-hidden` or similar requires `useIsMobile()`.
+9. **Test viewports** — verify at **375px**, **768px**, and **1280px** before shipping UI changes.
+
+## Do not
+
+- Add `if (slug === 'pg-*')` for responsive behavior in engine code.
+- Introduce Tailwind or a new UI library for responsiveness alone.
+- Rely on horizontal page scroll for primary content on mobile.
+- Add nav links or action buttons to raw `/api/...` URLs (full-page Django HTML on mobile).
+- Expose internal read-only endpoints (e.g. `timeline`) as operator actions — use the Activity section on detail views instead.

@@ -1,0 +1,134 @@
+# PG Management — production deploy (path-isolated).
+name: Deploy PG Production
+
+on:
+  # Production is manual until release — no deploy on merge to main.
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Why deploying
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: write
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image name
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}/backend" >> "$GITHUB_ENV"
+
+      - name: Validate production environment
+        env:
+          DEPLOY_PROFILE: production
+          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          ALLOWED_HOSTS: ${{ secrets.ALLOWED_HOSTS }}
+          CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
+          SEED_PG_DEMO: "false"
+        run: python deploy/scripts/validate_env.py
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: APP_VERSION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run migrations
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.production
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+        run: |
+          pip install -r backend/requirements.txt
+          bash deploy/scripts/migrate.sh
+
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          images: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Early API gate
+        env:
+          API_BASE_URL: ${{ secrets.PRODUCTION_API_URL }}
+          EXPECTED_ENV: production
+          EXPECTED_VERSION: ${{ github.sha }}
+        run: bash deploy/scripts/smoke_public_api.sh
+
+      - uses: actions/download-artifact@v4
+        id: frontend_artifact
+        continue-on-error: true
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - uses: actions/setup-node@v4
+        if: steps.frontend_artifact.outcome != 'success'
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm build (fallback)
+        if: steps.frontend_artifact.outcome != 'success'
+        working-directory: frontend
+        env:
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+        run: npm ci && npm run build
+
+      - name: Deploy frontend to Static Web Apps
+        env:
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          STATIC_WEB_APP_NAME: ${{ secrets.AZURE_STATIC_WEB_APP_NAME }}
+          AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        run: bash deploy/scripts/deploy_frontend_swa.sh frontend/dist
+
+      - name: Smoke tests
+        env:
+          API_BASE_URL: ${{ secrets.PRODUCTION_API_URL }}
+          EXPECTED_ENV: production
+          EXPECTED_VERSION: ${{ github.sha }}
+          SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          SMOKE_RESIDENT_USER: resident
+          SMOKE_RESIDENT_PASSWORD: admin
+        run: bash deploy/scripts/smoke_test.sh

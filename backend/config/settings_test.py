@@ -1,10 +1,22 @@
-"""Test settings — SQLite in-memory (no Docker Postgres required)."""
+"""Test settings — SQLite in-memory."""
 
-from .settings import *  # noqa: F401,F403
+from config.settings.base import *  # noqa: F401,F403
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":memory:",
+    }
+}
+
+MEDIA_ROOT = BASE_DIR / "test_media"  # noqa: F405
+DEPLOY_ENV = "local"
+CORS_ALLOW_ALL_ORIGINS = True
+
+# Match staging/production so throttle tests exercise DatabaseCache.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
     }
 }

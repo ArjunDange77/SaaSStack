@@ -48,6 +48,14 @@ def test_metadata_includes_archive_action():
     assert "post" in archive["methods"]
 
 
+def test_metadata_excludes_timeline_internal_action():
+    meta = build_resource_metadata("demo-items", DemoItemViewSet)
+    names = {a["name"] for a in meta["actions"]}
+    paths = {a["url_path"] for a in meta["actions"]}
+    assert "timeline" not in names
+    assert "timeline" not in paths
+
+
 def test_metadata_category_field_is_choice():
     meta = build_resource_metadata("demo-items", DemoItemViewSet)
     category = next(f for f in meta["fields"] if f["name"] == "category")

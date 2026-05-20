@@ -1,0 +1,317 @@
+# Reusable staging deploy for a single SaaSStack product (PG, School Bus, future verticals).
+name: Deploy Product Staging
+
+on:
+  workflow_call:
+    inputs:
+      product_label:
+        required: true
+        type: string
+      environment_name:
+        required: true
+        type: string
+      azure_resource_group:
+        required: true
+        type: string
+      expected_env:
+        required: true
+        type: string
+      frontend_deploy:
+        required: true
+        type: string
+      deploy_slot:
+        required: false
+        type: string
+        default: ""
+      run_migrations:
+        required: false
+        type: boolean
+        default: false
+      run_pg_demo_seed:
+        required: false
+        type: boolean
+        default: false
+      run_sb_demo_seed:
+        required: false
+        type: boolean
+        default: false
+      run_goa_pilot_seed:
+        required: false
+        type: boolean
+        default: false
+      seed_demo:
+        required: false
+        type: boolean
+        default: false
+      seed_goa_force:
+        required: false
+        type: boolean
+        default: false
+      smoke_script:
+        required: false
+        type: string
+        default: "smoke_test.sh"
+      early_gate_script:
+        required: false
+        type: string
+        default: "smoke_public_api.sh"
+      deploy_profile:
+        required: false
+        type: string
+        default: ""
+    secrets:
+      VITE_API_BASE:
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image name (GHCR requires lowercase)
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}/backend" >> "$GITHUB_ENV"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve unified SWA URL
+        env:
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          STATIC_WEB_APP_NAME: saasstack-staging-web
+        run: |
+          # defaultHostname is not {name}.azurestaticapps.net on newer SWA regions.
+          # shellcheck source=deploy/scripts/lib/resolve_swa_url.sh
+          source deploy/scripts/lib/resolve_swa_url.sh
+          UNIFIED_SWA_URL="$(resolve_unified_swa_url)"
+          echo "UNIFIED_SWA_URL=${UNIFIED_SWA_URL}" >> "$GITHUB_ENV"
+          echo "Resolved SWA URL: ${UNIFIED_SWA_URL}"
+
+      - name: Preflight deploy target
+        env:
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
+          DEPLOY_PROFILE: ${{ inputs.deploy_profile }}
+          AZ_CLI_TIMEOUT_SEC: "120"
+        run: bash deploy/scripts/preflight_deploy_target.sh
+
+      - name: Run migrations
+        if: inputs.run_migrations
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.staging
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+        run: |
+          pip install -r backend/requirements.txt
+          bash deploy/scripts/migrate.sh
+
+      - name: Ensure Goa pilot seed (database)
+        if: inputs.run_goa_pilot_seed
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.staging
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          SEED_GOA_FORCE: ${{ inputs.seed_goa_force }}
+          GOA_TENANT: sai-baba-school-bus
+          GOA_USER: kamlesh
+          GOA_PASSWORD: admin
+        run: bash deploy/scripts/ensure_staging_goa_pilot_seed.sh
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Ensure App Service staging slots exist
+        if: inputs.deploy_slot != ''
+        env:
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          AZURE_WEBAPP_NAME_FRONTEND: ${{ secrets.AZURE_WEBAPP_NAME_FRONTEND }}
+        run: bash deploy/scripts/ensure_app_service_staging_slot.sh
+
+      - name: Deploy backend to App Service (staging slot)
+        if: inputs.deploy_slot != ''
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          resource-group-name: ${{ inputs.azure_resource_group }}
+          slot-name: ${{ inputs.deploy_slot }}
+          images: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy backend to App Service (production slot)
+        if: inputs.deploy_slot == ''
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          resource-group-name: ${{ inputs.azure_resource_group }}
+          images: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Seed pg-demo (manual)
+        if: inputs.run_pg_demo_seed && inputs.seed_demo
+        env:
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+        run: bash deploy/scripts/seed_staging_demo.sh
+
+      - name: Wait for API and early gate
+        env:
+          API_BASE_URL: ${{ secrets.STAGING_API_URL }}
+          EXPECTED_ENV: ${{ inputs.expected_env }}
+          EXPECTED_VERSION: ${{ github.sha }}
+        run: bash deploy/scripts/${{ inputs.early_gate_script }}
+
+      - name: Ensure pg-demo seed (PG)
+        if: inputs.run_pg_demo_seed
+        env:
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+        run: bash deploy/scripts/ensure_staging_demo_seed.sh
+
+      - name: Seed sb-demo (manual)
+        if: inputs.run_sb_demo_seed && inputs.seed_demo
+        env:
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
+        run: bash deploy/scripts/seed_staging_sb_demo.sh
+
+      - name: Ensure sb-demo seed (School Bus legacy)
+        if: inputs.run_sb_demo_seed
+        env:
+          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          DEPLOY_SLOT: ${{ inputs.deploy_slot }}
+          SB_SMOKE_USER: sb-operator
+          SB_SMOKE_PASSWORD: admin
+          SB_SMOKE_TENANT: sb-demo
+        run: bash deploy/scripts/ensure_staging_sb_demo_seed.sh
+
+      - uses: actions/download-artifact@v4
+        id: frontend_artifact
+        continue-on-error: true
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - name: Build frontend (fallback)
+        if: steps.frontend_artifact.outcome != 'success'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm build frontend (fallback)
+        if: steps.frontend_artifact.outcome != 'success'
+        working-directory: frontend
+        env:
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy frontend to Static Web Apps
+        if: inputs.frontend_deploy == 'static_web_app'
+        env:
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          STATIC_WEB_APP_NAME: saasstack-staging-web
+          AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        run: bash deploy/scripts/deploy_frontend_swa.sh frontend/dist
+
+      - name: Package frontend zip
+        if: inputs.frontend_deploy == 'app_service_zip'
+        run: |
+          cp "$GITHUB_WORKSPACE/deploy/nginx/app-service-startup.sh" frontend/dist/
+          chmod +x frontend/dist/app-service-startup.sh
+          cd frontend/dist
+          zip -r "$GITHUB_WORKSPACE/frontend-dist.zip" .
+
+      - name: Deploy frontend to App Service (staging slot)
+        if: inputs.frontend_deploy == 'app_service_zip' && inputs.deploy_slot != ''
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME_FRONTEND }}
+          resource-group-name: ${{ inputs.azure_resource_group }}
+          slot-name: ${{ inputs.deploy_slot }}
+          package: frontend-dist.zip
+
+      - name: Deploy frontend to App Service (production slot)
+        if: inputs.frontend_deploy == 'app_service_zip' && inputs.deploy_slot == ''
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME_FRONTEND }}
+          resource-group-name: ${{ inputs.azure_resource_group }}
+          package: frontend-dist.zip
+
+      - name: Smoke tests
+        env:
+          API_BASE_URL: ${{ secrets.STAGING_API_URL }}
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          STATIC_WEB_APP_NAME: saasstack-staging-web
+          SMOKE_SWA_URL: ${{ secrets.SMOKE_SWA_URL }}
+          SMOKE_WEB_URL: ${{ secrets.SMOKE_WEB_URL }}
+          EXPECTED_ENV: ${{ inputs.expected_env }}
+          EXPECTED_VERSION: ${{ github.sha }}
+          SMOKE_USERNAME: ${{ secrets.SMOKE_USERNAME }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          SMOKE_RESIDENT_USER: resident
+          SMOKE_RESIDENT_PASSWORD: admin
+          SB_SMOKE_USER: kamlesh
+          SB_SMOKE_PASSWORD: admin
+          SB_SMOKE_TENANT: sai-baba-school-bus
+          GOA_MIN_STUDENTS: ${{ inputs.run_goa_pilot_seed && '15' || '' }}
+        run: bash deploy/scripts/${{ inputs.smoke_script }}
+
+      - name: Deployment summary
+        env:
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          SMOKE_SWA_URL: ${{ secrets.SMOKE_SWA_URL }}
+        run: |
+          echo "## ${{ inputs.product_label }} staging" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- RG: \`${{ inputs.azure_resource_group }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- API: \`${STAGING_API_URL:-https://saasstack-staging-api.azurewebsites.net}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- SWA: \`${UNIFIED_SWA_URL:-${SMOKE_SWA_URL}}\`" >> $GITHUB_STEP_SUMMARY

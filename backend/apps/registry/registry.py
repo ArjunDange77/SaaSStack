@@ -17,6 +17,8 @@ class ResourceEntry:
     title: str = ""
     permission_classes: Tuple[Type[BasePermission], ...] = (KernelResourcePermission,)
     description: str = ""
+    catalog_roles: Tuple[str, ...] = ()
+    catalog_hidden: bool = False
 
     def resolved_title(self) -> str:
         return self.title or self.slug.replace("-", " ").title()
@@ -32,6 +34,8 @@ def register_resource(
     title: str = "",
     description: str = "",
     permission_classes: Optional[Tuple[Type[BasePermission], ...]] = None,
+    catalog_roles: Tuple[str, ...] = (),
+    catalog_hidden: bool = False,
 ) -> None:
     if slug in _REGISTRY:
         raise ValueError(f"Resource slug already registered: {slug}")
@@ -41,6 +45,8 @@ def register_resource(
         title=title,
         description=description,
         permission_classes=permission_classes or (KernelResourcePermission,),
+        catalog_roles=catalog_roles,
+        catalog_hidden=catalog_hidden,
     )
     _REGISTRY[slug] = entry
 

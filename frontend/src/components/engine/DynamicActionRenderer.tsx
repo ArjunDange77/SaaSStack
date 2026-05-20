@@ -1,16 +1,31 @@
 import type { ActionMeta, ResourceSchema } from "@/types/metadata";
 import { useResourceMutations } from "@/hooks/useResource";
+import { filterActionsForRecord } from "@/lib/actionVisibility";
 
 interface Props {
   schema: ResourceSchema;
   recordId?: string;
+  record?: Record<string, unknown>;
   onDone?: () => void;
+  className?: string;
 }
 
-export function DynamicActionRenderer({ schema, recordId, onDone }: Props) {
-  const { runAction } = useResourceMutations(schema.resource);
-  const detailActions = schema.actions.filter((a) => a.detail);
-  const listActions = schema.actions.filter((a) => !a.detail);
+function allowedActions(schema: ResourceSchema) {
+  const allowed = schema.capabilities?.actions;
+  if (!allowed) return schema.actions;
+  const set = new Set(allowed);
+  return schema.actions.filter((a) => set.has(a.name));
+}
+
+export function DynamicActionRenderer({ schema, recordId, record, onDone, className }: Props) {
+  const { runAction } = useResourceMutations(schema.resource, schema);
+  const visible = filterActionsForRecord(
+    schema.resource,
+    record,
+    allowedActions(schema)
+  );
+  const detailActions = visible.filter((a) => a.detail);
+  const listActions = visible.filter((a) => !a.detail);
 
   const actions = recordId ? detailActions : listActions;
   if (!actions.length) return null;
@@ -21,12 +36,13 @@ export function DynamicActionRenderer({ schema, recordId, onDone }: Props) {
       id: recordId,
       actionPath: action.url_path,
       method,
+      actionName: action.name,
     });
     onDone?.();
   };
 
   return (
-    <div className="toolbar">
+    <div className={`toolbar${className ? ` ${className}` : ""}`}>
       {actions.map((action) => (
         <button
           key={action.name}
@@ -35,7 +51,7 @@ export function DynamicActionRenderer({ schema, recordId, onDone }: Props) {
           disabled={runAction.isPending}
           onClick={() => fire(action)}
         >
-          {action.name.replace(/_/g, " ")}
+          {action.label ?? action.name.replace(/_/g, " ")}
         </button>
       ))}
     </div>

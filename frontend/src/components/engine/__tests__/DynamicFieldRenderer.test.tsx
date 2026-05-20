@@ -1,6 +1,7 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { DynamicFieldRenderer } from "../DynamicFieldRenderer";
+import { renderWithQuery } from "@/test/test-utils";
 import type { FieldMeta } from "@/types/metadata";
 
 describe("DynamicFieldRenderer", () => {
@@ -11,7 +12,7 @@ describe("DynamicFieldRenderer", () => {
       type: "integer",
       read_only: true,
     };
-    render(<DynamicFieldRenderer field={field} value={42} onChange={() => {}} />);
+    renderWithQuery(<DynamicFieldRenderer field={field} value={42} onChange={() => {}} />);
     expect(screen.getByText("42")).toBeInTheDocument();
   });
 
@@ -23,7 +24,7 @@ describe("DynamicFieldRenderer", () => {
       type: "choice",
       choices: ["parts", "kits"],
     };
-    render(<DynamicFieldRenderer field={field} value="parts" onChange={onChange} />);
+    renderWithQuery(<DynamicFieldRenderer field={field} value="parts" onChange={onChange} />);
     const select = screen.getByRole("combobox");
     fireEvent.change(select, { target: { value: "kits" } });
     expect(onChange).toHaveBeenCalledWith("category", "kits");
@@ -32,14 +33,14 @@ describe("DynamicFieldRenderer", () => {
   it("renders boolean checkbox", () => {
     const onChange = vi.fn();
     const field: FieldMeta = { name: "in_stock", label: "In stock", type: "boolean" };
-    render(<DynamicFieldRenderer field={field} value={false} onChange={onChange} />);
+    renderWithQuery(<DynamicFieldRenderer field={field} value={false} onChange={onChange} />);
     fireEvent.click(screen.getByRole("checkbox"));
     expect(onChange).toHaveBeenCalledWith("in_stock", true);
   });
 
   it("renders text textarea for text type", () => {
     const field: FieldMeta = { name: "notes", label: "Notes", type: "text" };
-    render(<DynamicFieldRenderer field={field} value="" onChange={() => {}} />);
+    renderWithQuery(<DynamicFieldRenderer field={field} value="" onChange={() => {}} />);
     expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
 });

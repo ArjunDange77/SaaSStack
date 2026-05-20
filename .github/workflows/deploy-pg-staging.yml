@@ -1,0 +1,19 @@
+# Deprecated — use deploy-staging.yml (unified PG + School Bus on rg-saasstack-staging).
+name: Deploy PG Staging (deprecated)
+
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: This workflow is retired; run "Deploy Staging" instead
+        required: false
+        type: string
+
+jobs:
+  retired:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::deploy-pg-staging.yml is deprecated."
+          echo "Use .github/workflows/deploy-staging.yml (unified staging on main/staging)."
+          exit 1
