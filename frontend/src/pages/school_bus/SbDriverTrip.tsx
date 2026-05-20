@@ -35,10 +35,19 @@ export function SbDriverTrip() {
   const canStart = tripStatus === "scheduled" || tripStatus === "delayed";
   const canMark = ["started", "pickup_in_progress", "incident_reported"].includes(tripStatus);
   const tripActive = canMark;
-  const { sharing, setSharingEnabled, error: gpsError } = useSbDriverLocationShare(
-    tripId,
-    tripActive
-  );
+  const { sharing, setSharingEnabled, error: gpsError, lastFix, backgroundHidden } =
+    useSbDriverLocationShare(tripId, tripActive);
+
+  const mapLocation = useMemo(() => {
+    if (sharing && lastFix) {
+      return {
+        latitude: String(lastFix.latitude),
+        longitude: String(lastFix.longitude),
+        recorded_at: lastFix.recordedAt,
+      };
+    }
+    return data?.last_location ?? null;
+  }, [sharing, lastFix, data?.last_location]);
 
   const elapsedMins = useMemo(
     () => tripElapsedMinutes(data?.started_at ?? null, data?.completed_summary?.completed_at ?? null),
@@ -166,7 +175,10 @@ export function SbDriverTrip() {
           <p id="gps-consent-title">
             <strong>Share location with parents?</strong>
           </p>
-          <p className="muted">Location updates every 20 seconds while sharing is on.</p>
+          <p className="muted">
+            Keep this trip page open while driving. Location updates about every 20 seconds and
+            may pause if you lock the phone or switch apps.
+          </p>
           <div className="sb-gps-consent-actions">
             <button
               type="button"
@@ -199,15 +211,25 @@ export function SbDriverTrip() {
           {sharing ? "Live · updates every 20s" : "Location off — tap to enable"}
         </button>
       </div>
-      {sharing && <p className="muted sb-gps-hint">Parents see the bus on the map; GPS sends about every 20 seconds.</p>}
+      {sharing && (
+        <p className="muted sb-gps-hint">
+          Parents see the bus on the map. Keep this page open and the screen on for best tracking.
+        </p>
+      )}
+      {sharing && backgroundHidden && (
+        <p className="sb-gps-background-banner" role="status">
+          Location may pause while this tab is in the background. Return to this page and keep the
+          screen on for parents to follow your route.
+        </p>
+      )}
       {gpsError && <p className="error">{gpsError}</p>}
 
-      {data.last_location && (
+      {mapLocation && (
         <LiveBusMap
-          latitude={data.last_location.latitude}
-          longitude={data.last_location.longitude}
+          latitude={mapLocation.latitude}
+          longitude={mapLocation.longitude}
           label={data.route.name}
-          lastUpdated={data.last_location.recorded_at}
+          lastUpdated={mapLocation.recorded_at}
           height={160}
         />
       )}

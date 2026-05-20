@@ -153,6 +153,6 @@ Logins: `sb-operator`, `sb-driver`, `sb-parent` — password `admin`, tenant `sb
 
 **V1 out of scope:** payment gateway, WhatsApp/SMS, PDF reporting.
 
-**Live GPS (staging V1):** driver shares location on HTTPS (~20s updates); operator **Live fleet** and parent map read `last_location`. Requires browser location permission.
+**Live GPS (staging V1):** driver shares location on HTTPS (~20s updates); operator **Live fleet** and parent map read `last_location`. Requires browser location permission. Driver must keep the **trip page open** with sharing on; locking the phone or backgrounding the browser pauses GPS (mobile web limitation). Native app or bus hardware needed for tracking with screen off.
 
 **Ops:** `python manage.py generate_monthly_fees --tenant sb-demo` for monthly fee rows.
