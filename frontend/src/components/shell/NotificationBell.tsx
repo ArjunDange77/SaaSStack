@@ -1,43 +1,57 @@
 import { useState, useRef, useEffect } from "react";
 import { IconBell } from "@tabler/icons-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { PgDashboardStats } from "@/hooks/useResource";
 
 interface Props {
   stats?: PgDashboardStats;
+  /** School Bus: unread outbound count */
+  sbCount?: number;
+  sbMode?: boolean;
 }
 
-export function NotificationBell({ stats }: Props) {
+export function NotificationBell({ stats, sbCount = 0, sbMode = false }: Props) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const count =
+  const pgCount =
     (stats?.pending_bookings ?? 0) +
     (stats?.rent_overdue ?? 0) +
     (stats?.open_complaints ?? 0);
+  const count = sbMode ? sbCount : pgCount;
 
   useEffect(() => {
+    if (sbMode) return;
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  }, [sbMode]);
+
+  const onBellClick = () => {
+    if (sbMode) {
+      navigate("/sb/notifications");
+      return;
+    }
+    setOpen((o) => !o);
+  };
 
   return (
     <div className="notification-bell" ref={ref}>
       <button
         type="button"
         className="secondary notification-bell-btn"
-        aria-expanded={open}
+        aria-expanded={sbMode ? undefined : open}
         aria-label={`Notifications${count ? `, ${count} items` : ""}`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={onBellClick}
       >
         <IconBell size={18} stroke={1.75} aria-hidden />
         {count > 0 && <span className="notification-bell-count">{count}</span>}
       </button>
-      {open && (
+      {!sbMode && open && (
         <div className="notification-dropdown" role="menu">
-          {count === 0 ? (
+          {pgCount === 0 ? (
             <p className="muted">No alerts right now.</p>
           ) : (
             <ul>

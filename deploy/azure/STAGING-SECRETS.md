@@ -25,14 +25,14 @@ Use a **single** GitHub Environment named `staging` for deploys to `rg-saasstack
 | Secret | Purpose |
 |--------|---------|
 | `SMOKE_USERNAME` / `SMOKE_PASSWORD` | PG operator smoke (`pg-demo`) |
-| `SMOKE_SWA_URL` | `https://saasstack-staging-web.azurestaticapps.net` — **required** for deploy to catch SWA 404 |
+| `SMOKE_SWA_URL` | From `bash deploy/scripts/resolve_unified_swa_url.sh` (defaultHostname, **not** `https://saasstack-staging-web.azurestaticapps.net`) |
 | `SMOKE_WEB_URL` | Alias for SWA URL (optional) |
 
 School Bus Goa pilot smoke uses workflow defaults: `kamlesh` / `admin` @ `sai-baba-school-bus`.
 
 ## Fix SWA 404 / wrong `SMOKE_SWA_URL` (after cutover)
 
-If CI passes but `saasstack-staging-web.azurestaticapps.net` shows Azure 404, refresh secrets from Azure:
+If the SWA shows Azure 404, you may be on the wrong hostname (`{resource-name}.azurestaticapps.net` is not always valid). Run `bash deploy/scripts/resolve_unified_swa_url.sh` and refresh secrets from Azure:
 
 ```bash
 az login

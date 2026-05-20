@@ -7,7 +7,7 @@
 | Surface | URL | Status (verify before demo) |
 |---------|-----|-----------------------------|
 | API | https://saasstack-staging-api.azurewebsites.net | Health 200, Goa 15 students |
-| SWA (unified) | https://saasstack-staging-web.azurestaticapps.net | Must show login, not Azure 404 |
+| SWA (unified) | Run `bash deploy/scripts/resolve_unified_swa_url.sh` (currently `https://white-pebble-09bec9d00.7.azurestaticapps.net`) | Must show login, not Azure 404. **Not** `{name}.azurestaticapps.net`. |
 
 Update GitHub `staging` secret `SMOKE_SWA_URL` to the **unified** SWA URL (not `saasstack-sb-staging-web-staging.azurewebsites.net`).
 

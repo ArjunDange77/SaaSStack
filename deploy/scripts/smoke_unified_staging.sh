@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # shellcheck source=lib/goa_pilot_count.sh
 source "$ROOT/deploy/scripts/lib/goa_pilot_count.sh"
+# shellcheck source=lib/resolve_swa_url.sh
+source "$ROOT/deploy/scripts/lib/resolve_swa_url.sh"
 
 API_BASE_URL="${API_BASE_URL:-${STAGING_API_URL:-}}"
 
@@ -17,8 +19,12 @@ export API_BASE_URL
 export EXPECTED_ENV="${EXPECTED_ENV:-staging}"
 export EXPECTED_VERSION="${EXPECTED_VERSION:-}"
 
-UNIFIED_SWA_URL="${UNIFIED_SWA_URL:-https://saasstack-staging-web.azurestaticapps.net}"
+UNIFIED_SWA_URL="$(resolve_unified_swa_url)"
 LEGACY_SWA_URL="${SMOKE_SWA_URL:-${SMOKE_WEB_URL:-}}"
+WRONG_NAME_URL="https://${STATIC_WEB_APP_NAME:-saasstack-staging-web}.azurestaticapps.net"
+if [[ "$WRONG_NAME_URL" != "$UNIFIED_SWA_URL" ]]; then
+  echo "NOTE: SWA hostname is ${UNIFIED_SWA_URL} (not ${WRONG_NAME_URL})"
+fi
 
 echo "=== Unified staging smoke: $API_BASE_URL ==="
 

@@ -6,7 +6,8 @@ import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardRoute } from "@/pages/DashboardRoute";
 import { isSchoolBusTenant } from "@/lib/schoolBusTenant";
-import { SbAttendanceHistory } from "@/pages/school_bus/SbAttendanceHistory";
+import { SbAttendancePage } from "@/pages/school_bus/SbAttendancePage";
+import { SbTripsPage } from "@/pages/school_bus/SbTripsPage";
 import { SbDashboard } from "@/pages/school_bus/SbDashboard";
 import { SbDriverIncident } from "@/pages/school_bus/SbDriverIncident";
 import { SbDriverToday } from "@/pages/school_bus/SbDriverToday";
@@ -119,9 +120,10 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="dashboard" element={<DashboardRoute />} />
         <Route path="sb/dashboard" element={<SbDashboard />} />
+        <Route path="sb/trips" element={<SbTripsPage />} />
         <Route path="sb/fees" element={<SbFees />} />
         <Route path="sb/notifications" element={<SbNotifications />} />
-        <Route path="sb/attendance" element={<SbAttendanceHistory />} />
+        <Route path="sb/attendance" element={<SbAttendancePage />} />
         <Route path="r/:slug" element={<ResourceListRoute />} />
         <Route path="r/:slug/:id" element={<ResourceDetailRoute />} />
       </Route>

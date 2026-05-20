@@ -85,6 +85,18 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Resolve unified SWA URL
+        env:
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          STATIC_WEB_APP_NAME: saasstack-staging-web
+        run: |
+          # defaultHostname is not {name}.azurestaticapps.net on newer SWA regions.
+          # shellcheck source=deploy/scripts/lib/resolve_swa_url.sh
+          source deploy/scripts/lib/resolve_swa_url.sh
+          UNIFIED_SWA_URL="$(resolve_unified_swa_url)"
+          echo "UNIFIED_SWA_URL=${UNIFIED_SWA_URL}" >> "$GITHUB_ENV"
+          echo "Resolved SWA URL: ${UNIFIED_SWA_URL}"
+
       - name: Preflight deploy target
         env:
           AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
@@ -245,7 +257,6 @@ jobs:
         env:
           AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
           STATIC_WEB_APP_NAME: saasstack-staging-web
-          UNIFIED_SWA_URL: https://saasstack-staging-web.azurestaticapps.net
           AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
         run: bash deploy/scripts/deploy_frontend_swa.sh frontend/dist
 
@@ -278,7 +289,8 @@ jobs:
         env:
           API_BASE_URL: ${{ secrets.STAGING_API_URL }}
           STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
-          UNIFIED_SWA_URL: https://saasstack-staging-web.azurestaticapps.net
+          AZURE_RESOURCE_GROUP: ${{ inputs.azure_resource_group }}
+          STATIC_WEB_APP_NAME: saasstack-staging-web
           SMOKE_SWA_URL: ${{ secrets.SMOKE_SWA_URL }}
           SMOKE_WEB_URL: ${{ secrets.SMOKE_WEB_URL }}
           EXPECTED_ENV: ${{ inputs.expected_env }}
@@ -302,4 +314,4 @@ jobs:
           echo "- Version: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- RG: \`${{ inputs.azure_resource_group }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- API: \`${STAGING_API_URL:-https://saasstack-staging-api.azurewebsites.net}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- SWA: \`${SMOKE_SWA_URL:-https://saasstack-staging-web.azurestaticapps.net}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- SWA: \`${UNIFIED_SWA_URL:-${SMOKE_SWA_URL}}\`" >> $GITHUB_STEP_SUMMARY

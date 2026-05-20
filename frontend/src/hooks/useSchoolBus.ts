@@ -77,6 +77,13 @@ export interface SbFeeRow {
   parent_phone: string;
 }
 
+export interface SbFeeTrendMonth {
+  month: string;
+  label: string;
+  collection_pct: number;
+  collected: string;
+}
+
 export interface SbFeesGrouped {
   overdue: SbFeeRow[];
   due_this_month: SbFeeRow[];
@@ -85,7 +92,9 @@ export interface SbFeesGrouped {
     collected: string;
     pending: string;
     collection_pct: number;
+    month?: string;
   };
+  trend?: SbFeeTrendMonth[];
 }
 
 export interface SbNotificationRow {
@@ -199,13 +208,140 @@ export function useSbOperatorBriefing() {
   });
 }
 
-export function useSbOperatorFees() {
+export interface SbOperatorTrip {
+  id: number;
+  route_name: string;
+  bus_registration: string;
+  driver_name: string;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  current_stop_index: number;
+  total_stops: number;
+  current_stop_name: string;
+  students_onboard: number;
+  total_students: number;
+  absent_count: number;
+  incident_count: number;
+  duration_minutes: number | null;
+  stops: { name: string; completed: boolean; current: boolean }[];
+}
+
+export interface SbTripsTodayResponse {
+  stats: {
+    total_students: number;
+    absent_count: number;
+    avg_duration_minutes: number;
+    on_time_rate: number;
+  };
+  trips: SbOperatorTrip[];
+}
+
+export interface SbAttendanceSummaryStudent {
+  id: number;
+  name: string;
+  stop_name: string;
+  route_name: string;
+  attendance_rate: number;
+  attendance_dots: ("present" | "absent" | "no_data")[];
+  is_low_attendance: boolean;
+}
+
+export interface SbAttendanceSummary {
+  stats: {
+    school_days: number;
+    avg_attendance_rate: number;
+    total_absences: number;
+    low_attendance_count: number;
+  };
+  low_attendance_students: { id: number; name: string }[];
+  students: SbAttendanceSummaryStudent[];
+}
+
+export function useSbOperatorFees(month?: string) {
   const { tenantSlug } = useAuth();
   return useQuery({
-    queryKey: scopeTenant(tenantSlug, ["sb-operator-fees"]),
+    queryKey: scopeTenant(tenantSlug, ["sb-operator-fees", month ?? ""]),
     queryFn: async () => {
-      const { data } = await api.get<SbFeesGrouped>("/sb/operator/fees/");
+      const { data } = await api.get<SbFeesGrouped & { trend?: SbFeeTrendMonth[] }>(
+        "/sb/operator/fees/",
+        { params: month ? { month } : {} }
+      );
       return data;
+    },
+  });
+}
+
+export function useSbOperatorTripsToday() {
+  const { tenantSlug } = useAuth();
+  return useQuery({
+    queryKey: scopeTenant(tenantSlug, ["sb-operator-trips-today"]),
+    queryFn: async () => {
+      const { data } = await api.get<SbTripsTodayResponse>("/sb/operator/trips/today/");
+      return data;
+    },
+    refetchInterval: SB_BRIEFING_REFETCH_MS,
+  });
+}
+
+export function useSbOperatorTripsByDate(date?: string) {
+  const { tenantSlug } = useAuth();
+  return useQuery({
+    queryKey: scopeTenant(tenantSlug, ["sb-operator-trips-date", date ?? ""]),
+    queryFn: async () => {
+      const { data } = await api.get<{ date: string; trips: SbOperatorTrip[] }>(
+        "/sb/operator/trips/",
+        { params: { date } }
+      );
+      return data;
+    },
+    enabled: Boolean(date),
+  });
+}
+
+export function useSbAttendanceSummary(month: string, route = "all") {
+  const { tenantSlug } = useAuth();
+  return useQuery({
+    queryKey: scopeTenant(tenantSlug, ["sb-attendance-summary", month, route]),
+    queryFn: async () => {
+      const { data } = await api.get<SbAttendanceSummary>(
+        "/sb/operator/attendance/summary/",
+        { params: { month, route } }
+      );
+      return data;
+    },
+  });
+}
+
+export function useSbNotificationUnread(enabled = true) {
+  const { tenantSlug } = useAuth();
+  return useQuery({
+    queryKey: scopeTenant(tenantSlug, ["sb-notifications-unread"]),
+    queryFn: async () => {
+      const { data } = await api.get<{ unread_count: number }>(
+        "/sb/operator/notifications/",
+        { params: { count: 1 } }
+      );
+      return data.unread_count;
+    },
+    enabled,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useSbFeeRemind() {
+  const qc = useQueryClient();
+  const { tenantSlug } = useAuth();
+  return useMutation({
+    mutationFn: async (feeId: number) => {
+      const { data } = await api.post<{ status: string; whatsapp_url: string; message_id: number }>(
+        `/sb/operator/fees/${feeId}/remind/`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: scopeTenant(tenantSlug, ["sb-operator-fees"]) });
+      qc.invalidateQueries({ queryKey: scopeTenant(tenantSlug, ["sb-operator-notifications"]) });
     },
   });
 }

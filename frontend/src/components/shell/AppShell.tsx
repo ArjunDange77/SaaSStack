@@ -7,6 +7,7 @@ import { useIsMobile } from "@/hooks/useMediaQuery";
 import { scopeTenant } from "@/lib/queryKeys";
 import { isSchoolBusTenant } from "@/lib/schoolBusTenant";
 import { useMyTenants, usePgDashboard } from "@/hooks/useResource";
+import { useSbNotificationUnread } from "@/hooks/useSchoolBus";
 import { MobileHeader } from "./MobileHeader";
 import { NavBar } from "./NavBar";
 import { NotificationBell } from "./NotificationBell";
@@ -15,12 +16,19 @@ export function AppShell() {
   const { user, logout, tenantSlug, setTenantSlug, role } = useAuth();
   const isOperator = role === "owner" || role === "staff";
   const schoolBusTenant = isSchoolBusTenant(tenantSlug);
+  const location = useLocation();
+  const showSchoolBusChrome =
+    schoolBusTenant || location.pathname.startsWith("/sb/");
   const { data: dashboardStats } = usePgDashboard(isOperator && !schoolBusTenant);
-  const navBadges = isOperator
-    ? { "/r/pg-booking-requests": dashboardStats?.pending_bookings ?? 0 }
+  const { data: sbUnread = 0 } = useSbNotificationUnread(
+    Boolean(isOperator && showSchoolBusChrome)
+  );
+  const navBadges: Record<string, number> | undefined = isOperator
+    ? showSchoolBusChrome
+      ? { "/sb/notifications": sbUnread }
+      : { "/r/pg-booking-requests": dashboardStats?.pending_bookings ?? 0 }
     : undefined;
   const { data: myTenants } = useMyTenants(true);
-  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = useIsMobile();
 
@@ -74,8 +82,6 @@ export function AppShell() {
   const headerTitle = branding?.name ?? "SaaSStack";
   const tenantLabel =
     myTenants?.find((t) => t.slug === tenantSlug)?.name ?? tenantSlug;
-  const showSchoolBusChrome =
-    isSchoolBusTenant(tenantSlug) || location.pathname.startsWith("/sb/");
   const productLabel = showSchoolBusChrome ? "School Bus" : "PG Management";
 
   const tenantSelect = (
@@ -135,14 +141,28 @@ export function AppShell() {
         <header className="app-topbar desktop-only">
           <span className="app-topbar-title">{headerTitle}</span>
           <span className="muted app-topbar-tenant">{tenantLabel}</span>
-          {isOperator && <NotificationBell stats={dashboardStats} />}
+          {isOperator && (
+            <NotificationBell
+              stats={dashboardStats}
+              sbMode={showSchoolBusChrome}
+              sbCount={sbUnread}
+            />
+          )}
         </header>
         <MobileHeader
           title={headerTitle}
           subtitle={tenantLabel}
           menuOpen={menuOpen}
           onMenuToggle={toggleMenu}
-          trailing={isOperator ? <NotificationBell stats={dashboardStats} /> : undefined}
+          trailing={
+            isOperator ? (
+              <NotificationBell
+                stats={dashboardStats}
+                sbMode={showSchoolBusChrome}
+                sbCount={sbUnread}
+              />
+            ) : undefined
+          }
         />
         <main className="main content-max">
           <Outlet />

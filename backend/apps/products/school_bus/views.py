@@ -207,7 +207,8 @@ class OperatorFeesGroupedView(APIView):
         tenant = request.tenant
         if tenant is None:
             return Response({"detail": "Tenant required"}, status=400)
-        return Response(services.operator_fees_grouped_payload(tenant))
+        month = request.query_params.get("month")
+        return Response(services.operator_fees_grouped_payload(tenant, month=month))
 
 
 class OperatorNotificationsLogView(APIView):
@@ -217,6 +218,8 @@ class OperatorNotificationsLogView(APIView):
         tenant = request.tenant
         if tenant is None:
             return Response({"detail": "Tenant required"}, status=400)
+        if request.query_params.get("count") == "1":
+            return Response({"unread_count": services.operator_notifications_unread_count(tenant)})
         from .notifications.dispatch import notifications_log_payload
 
         limit = min(int(request.query_params.get("limit", 100)), 500)
@@ -232,6 +235,76 @@ class OperatorAttendanceHistoryView(APIView):
             return Response({"detail": "Tenant required"}, status=400)
         limit = min(int(request.query_params.get("limit", 50)), 200)
         return Response({"results": services.operator_attendance_history_payload(tenant, limit=limit)})
+
+
+class OperatorTripsTodayView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        return Response(services.operator_trips_today_payload(tenant))
+
+
+class OperatorTripsByDateView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        from datetime import date as date_cls
+
+        raw = request.query_params.get("date") or str(services._today())
+        try:
+            trip_date = date_cls.fromisoformat(raw)
+        except ValueError:
+            return Response({"detail": "Invalid date"}, status=400)
+        return Response(services.operator_trips_by_date_payload(tenant, trip_date))
+
+
+class OperatorAttendanceSummaryView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        month = request.query_params.get("month") or services._today().strftime("%Y-%m")
+        route = request.query_params.get("route", "all")
+        return Response(services.operator_attendance_summary_payload(tenant, month, route))
+
+
+class OperatorAttendanceExportView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request):
+        from django.http import HttpResponse
+
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        month = request.query_params.get("month") or services._today().strftime("%Y-%m")
+        route = request.query_params.get("route", "all")
+        csv_data = services.operator_attendance_export_csv(tenant, month, route)
+        response = HttpResponse(csv_data, content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="attendance-{month}.csv"'
+        return response
+
+
+class OperatorFeeRemindView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def post(self, request, fee_id: int):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        try:
+            payload = services.operator_fee_remind_payload(tenant, fee_id)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(payload)
 
 
 class DriverTodayView(APIView):

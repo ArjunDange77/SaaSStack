@@ -211,7 +211,8 @@ class Command(BaseCommand):
     def _ensure_nav(self, tenant: Tenant) -> None:
         items = [
             ("Command center", "/sb/dashboard", "layout-dashboard", "", "today", 5),
-            ("Today's trips", "/r/sb-trips", "bus", "sb-trips", "today", 8),
+            ("Today's trips", "/sb/trips", "bus", "", "today", 8),
+            ("Trips (admin)", "/r/sb-trips", "list", "sb-trips", "manage", 35),
             ("Attendance", "/sb/attendance", "clipboard-list", "", "today", 10),
             ("Fees", "/sb/fees", "wallet", "", "today", 15),
             ("Notifications", "/sb/notifications", "bell", "", "today", 18),

@@ -65,7 +65,12 @@ export function SbDashboard() {
 
       <div className="sb-briefing-layout">
         <div className="sb-briefing-main">
-          <h2>Today&apos;s trips</h2>
+          <h2>
+            Today&apos;s trips{" "}
+            <Link to="/sb/trips" className="sb-view-all-link">
+              View all →
+            </Link>
+          </h2>
           {data.trips.length === 0 ? (
             <p className="muted">No trips scheduled today.</p>
           ) : (
@@ -92,6 +97,8 @@ export function SbDashboard() {
         <Link to="/sb/fees">Fees</Link>
         {" · "}
         <Link to="/sb/notifications">Notifications</Link>
+        {" · "}
+        <Link to="/sb/trips">Trips</Link>
         {" · "}
         <Link to="/sb/attendance">Attendance</Link>
       </p>

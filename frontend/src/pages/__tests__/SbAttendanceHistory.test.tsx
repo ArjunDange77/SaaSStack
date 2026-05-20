@@ -1,45 +1,59 @@
 import { screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import { SbAttendanceHistory } from "../school_bus/SbAttendanceHistory";
+import { SbAttendancePage } from "../school_bus/SbAttendancePage";
 import { renderWithQuery } from "@/test/test-utils";
-import { useSbAttendanceHistory } from "@/hooks/useSchoolBus";
+import { useSbAttendanceHistory, useSbAttendanceSummary } from "@/hooks/useSchoolBus";
 
 vi.mock("@/hooks/useSchoolBus", () => ({
   useSbAttendanceHistory: vi.fn(),
+  useSbAttendanceSummary: vi.fn(),
 }));
 
 const mockHistory = vi.mocked(useSbAttendanceHistory);
+const mockSummary = vi.mocked(useSbAttendanceSummary);
 
-describe("SbAttendanceHistory", () => {
+describe("SbAttendancePage", () => {
   beforeEach(() => {
-    mockHistory.mockReturnValue({
-      data: [
-        {
-          id: 1,
-          trip_id: 10,
-          trip_date: "2026-05-19",
-          route_name: "Morning A",
-          student_id: 5,
-          student_name: "Student 01",
-          pickup_status: "present",
-          drop_status: "not_marked",
-          marked_at: "2026-05-19T08:00:00Z",
+    mockSummary.mockReturnValue({
+      data: {
+        stats: {
+          school_days: 14,
+          avg_attendance_rate: 0.88,
+          total_absences: 2,
+          low_attendance_count: 0,
         },
-      ],
+        low_attendance_students: [],
+        students: [
+          {
+            id: 5,
+            name: "Student 01",
+            stop_name: "Stop A",
+            route_name: "Morning A",
+            attendance_rate: 0.93,
+            attendance_dots: ["present"],
+            is_low_attendance: false,
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useSbAttendanceSummary>);
+    mockHistory.mockReturnValue({
+      data: [],
       isLoading: false,
       error: null,
     } as ReturnType<typeof useSbAttendanceHistory>);
   });
 
-  it("renders attendance rows", () => {
+  it("renders student attendance row", () => {
     renderWithQuery(
       <MemoryRouter>
-        <SbAttendanceHistory />
+        <SbAttendancePage />
       </MemoryRouter>
     );
-    expect(screen.getByText("Attendance history")).toBeInTheDocument();
+    expect(screen.getByText("Attendance")).toBeInTheDocument();
     expect(screen.getByText("Student 01")).toBeInTheDocument();
-    expect(screen.getByText("Morning A")).toBeInTheDocument();
+    expect(screen.getByText(/Morning A/)).toBeInTheDocument();
   });
 });

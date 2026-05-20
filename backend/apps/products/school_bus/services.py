@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import calendar
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db.models import OuterRef, Q, Subquery, Sum
@@ -15,6 +15,7 @@ from .models import (
     FeeRecord,
     FeePayment,
     Incident,
+    OutboundMessage,
     Parent,
     Reminder,
     Route,
@@ -714,41 +715,349 @@ def operator_briefing_payload(tenant, user) -> dict:
     }
 
 
-def operator_fees_grouped_payload(tenant) -> dict:
-    today = _today()
-    qs = FeeRecord.objects.filter(tenant=tenant).select_related("student", "student__parent")
-    overdue, due_month, paid = [], [], []
-    for fr in qs.order_by("due_date"):
-        row = {
-            "id": fr.id,
-            "student_name": fr.student.full_name,
-            "month": fr.month,
-            "amount": str(fr.amount),
-            "due_date": str(fr.due_date),
-            "status": fr.status,
-            "days_overdue": max(0, (today - fr.due_date).days) if fr.due_date < today else 0,
-            "parent_phone": fr.student.parent.phone if fr.student.parent else "",
-        }
-        if fr.status == FeeRecord.STATUS_PAID:
-            paid.append(row)
-        elif fr.due_date < today and fr.status != FeeRecord.STATUS_PAID:
-            overdue.append(row)
-        else:
-            due_month.append(row)
-    total_collected = FeePayment.objects.filter(tenant=tenant).aggregate(s=Sum("amount"))["s"] or Decimal("0")
-    pending = qs.filter(status__in=[FeeRecord.STATUS_UNPAID, FeeRecord.STATUS_PARTIAL]).aggregate(
-        s=Sum("amount")
-    )["s"] or Decimal("0")
-    paid_amt = qs.filter(status=FeeRecord.STATUS_PAID).aggregate(s=Sum("amount"))["s"] or Decimal("0")
-    denom = total_collected + pending
-    pct = float(paid_amt / denom * 100) if denom else 0
+def _route_stops_for_trip(trip: Trip) -> list[dict]:
+    stops_qs = (
+        RouteStop.objects.filter(tenant=trip.tenant, route=trip.route)
+        .select_related("stop")
+        .order_by("sequence")
+    )
+    marked = TripAttendance.objects.filter(
+        tenant=trip.tenant,
+        trip=trip,
+    ).exclude(pickup_status=TripAttendance.NOT_MARKED).count()
+    stop_count = stops_qs.count() or 1
+    current_idx = min(marked, max(0, stop_count - 1))
+    rows = []
+    for i, rs in enumerate(stops_qs):
+        completed = i < current_idx
+        current = i == current_idx and trip.status in (
+            Trip.STATUS_STARTED,
+            Trip.STATUS_PICKUP_IN_PROGRESS,
+        )
+        rows.append(
+            {
+                "name": rs.stop.name,
+                "completed": completed,
+                "current": current,
+            }
+        )
+    return rows
+
+
+def _serialize_trip_operator(trip: Trip, *, include_stops: bool = True) -> dict:
+    total = TripAttendance.objects.filter(trip=trip).count()
+    onboard = TripAttendance.objects.filter(
+        trip=trip, pickup_status=TripAttendance.PRESENT
+    ).count()
+    absent_count = TripAttendance.objects.filter(
+        trip=trip, pickup_status=TripAttendance.ABSENT
+    ).count()
+    stops = _route_stops_for_trip(trip) if include_stops else []
+    stop_count = len(stops) or 1
+    current_idx = next((i for i, s in enumerate(stops) if s.get("current")), 0)
+    current_name = stops[current_idx]["name"] if stops and current_idx < len(stops) else ""
+    duration_minutes = None
+    if trip.started_at and trip.completed_at:
+        duration_minutes = int(
+            (trip.completed_at - trip.started_at).total_seconds() // 60
+        )
+    elif trip.started_at:
+        duration_minutes = int((timezone.now() - trip.started_at).total_seconds() // 60)
+    incident_count = Incident.objects.filter(tenant=trip.tenant, trip=trip).count()
     return {
-        "overdue": overdue,
-        "due_this_month": due_month,
-        "paid": paid,
-        "summary": {
-            "collected": str(total_collected),
-            "pending": str(pending),
-            "collection_pct": round(pct, 1),
+        "id": trip.id,
+        "route_name": trip.route.name,
+        "bus_registration": trip.bus.fleet_number,
+        "driver_name": trip.driver.full_name,
+        "status": trip.status,
+        "started_at": trip.started_at.isoformat() if trip.started_at else None,
+        "completed_at": trip.completed_at.isoformat() if trip.completed_at else None,
+        "current_stop_index": current_idx,
+        "total_stops": stop_count,
+        "current_stop_name": current_name,
+        "students_onboard": onboard,
+        "total_students": total,
+        "absent_count": absent_count,
+        "incident_count": incident_count,
+        "duration_minutes": duration_minutes,
+        "stops": stops[:7],
+    }
+
+
+def operator_trips_today_payload(tenant) -> dict:
+    today = _today()
+    flag_delayed_trips(tenant, today)
+    trips = list(
+        Trip.objects.filter(tenant=tenant, trip_date=today)
+        .select_related("route", "driver", "bus")
+        .order_by("route__name")
+    )
+    trip_payloads = [_serialize_trip_operator(t, include_stops=True) for t in trips]
+    total_students = sum(t["total_students"] for t in trip_payloads)
+    absent_count = sum(t["absent_count"] for t in trip_payloads)
+    durations = [t["duration_minutes"] for t in trip_payloads if t["duration_minutes"]]
+    avg_duration = int(sum(durations) / len(durations)) if durations else 0
+    on_time = sum(1 for t in trips if t.status != Trip.STATUS_DELAYED)
+    on_time_rate = int(on_time / len(trips) * 100) if trips else 100
+    return {
+        "stats": {
+            "total_students": total_students,
+            "absent_count": absent_count,
+            "avg_duration_minutes": avg_duration,
+            "on_time_rate": on_time_rate,
         },
+        "trips": trip_payloads,
+    }
+
+
+def operator_trips_by_date_payload(tenant, trip_date: date) -> dict:
+    trips = list(
+        Trip.objects.filter(tenant=tenant, trip_date=trip_date)
+        .select_related("route", "driver", "bus")
+        .order_by("route__name")
+    )
+    return {
+        "date": str(trip_date),
+        "trips": [_serialize_trip_operator(t, include_stops=False) for t in trips],
+    }
+
+
+def _month_bounds(month: str) -> tuple[date, date]:
+    year, mon = map(int, month.split("-"))
+    last = calendar.monthrange(year, mon)[1]
+    return date(year, mon, 1), date(year, mon, last)
+
+
+def operator_attendance_summary_payload(tenant, month: str, route_filter: str = "all") -> dict:
+    start, end = _month_bounds(month)
+    school_days = []
+    d = start
+    while d <= end:
+        if d.weekday() < 5 and Trip.objects.filter(tenant=tenant, trip_date=d).exists():
+            school_days.append(d)
+        d += timedelta(days=1)
+    dot_days = school_days[-10:]
+
+    students_qs = Student.objects.filter(tenant=tenant).select_related(
+        "assigned_route", "pickup_stop"
+    )
+    if route_filter != "all":
+        students_qs = students_qs.filter(assigned_route_id=int(route_filter))
+
+    students_out = []
+    total_absences = 0
+    rates = []
+    low_students = []
+
+    for student in students_qs.order_by("full_name"):
+        dots = []
+        present_count = 0
+        marked_count = 0
+        for day in dot_days:
+            att = (
+                TripAttendance.objects.filter(
+                    tenant=tenant,
+                    student=student,
+                    trip__trip_date=day,
+                )
+                .select_related("trip")
+                .first()
+            )
+            if not att:
+                dots.append("no_data")
+                continue
+            marked_count += 1
+            if att.pickup_status == TripAttendance.PRESENT:
+                dots.append("present")
+                present_count += 1
+            elif att.pickup_status == TripAttendance.ABSENT:
+                dots.append("absent")
+                total_absences += 1
+            else:
+                dots.append("no_data")
+
+        month_atts = TripAttendance.objects.filter(
+            tenant=tenant,
+            student=student,
+            trip__trip_date__gte=start,
+            trip__trip_date__lte=end,
+        ).exclude(pickup_status=TripAttendance.NOT_MARKED)
+        month_present = month_atts.filter(pickup_status=TripAttendance.PRESENT).count()
+        month_total = month_atts.count()
+        rate = month_present / month_total if month_total else 1.0
+        rates.append(rate)
+        is_low = rate < 0.75 and month_total > 0
+        if is_low:
+            low_students.append({"id": student.id, "name": student.full_name})
+        stop_name = student.pickup_stop.name if student.pickup_stop_id else ""
+        route_name = student.assigned_route.name if student.assigned_route_id else ""
+        students_out.append(
+            {
+                "id": student.id,
+                "name": student.full_name,
+                "stop_name": stop_name,
+                "route_name": route_name,
+                "attendance_rate": round(rate, 2),
+                "attendance_dots": dots,
+                "is_low_attendance": is_low,
+            }
+        )
+
+    students_out.sort(key=lambda s: (not s["is_low_attendance"], s["name"]))
+    avg_rate = sum(rates) / len(rates) if rates else 0
+    return {
+        "stats": {
+            "school_days": len(school_days),
+            "avg_attendance_rate": round(avg_rate, 2),
+            "total_absences": total_absences,
+            "low_attendance_count": len(low_students),
+        },
+        "low_attendance_students": low_students,
+        "students": students_out,
+    }
+
+
+def operator_attendance_export_csv(tenant, month: str, route_filter: str = "all"):
+    import csv
+    from io import StringIO
+
+    start, end = _month_bounds(month)
+    qs = (
+        TripAttendance.objects.filter(
+            tenant=tenant,
+            trip__trip_date__gte=start,
+            trip__trip_date__lte=end,
+        )
+        .select_related("student", "student__pickup_stop", "trip", "trip__route")
+        .order_by("trip__trip_date", "trip__route__name", "student__full_name")
+    )
+    if route_filter != "all":
+        qs = qs.filter(trip__route_id=int(route_filter))
+    buf = StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Date", "Route", "Student", "Stop", "Pickup", "Drop", "Absent reason"])
+    for att in qs:
+        stop = att.student.pickup_stop.name if att.student.pickup_stop_id else ""
+        writer.writerow(
+            [
+                str(att.trip.trip_date),
+                att.trip.route.name,
+                att.student.full_name,
+                stop,
+                att.pickup_status,
+                att.drop_status,
+                att.pickup_absent_reason or "",
+            ]
+        )
+    return buf.getvalue()
+
+
+def operator_fees_grouped_payload(tenant, month: str | None = None) -> dict:
+    """Grouped fees with optional month filter and 3-month trend."""
+    today = _today()
+
+    def _payload_for_month(target_month: str) -> dict:
+        qs = FeeRecord.objects.filter(tenant=tenant, month=target_month).select_related(
+            "student", "student__parent"
+        )
+        overdue, due_month, paid = [], [], []
+        for fr in qs.order_by("due_date"):
+            row = {
+                "id": fr.id,
+                "student_name": fr.student.full_name,
+                "month": fr.month,
+                "amount": str(fr.amount),
+                "due_date": str(fr.due_date),
+                "status": fr.status,
+                "days_overdue": max(0, (today - fr.due_date).days)
+                if fr.due_date < today and fr.status != FeeRecord.STATUS_PAID
+                else 0,
+                "parent_phone": fr.student.parent.phone if fr.student.parent else "",
+            }
+            if fr.status == FeeRecord.STATUS_PAID:
+                paid.append(row)
+            elif fr.due_date < today and fr.status != FeeRecord.STATUS_PAID:
+                overdue.append(row)
+            else:
+                due_month.append(row)
+        collected = qs.filter(status=FeeRecord.STATUS_PAID).aggregate(s=Sum("amount"))["s"] or Decimal("0")
+        pending = qs.exclude(status=FeeRecord.STATUS_PAID).aggregate(s=Sum("amount"))["s"] or Decimal("0")
+        denom = collected + pending
+        pct = float(collected / denom * 100) if denom else 0
+        return {
+            "overdue": overdue,
+            "due_this_month": due_month,
+            "paid": paid,
+            "summary": {
+                "collected": str(collected),
+                "pending": str(pending),
+                "collection_pct": round(pct, 1),
+                "month": target_month,
+            },
+        }
+
+    target = month or today.strftime("%Y-%m")
+    main = _payload_for_month(target)
+    trend = []
+    y, m = map(int, target.split("-"))
+    for i in range(2, -1, -1):
+        mm = m - i
+        yy = y
+        while mm < 1:
+            mm += 12
+            yy -= 1
+        ym = f"{yy}-{mm:02d}"
+        p = _payload_for_month(ym)
+        trend.append(
+            {
+                "month": ym,
+                "label": date(yy, mm, 1).strftime("%B %Y"),
+                "collection_pct": p["summary"]["collection_pct"],
+                "collected": p["summary"]["collected"],
+            }
+        )
+    main["trend"] = trend
+    return main
+
+
+def operator_notifications_unread_count(tenant) -> int:
+    since = timezone.now() - timedelta(days=7)
+    return OutboundMessage.objects.filter(
+        tenant=tenant,
+        status__in=(OutboundMessage.STATUS_PENDING, OutboundMessage.STATUS_FAILED),
+        created_at__gte=since,
+    ).count()
+
+
+def operator_fee_remind_payload(tenant, fee_id: int) -> dict:
+    fee = FeeRecord.objects.filter(tenant=tenant, pk=fee_id).select_related(
+        "student", "student__parent"
+    ).first()
+    if fee is None:
+        raise ValueError("Fee record not found")
+    if fee.status == FeeRecord.STATUS_PAID:
+        raise ValueError("Fee already paid")
+    parent = fee.student.parent
+    if parent is None or not parent.phone:
+        raise ValueError("Parent phone not available")
+    body = (
+        f"Fee reminder for {fee.student.full_name}: ₹{fee.amount} due for {fee.month}. "
+        "— Sai Baba School Bus"
+    )
+    message = OutboundMessage.objects.create(
+        tenant=tenant,
+        event_type="fee_reminder",
+        to_phone=parent.phone,
+        student=fee.student,
+        template_key="fee_reminder",
+        body=body,
+        channel="whatsapp",
+    )
+    from .notifications.dispatch import dispatch_outbound
+
+    message = dispatch_outbound(message)
+    return {
+        "status": message.status,
+        "whatsapp_url": message.provider_ref if message.provider_ref.startswith("http") else "",
+        "message_id": message.id,
     }

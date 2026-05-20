@@ -4,6 +4,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=lib/resolve_swa_url.sh
+source "$ROOT/deploy/scripts/lib/resolve_swa_url.sh"
 DIST="${1:-frontend/dist}"
 RG="${AZURE_RESOURCE_GROUP:-rg-saasstack-staging}"
 SWA_NAME="${STATIC_WEB_APP_NAME:-saasstack-staging-web}"
@@ -46,7 +48,11 @@ npx --yes @azure/static-web-apps-cli@1.1.10 deploy "$DIST" \
   --env production \
   --no-use-keychain
 
-VERIFY_URL="${UNIFIED_SWA_URL:-https://${SWA_HOST:-saasstack-staging-web.azurestaticapps.net}}"
+if [[ -n "$SWA_HOST" ]]; then
+  VERIFY_URL="https://${SWA_HOST}"
+else
+  VERIFY_URL="$(resolve_unified_swa_url)"
+fi
 status="$(curl -sS -o /dev/null -w "%{http_code}" "${VERIFY_URL%/}/" || echo "000")"
 if [[ "$status" == "404" ]] || [[ "$status" == "000" ]] || [[ "$status" -ge 400 ]]; then
   echo "ERROR: after deploy, ${VERIFY_URL}/ returned HTTP ${status}" >&2
