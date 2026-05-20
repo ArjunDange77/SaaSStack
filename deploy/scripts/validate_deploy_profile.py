@@ -114,6 +114,10 @@ def validate_profile(profile: str, preflight_env: bool = False) -> list[str]:
         if slot != expected_slot:
             errors.append(f"DEPLOY_SLOT={slot!r} != profile deploy_slot {expected_slot!r}")
 
+    products = data.get("products")
+    if profile == "unified-staging" and not isinstance(products, dict):
+        errors.append(f"{path.relative_to(ROOT)}: missing products: block")
+
     workflow = data.get("workflow")
     if isinstance(workflow, dict):
         deploy_staging = ROOT / ".github/workflows/deploy-staging.yml"

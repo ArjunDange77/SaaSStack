@@ -1,15 +1,23 @@
 import { FormEvent, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { useToast } from "@/components/ui/ToastProvider";
 import { apiErrorMessage } from "@/api/client";
-import { postLoginPath } from "@/lib/postLoginPath";
+import {
+  meProfileFromRecord,
+  resolvePostLoginTarget,
+} from "@/lib/resolvePostLoginTarget";
 
 const DEFAULT_TENANT = "sai-baba-school-bus";
 
+type LoginLocationState = { from?: { pathname: string; search?: string; hash?: string } };
+
 export function LoginPage() {
-  const { login, isAuthenticated, role, driverId, parentId, tenantSlug } = useAuth();
-  const { success, error: toastError } = useToast();
+  const { login, isAuthenticated, user, tenantSlug } = useAuth();
+  const { success } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as LoginLocationState | null)?.from;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [tenant, setTenant] = useState(
@@ -17,8 +25,10 @@ export function LoginPage() {
   );
   const [error, setError] = useState("");
 
-  if (isAuthenticated) {
-    return <Navigate to={postLoginPath(role, tenantSlug, driverId, parentId)} replace />;
+  if (isAuthenticated && user) {
+    const me = meProfileFromRecord(user);
+    const target = resolvePostLoginTarget(me, tenantSlug, from);
+    return <Navigate to={target} replace />;
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -27,23 +37,23 @@ export function LoginPage() {
     const u = username.trim();
     const p = password;
     if (!u || !p) {
-      const msg = "Enter username and password.";
-      setError(msg);
-      toastError(msg);
+      setError("Enter username and password.");
       return;
     }
     try {
-      await login(u, p, tenant.trim());
+      const meRecord = await login(u, p, tenant.trim());
       success("Signed in successfully");
+      const me = meProfileFromRecord(meRecord);
+      const target = resolvePostLoginTarget(me, tenant.trim(), from);
+      navigate(target, { replace: true });
     } catch (err) {
-      const msg = apiErrorMessage(err, "Login failed. Check credentials and that the API is running.");
-      setError(msg);
-      toastError(msg);
+      setError(apiErrorMessage(err, "Login failed. Check credentials and that the API is running."));
     }
   };
 
   return (
     <div className="login-page">
+      <p className="login-brand muted">SaaSStack · School Bus</p>
       <h2>Sign in</h2>
       <form onSubmit={onSubmit}>
         <div className="field">
@@ -72,11 +82,11 @@ export function LoginPage() {
           />
         </div>
         {error && <p className="error">{error}</p>}
-        <button type="submit">Login</button>
+        <button type="submit" className="login-submit">Login</button>
       </form>
       <p className="muted login-hint">
-        Goa pilot (local): <strong>kamlesh</strong> / <strong>suresh</strong> / <strong>priya</strong> — password{" "}
-        <strong>admin</strong>
+        Goa pilot (local): <strong>kamlesh</strong> (operator) · <strong>suresh</strong> (driver) ·{" "}
+        <strong>priya</strong> (parent) — password <strong>admin</strong>
       </p>
     </div>
   );

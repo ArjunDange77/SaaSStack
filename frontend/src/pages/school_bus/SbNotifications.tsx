@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { apiErrorMessage } from "@/api/client";
 import { EmptyState } from "@/components/school_bus/EmptyState";
 import { SbPageHeader } from "@/components/school_bus/SbPageHeader";
@@ -97,9 +96,6 @@ export function SbNotifications() {
           </table>
         </div>
       )}
-      <p className="muted sb-quick-links">
-        <Link to="/sb/dashboard">← Command center</Link>
-      </p>
     </div>
   );
 }

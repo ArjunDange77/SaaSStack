@@ -10,8 +10,13 @@ export function postLoginPath(
 ): string {
   if (role === "resident") return "/resident";
   if (role === "parent" || parentId) return "/sb/parent";
-  if (driverId && role !== "owner") return "/sb/driver";
-  if (isSchoolBusTenant(tenantSlug) && (role === "owner" || role === "staff")) {
+  if (role === "driver" || (driverId && role !== "owner" && role !== "staff")) {
+    return "/sb/driver";
+  }
+  if (role === "owner") {
+    return isSchoolBusTenant(tenantSlug) ? "/sb/dashboard" : "/dashboard";
+  }
+  if (isSchoolBusTenant(tenantSlug) && role === "staff") {
     return "/sb/dashboard";
   }
   return "/dashboard";

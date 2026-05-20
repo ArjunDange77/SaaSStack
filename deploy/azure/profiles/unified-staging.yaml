@@ -18,3 +18,18 @@ workflow:
   run_sb_demo_seed: false
   early_gate_script: smoke_public_api.sh
   smoke_script: smoke_unified_staging.sh
+
+# Per-product staging seeds (enabled flags; workflow may read these in future)
+products:
+  pg_management:
+    enabled: true
+    seed_command: seed_pg
+    seed_env_var: SEED_PG_DEMO
+  school_bus:
+    enabled: true
+    seed_command: seed_goa_pilot_via_db
+    seed_env_var: SEED_GOA_PILOT_STAGING
+  hostel:
+    enabled: false
+    seed_command: seed_hostel
+    seed_env_var: SEED_HOSTEL_DEMO

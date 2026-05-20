@@ -56,7 +56,7 @@ class Command(BaseCommand):
         TenantMembership.objects.get_or_create(
             user=driver_user,
             tenant=tenant,
-            defaults={"role": TenantMembership.ROLE_STAFF},
+            defaults={"role": TenantMembership.ROLE_DRIVER},
         )
 
         parent_user, _ = User.objects.get_or_create(
@@ -77,7 +77,7 @@ class Command(BaseCommand):
             ("Students", "/r/sb-students", "users", "sb-students", "operations", 10),
             ("Routes", "/r/sb-routes", "route", "sb-routes", "operations", 20),
             ("Drivers", "/r/sb-drivers", "user", "sb-drivers", "operations", 30),
-            ("Trips", "/r/sb-trips", "bus", "sb-trips", "operations", 40),
+            ("Today's trips", "/sb/trips", "bus", "", "operations", 40),
             ("Fees", "/r/sb-fee-records", "wallet", "sb-fee-records", "operations", 50),
         ]
         for label, href, icon, resource_slug, nav_group, order in nav:

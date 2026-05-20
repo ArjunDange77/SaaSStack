@@ -9,6 +9,8 @@ interface Props {
   rows: Record<string, unknown>[];
   loading?: boolean;
   onRowClick?: (row: Record<string, unknown>) => void;
+  sortColumn?: string;
+  onSortColumn?: (column: string) => void;
 }
 
 function formatColumnLabel(col: string): string {
@@ -46,7 +48,7 @@ function CardSkeleton() {
   );
 }
 
-export function DynamicTable({ schema, rows, loading, onRowClick }: Props) {
+export function DynamicTable({ schema, rows, loading, onRowClick, sortColumn = "", onSortColumn }: Props) {
   const labelMaps = useRelationLabelMaps(schema);
   const columns = schema.list_display.length ? schema.list_display : ["id"];
   const primaryCol = columns[0];
@@ -119,9 +121,26 @@ export function DynamicTable({ schema, rows, loading, onRowClick }: Props) {
         <table>
           <thead>
             <tr>
-              {columns.map((col) => (
-                <th key={col}>{columnLabel(schema, col)}</th>
-              ))}
+              {columns.map((col) => {
+                const label = columnLabel(schema, col);
+                if (onSortColumn) {
+                  const active = sortColumn === col || sortColumn === `-${col}`;
+                  const desc = sortColumn === `-${col}`;
+                  return (
+                    <th key={col}>
+                      <button
+                        type="button"
+                        className={`table-sort-btn${active ? " table-sort-btn--active" : ""}`}
+                        onClick={() => onSortColumn(col)}
+                      >
+                        {label}
+                        {active ? (desc ? " ↓" : " ↑") : ""}
+                      </button>
+                    </th>
+                  );
+                }
+                return <th key={col}>{label}</th>;
+              })}
               <th>Actions</th>
             </tr>
           </thead>

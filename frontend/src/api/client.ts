@@ -122,6 +122,10 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
     return "Too many requests. Please wait a few minutes and try again.";
   }
   if (status === 401) {
+    const url = error.config?.url ?? error.response?.config?.url ?? "";
+    if (url.includes("/auth/login/") || url.includes("/auth/refresh/")) {
+      return "Incorrect username or password.";
+    }
     return "Your session expired. Please sign in again.";
   }
   if (status === 413) {

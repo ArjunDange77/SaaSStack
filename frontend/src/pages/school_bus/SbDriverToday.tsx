@@ -1,9 +1,12 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { apiErrorMessage, isAuthError } from "@/api/client";
-import { useAuth } from "@/auth/AuthContext";
-import { useSbDriverToday, useSbTripActions } from "@/hooks/useSchoolBus";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { SignOutButton } from "@/components/ui/SignOutButton";
+import { useSbDriverSchedule, useSbDriverToday, useSbTripActions } from "@/hooks/useSchoolBus";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+
+const ACTIVE_STATUSES = new Set(["started", "pickup_in_progress", "incident_reported"]);
 
 function statusLabel(status: string | null): string {
   if (!status) return "";
@@ -11,13 +14,26 @@ function statusLabel(status: string | null): string {
 }
 
 export function SbDriverToday() {
-  const { logout } = useAuth();
   const navigate = useNavigate();
   const { data, isLoading, error, refetch } = useSbDriverToday();
+  const { data: schedule } = useSbDriverSchedule(7);
   const tripId = data?.trip_id ?? 0;
   const { start } = useSbTripActions(tripId);
   const [actionError, setActionError] = useState("");
+  const [gpsPrompt, setGpsPrompt] = useState(false);
   useDocumentTitle("Driver — Today");
+
+  const isScheduled =
+    data?.trip_status === "scheduled" || data?.trip_status === "delayed";
+  const isActive = data?.trip_status != null && ACTIVE_STATUSES.has(data.trip_status);
+  const isCompleted = data?.trip_status === "completed";
+  const hasActiveTrip = data?.trip_id != null && isActive;
+
+  useEffect(() => {
+    if (hasActiveTrip && data?.trip_id) {
+      navigate(`/sb/driver/trip/${data.trip_id}`, { replace: true });
+    }
+  }, [hasActiveTrip, data?.trip_id, navigate]);
 
   const onStartTrip = async () => {
     if (!data?.trip_id) return;
@@ -25,6 +41,7 @@ export function SbDriverToday() {
     try {
       await start.mutateAsync();
       await refetch();
+      setGpsPrompt(true);
       navigate(`/sb/driver/trip/${data.trip_id}`);
     } catch (err) {
       setActionError(apiErrorMessage(err, "Could not start trip."));
@@ -51,53 +68,106 @@ export function SbDriverToday() {
             <Link to="/login">Sign in again</Link>
           </p>
         )}
-        <button type="button" onClick={logout}>
-          Sign out
-        </button>
+        <SignOutButton className="sb-driver-signout-link" />
       </div>
     );
   }
 
-  const isScheduled =
-    data.trip_status === "scheduled" || data.trip_status === "delayed";
-  const hasActiveTrip = data.trip_id != null;
-  const canOpen = data.can_open_checklist && hasActiveTrip;
+  if (hasActiveTrip && data.trip_id) {
+    return <Navigate to={`/sb/driver/trip/${data.trip_id}`} replace />;
+  }
 
-  if (!hasActiveTrip) {
+  if (!data.trip_id && !isCompleted) {
+    const upcoming = schedule?.trips ?? [];
     return (
       <div className="sb-driver-page">
+        <Breadcrumbs crumbs={[{ label: "Today" }]} />
         <header className="sb-driver-header">
           <h1>Today&apos;s route</h1>
           <p className="muted">{data.driver_name}</p>
-          {data.route_name ? <p className="muted">Assigned route: {data.route_name}</p> : null}
         </header>
-        <section className="sb-driver-empty">
+        <section className="sb-driver-empty portal-card">
           <p>No trip scheduled for today.</p>
-          <p className="muted">Check back tomorrow or contact your operator.</p>
+          {upcoming.length > 0 ? (
+            <>
+              <h2>Upcoming trips</h2>
+              <ul className="sb-driver-schedule-list">
+                {upcoming.map((t) => (
+                  <li key={t.trip_id}>
+                    {t.is_today ? (
+                      <Link to={`/sb/driver/trip/${t.trip_id}`}>
+                        <strong>{t.route_name}</strong> — today · {statusLabel(t.status)}
+                      </Link>
+                    ) : (
+                      <span>
+                        <strong>{t.route_name}</strong> — {t.trip_date} · {statusLabel(t.status)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="muted">Check back later or contact your operator.</p>
+          )}
         </section>
-        <button type="button" className="sb-driver-signout" onClick={logout}>
-          Sign out
-        </button>
+        <SignOutButton className="sb-driver-signout-link" />
+      </div>
+    );
+  }
+
+  if (isCompleted && data.completed_summary) {
+    const s = data.completed_summary;
+    return (
+      <div className="sb-driver-page">
+        <Breadcrumbs crumbs={[{ label: "Today" }]} />
+        <header className="sb-driver-header">
+          <h1>Trip completed</h1>
+          <p className="muted">{data.route.name || data.route_name}</p>
+        </header>
+        <div className="sb-trip-complete portal-card" role="status">
+          <p>
+            {s.present_count} present, {s.absent_count} absent
+            {s.duration_minutes != null ? ` · ${s.duration_minutes} min` : ""}
+          </p>
+        </div>
+        <SignOutButton className="sb-driver-signout-link" />
       </div>
     );
   }
 
   return (
     <div className="sb-driver-page">
-      <header className="sb-driver-header">
+      <header className="sb-driver-header sb-driver-header--with-menu">
         <div>
+          <Breadcrumbs
+            crumbs={[
+              { label: "Today" },
+              { label: data.route.name || data.route_name || "Trip" },
+            ]}
+          />
           <h1>{data.route.name || data.route_name}</h1>
           <p className="muted">
             {data.route.direction} · Bus {data.bus.fleet_number || data.bus_fleet_number} ·{" "}
             {data.trip_date}
           </p>
         </div>
-        <span className={`sb-trip-chip sb-trip-chip--${data.trip_status}`}>
-          {statusLabel(data.trip_status)}
-        </span>
+        <div className="sb-driver-header-actions">
+          <span className={`sb-trip-chip sb-trip-chip--${data.trip_status}`}>
+            {statusLabel(data.trip_status)}
+          </span>
+          <SignOutButton className="sb-driver-signout-link" />
+        </div>
       </header>
 
       {actionError && <p className="error">{actionError}</p>}
+
+      {gpsPrompt && (
+        <p className="sb-driver-coach muted">
+          Mark each student as you reach the stop. Enable location on the trip screen so parents can
+          see the bus.
+        </p>
+      )}
 
       <div className="sb-driver-actions">
         {isScheduled && (
@@ -110,40 +180,14 @@ export function SbDriverToday() {
             Start trip
           </button>
         )}
-        {canOpen && (
-          <Link className="sb-driver-btn sb-driver-btn-primary" to={`/sb/driver/trip/${data.trip_id}`}>
-            Open trip checklist
-          </Link>
-        )}
         <Link className="sb-driver-btn" to="/sb/driver/incident">
           Report incident
         </Link>
       </div>
 
-      {canOpen && data.checklist.length > 0 && (
-        <section className="sb-driver-section">
-          <h2>Students ({data.checklist.length})</h2>
-          <ul className="sb-driver-checklist">
-            {data.checklist.map((row) => (
-              <li key={row.student_id} className="sb-driver-checklist-item">
-                <div>
-                  <strong>{row.full_name}</strong>
-                  <span className="muted"> · {row.stop_name}</span>
-                </div>
-                <span className="sb-attendance-badge">{row.pickup_status.replace(/_/g, " ")}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {isScheduled && (
         <p className="muted sb-driver-hint">Start the trip to begin marking attendance at each stop.</p>
       )}
-
-      <button type="button" className="sb-driver-signout" onClick={logout}>
-        Sign out
-      </button>
     </div>
   );
 }

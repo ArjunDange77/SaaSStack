@@ -10,6 +10,52 @@ from apps.products.school_bus import services
 
 
 @pytest.mark.django_db
+def test_complete_trip_auto_marks_unmarked_as_present(sb_tenant, sb_driver_setup):
+    driver = sb_driver_setup["driver"]
+    student = Student.objects.create(
+        tenant=sb_tenant,
+        full_name="On Bus Kid",
+        assigned_route=driver.assigned_route,
+        assigned_bus=driver.assigned_bus,
+    )
+    trip = services.ensure_trip_for_driver(sb_tenant, driver)
+    services.start_trip(trip)
+    services.complete_trip(trip)
+    trip.refresh_from_db()
+    assert trip.status == Trip.STATUS_COMPLETED
+    att = TripAttendance.objects.get(trip=trip, student=student)
+    assert att.pickup_status == TripAttendance.PRESENT
+
+
+@pytest.mark.django_db
+def test_parent_me_today_trip_summary(sb_tenant, sb_parent_setup, sb_driver_setup):
+    parent = sb_parent_setup["parent"]
+    Student.objects.create(
+        tenant=sb_tenant,
+        full_name="Summary Child",
+        parent=parent,
+        assigned_route=sb_driver_setup["route"],
+        assigned_bus=sb_driver_setup["bus"],
+    )
+    trip = services.ensure_trip_for_driver(sb_tenant, sb_driver_setup["driver"])
+    services.start_trip(trip)
+    payload = services.parent_me_payload(sb_tenant, parent)
+    summary = payload["children"][0]["today_trip_summary"]
+    assert summary is not None
+    assert summary["trip_id"] == trip.id
+    assert summary["trip_status"] == Trip.STATUS_STARTED
+
+
+@pytest.mark.django_db
+def test_driver_schedule_payload(sb_tenant, sb_driver_setup):
+    driver = sb_driver_setup["driver"]
+    services.ensure_trip_for_driver(sb_tenant, driver)
+    payload = services.driver_schedule_payload(sb_tenant, driver, days=7)
+    assert payload["days"] == 7
+    assert len(payload["trips"]) >= 1
+
+
+@pytest.mark.django_db
 def test_trip_lifecycle(sb_tenant, sb_driver_setup):
     driver = sb_driver_setup["driver"]
     student = Student.objects.create(
@@ -143,3 +189,24 @@ def test_parent_hero_pickup_time_ist(sb_tenant, sb_driver_setup, sb_parent_setup
     assert hero["level"] == "safe"
     assert "Mapusa" in hero["detail"]
     assert "8:15 AM" in hero["detail"]
+
+
+@pytest.mark.django_db
+def test_parent_me_tracking_with_location(sb_tenant, sb_parent_setup, sb_driver_setup):
+    from decimal import Decimal
+
+    parent = sb_parent_setup["parent"]
+    Student.objects.create(
+        tenant=sb_tenant,
+        full_name="Track Child",
+        parent=parent,
+        assigned_route=sb_driver_setup["route"],
+        assigned_bus=sb_driver_setup["bus"],
+    )
+    trip = services.ensure_trip_for_driver(sb_tenant, sb_driver_setup["driver"])
+    services.start_trip(trip)
+    services.record_trip_location(trip, Decimal("15.49"), Decimal("73.82"))
+    payload = services.parent_me_payload(sb_tenant, parent)
+    tracking = payload["children"][0]["tracking"]
+    assert tracking["active"] is True
+    assert tracking["last_location"] is not None

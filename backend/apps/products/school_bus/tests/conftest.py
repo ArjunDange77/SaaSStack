@@ -26,6 +26,29 @@ def sb_operator_client(api_client, sb_tenant):
 
 
 @pytest.fixture
+def sb_second_driver_setup(sb_tenant):
+    from apps.products.school_bus.models import Bus, Driver, Route
+
+    user = User.objects.create_user(username="sb-drv2", password="testpass123")
+    TenantMembership.objects.create(
+        user=user,
+        tenant=sb_tenant,
+        role=TenantMembership.ROLE_DRIVER,
+        is_active=True,
+    )
+    bus = Bus.objects.create(tenant=sb_tenant, fleet_number="T-2", capacity=40)
+    route = Route.objects.create(tenant=sb_tenant, name="Route 2")
+    driver = Driver.objects.create(
+        tenant=sb_tenant,
+        full_name="Other Driver",
+        assigned_bus=bus,
+        assigned_route=route,
+        user=user,
+    )
+    return {"user": user, "driver": driver, "bus": bus, "route": route}
+
+
+@pytest.fixture
 def sb_driver_setup(sb_tenant):
     from apps.products.school_bus.models import Bus, Driver, Route
 
@@ -33,7 +56,7 @@ def sb_driver_setup(sb_tenant):
     TenantMembership.objects.create(
         user=user,
         tenant=sb_tenant,
-        role=TenantMembership.ROLE_STAFF,
+        role=TenantMembership.ROLE_DRIVER,
         is_active=True,
     )
     bus = Bus.objects.create(tenant=sb_tenant, fleet_number="T-1", capacity=40)

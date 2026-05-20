@@ -7,6 +7,11 @@ import { useSbOperatorBriefing } from "@/hooks/useSchoolBus";
 
 vi.mock("@/hooks/useSchoolBus", () => ({
   useSbOperatorBriefing: vi.fn(),
+  useSbLiveFleet: vi.fn(() => ({ data: [] })),
+}));
+
+vi.mock("@/components/school_bus/LiveBusMap", () => ({
+  LiveFleetMap: () => null,
 }));
 
 const mockBriefing = vi.mocked(useSbOperatorBriefing);

@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { apiErrorMessage } from "@/api/client";
 import { SbPageHeader } from "@/components/school_bus/SbPageHeader";
 import { useSbFeeRemind, useSbOperatorFees } from "@/hooks/useSchoolBus";
@@ -185,9 +184,6 @@ export function SbFees() {
           </button>
         </div>
       )}
-      <p className="muted sb-quick-links">
-        <Link to="/sb/dashboard">← Command center</Link>
-      </p>
     </div>
   );
 }

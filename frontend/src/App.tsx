@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { AppShell } from "@/components/shell/AppShell";
 import { HomePage } from "@/pages/HomePage";
@@ -7,6 +7,8 @@ import { LoginPage } from "@/pages/LoginPage";
 import { DashboardRoute } from "@/pages/DashboardRoute";
 import { isSchoolBusTenant } from "@/lib/schoolBusTenant";
 import { SbAttendancePage } from "@/pages/school_bus/SbAttendancePage";
+import { SbSchedulePage } from "@/pages/school_bus/SbSchedulePage";
+import { SbTripDetailRoute } from "@/pages/school_bus/SbTripDetailRoute";
 import { SbTripsPage } from "@/pages/school_bus/SbTripsPage";
 import { SbDashboard } from "@/pages/school_bus/SbDashboard";
 import { SbDriverIncident } from "@/pages/school_bus/SbDriverIncident";
@@ -17,13 +19,19 @@ import { SbNotifications } from "@/pages/school_bus/SbNotifications";
 import { SbParentPortal } from "@/pages/school_bus/SbParentPortal";
 import { PublicBookingPage } from "@/pages/PublicBookingPage";
 import { ResidentPortal } from "@/pages/ResidentPortal";
+import { PortalRoute } from "@/components/PortalRoute";
 import { ResourceDetailRoute, ResourceListRoute } from "@/pages/ResourceRoute";
+
+function SbTripDetailRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/sb/trips/${id ?? ""}`} replace />;
+}
 
 function Protected({ children }: { children: ReactNode }) {
   const { isAuthenticated, role, driverId, tenantSlug } = useAuth();
   const location = useLocation();
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
   if (role === "resident") {
     const path = location.pathname;
@@ -42,16 +50,21 @@ function Protected({ children }: { children: ReactNode }) {
       return <Navigate to="/sb/parent" replace />;
     }
   }
-  if (driverId && role !== "owner" && role !== "parent") {
+  const onDriverRoute =
+    location.pathname === "/sb/driver" || location.pathname.startsWith("/sb/driver/");
+  if (onDriverRoute && !driverId && (role === "owner" || role === "staff")) {
+    return (
+      <Navigate
+        to={isSchoolBusTenant(tenantSlug) ? "/sb/dashboard" : "/dashboard"}
+        replace
+      />
+    );
+  }
+  if (role === "driver" || (driverId && role !== "owner" && role !== "staff" && role !== "parent")) {
     const path = location.pathname;
-    const onDriver =
-      path === "/sb/driver" ||
-      path.startsWith("/sb/driver/");
-    const onOperatorShell =
-      path === "/" ||
-      path === "/dashboard" ||
-      path.startsWith("/r/");
-    if (onOperatorShell && !onDriver) {
+    const onDriverPortal =
+      path === "/sb/driver" || path.startsWith("/sb/driver/");
+    if (!onDriverPortal) {
       return <Navigate to="/sb/driver" replace />;
     }
   }
@@ -74,7 +87,9 @@ export default function App() {
         path="/resident"
         element={
           <Protected>
-            <ResidentPortal />
+            <PortalRoute requiredRole="resident">
+              <ResidentPortal />
+            </PortalRoute>
           </Protected>
         }
       />
@@ -82,7 +97,9 @@ export default function App() {
         path="/sb/parent"
         element={
           <Protected>
-            <SbParentPortal />
+            <PortalRoute requiredRole="parent">
+              <SbParentPortal />
+            </PortalRoute>
           </Protected>
         }
       />
@@ -90,7 +107,9 @@ export default function App() {
         path="/sb/driver"
         element={
           <Protected>
-            <SbDriverToday />
+            <PortalRoute requiredRole="driver">
+              <SbDriverToday />
+            </PortalRoute>
           </Protected>
         }
       />
@@ -98,7 +117,9 @@ export default function App() {
         path="/sb/driver/trip/:id"
         element={
           <Protected>
-            <SbDriverTrip />
+            <PortalRoute requiredRole="driver">
+              <SbDriverTrip />
+            </PortalRoute>
           </Protected>
         }
       />
@@ -106,7 +127,9 @@ export default function App() {
         path="/sb/driver/incident"
         element={
           <Protected>
-            <SbDriverIncident />
+            <PortalRoute requiredRole="driver">
+              <SbDriverIncident />
+            </PortalRoute>
           </Protected>
         }
       />
@@ -121,9 +144,16 @@ export default function App() {
         <Route path="dashboard" element={<DashboardRoute />} />
         <Route path="sb/dashboard" element={<SbDashboard />} />
         <Route path="sb/trips" element={<SbTripsPage />} />
+        <Route path="sb/trips/:id" element={<SbTripDetailRoute />} />
+        <Route path="r/sb-trips" element={<Navigate to="/sb/trips?tab=all" replace />} />
+        <Route
+          path="r/sb-trips/:id"
+          element={<SbTripDetailRedirect />}
+        />
         <Route path="sb/fees" element={<SbFees />} />
         <Route path="sb/notifications" element={<SbNotifications />} />
         <Route path="sb/attendance" element={<SbAttendancePage />} />
+        <Route path="sb/schedule" element={<SbSchedulePage />} />
         <Route path="r/:slug" element={<ResourceListRoute />} />
         <Route path="r/:slug/:id" element={<ResourceDetailRoute />} />
       </Route>

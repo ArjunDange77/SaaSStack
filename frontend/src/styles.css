@@ -2007,13 +2007,90 @@ button.new-btn {
   margin-bottom: 0.5rem;
 }
 
+.resource-detail-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.resource-detail-back {
+  margin: 0;
+}
+
+.resource-detail-back a {
+  font-size: 0.875rem;
+}
+
+.resource-detail-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.resource-detail-title-row .page-title {
+  margin: 0;
+}
+
+.resource-detail-actions.toolbar {
+  margin: 0;
+  padding: 0;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.resource-detail-actions.toolbar button {
+  flex: 0 0 auto;
+  min-width: auto;
+  padding: 0.5rem 1rem;
+}
+
+.resource-detail-body {
+  background: var(--surface-raised);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
 .resource-detail .field-block {
-  padding: 0.65rem 0;
+  padding: 0.75rem 0;
   border-bottom: 0.5px solid var(--border);
 }
 
 .resource-detail .field-block:last-child {
   border-bottom: none;
+  padding-bottom: 0;
+}
+
+.resource-detail .field-block:first-child {
+  padding-top: 0;
+}
+
+.resource-detail-footer {
+  margin-bottom: 1.25rem;
+  gap: 0.5rem;
+}
+
+.resource-detail-footer button {
+  flex: 0 0 auto;
+  min-width: auto;
+}
+
+.resource-detail-timeline {
+  margin-top: 0.5rem;
+}
+
+.sb-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sb-trip-detail-page .resource-detail {
+  max-width: 100%;
 }
 
 .step-bar {
@@ -4084,6 +4161,13 @@ td {
   justify-content: center;
   padding: 1rem;
   text-align: center;
+  background: var(--surface-raised);
+}
+
+.sb-gps-placeholder-sub {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.9rem;
+  margin: 0.35rem 0 0;
 }
 
 .sb-child-hero {
@@ -4115,8 +4199,26 @@ td {
 
 .sb-child-hero-detail {
   margin: 0.35rem 0 0;
-  font-size: 0.9rem;
-  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.sb-child-hero--safe .sb-child-hero-detail {
+  color: color-mix(in srgb, var(--sb-status-safe) 35%, var(--text));
+}
+
+.sb-child-hero--warning .sb-child-hero-detail {
+  color: color-mix(in srgb, var(--sb-status-warning) 40%, var(--text));
+}
+
+.sb-child-hero--danger .sb-child-hero-detail {
+  color: color-mix(in srgb, var(--sb-status-danger) 40%, var(--text));
+}
+
+.sb-child-hero--neutral .sb-child-hero-detail {
+  color: var(--text);
+  opacity: 0.85;
 }
 
 .sb-alert-drawer-inline {
@@ -4372,11 +4474,29 @@ td {
 }
 
 .sb-student-mark-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--sb-card-radius);
   padding: 1rem;
   margin-bottom: 0.75rem;
+}
+
+.sb-student-mark-info {
+  flex: 1;
+  min-width: 120px;
+}
+
+.sb-student-mark-actions-col {
+  flex-shrink: 0;
+}
+
+.sb-student-mark-card .sb-absent-reasons {
+  flex-basis: 100%;
 }
 
 .sb-stop-nav {
@@ -4898,4 +5018,411 @@ td {
 }
 .wa-btn {
   font-size: 12px;
+}
+
+.sb-driver-signout-link {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.25rem 0;
+}
+
+.sb-driver-header--with-menu .sb-driver-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.sb-driver-page--trip {
+  padding-bottom: 5rem;
+}
+
+.sb-stop-footer--sticky {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 40;
+}
+
+.sb-finish-trip {
+  width: 100%;
+}
+
+.sb-mark-all-present {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.sb-live-map {
+  width: 100%;
+  border-radius: var(--sb-card-radius);
+  z-index: 0;
+}
+
+.sb-live-map-wrap {
+  margin: 0.75rem 0;
+}
+
+.sb-live-map-empty {
+  border: 1px dashed var(--border);
+  border-radius: var(--sb-card-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.sb-live-fleet-section {
+  margin: 1rem 0;
+}
+
+.sb-parent-map-title {
+  font-size: 0.95rem;
+  margin: 0 0 0.35rem;
+}
+
+.sb-parent-map-updated {
+  font-size: 0.85rem;
+  margin: 0.35rem 0 0;
+}
+
+.sb-trips-page .sb-trips-tabs {
+  margin-bottom: 1rem;
+}
+
+.sb-trips-page .sb-trips-tabs .seg-control {
+  max-width: 280px;
+}
+
+.resource-list-embedded {
+  margin-top: 0;
+}
+
+.sb-trips-product-link {
+  font-size: 0.9rem;
+  margin-right: 0.75rem;
+}
+
+.sb-trip-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sb-trip-summary-btn {
+  font-size: 0.85rem;
+}
+
+.sb-summary-drawer {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--sb-card-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 60;
+}
+
+/* UX polish sprint */
+.login-page {
+  max-width: 400px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.login-page h2 {
+  margin-top: 0;
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.login-hint {
+  margin-top: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.sign-out-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.confirm-dialog {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.25rem;
+  max-width: 360px;
+  width: 100%;
+  border: 1px solid var(--border);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+}
+
+.breadcrumbs a {
+  color: var(--primary);
+}
+
+.breadcrumbs-sep {
+  margin: 0 0.35rem;
+  color: var(--muted);
+}
+
+.sb-live-fleet-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-live-fleet-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.sb-live-fleet-warn {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sb-status-warning) 25%, transparent);
+  color: var(--sb-status-warning);
+}
+
+.sb-finish-block-msg {
+  font-size: 0.875rem;
+  color: var(--sb-status-danger);
+  margin: 0 0 0.5rem;
+}
+
+.sb-gps-interval-hint {
+  font-size: 0.8rem;
+  margin: 0.25rem 0 0;
+}
+
+.sb-mark-status {
+  border: none;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.sb-mark-status--present {
+  background: color-mix(in srgb, var(--sb-status-safe) 25%, transparent);
+  color: #14532d;
+}
+
+.sb-mark-status--absent {
+  background: color-mix(in srgb, var(--sb-status-danger) 20%, transparent);
+  color: #7f1d1d;
+}
+
+.sb-mark-absent-btn {
+  border: 1px solid color-mix(in srgb, var(--sb-status-danger) 40%, transparent);
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.sb-mark-absent-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sb-parent-today-trip h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.sb-child-hero--safe .sb-child-hero-headline,
+.sb-child-hero--safe .sb-child-hero-detail {
+  color: #14532d;
+}
+
+.sb-child-hero--warning .sb-child-hero-headline,
+.sb-child-hero--warning .sb-child-hero-detail {
+  color: #78350f;
+}
+
+.sb-schedule-page .sb-schedule-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.sb-schedule-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.sb-schedule-dow {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 0.25rem;
+}
+
+.sb-schedule-day {
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.sb-schedule-day--holiday {
+  background: color-mix(in srgb, var(--sb-status-danger) 18%, var(--surface));
+}
+
+.sb-schedule-day--weekend,
+.sb-schedule-day--muted {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sb-driver-schedule-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+}
+
+.sb-driver-schedule-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-incident-sticky-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.sb-incident-photo-preview {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+}
+
+.table-sort-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.table-sort-btn--active {
+  color: var(--primary);
+}
+
+.login-brand {
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 0.5rem;
+}
+
+.sb-incident-card {
+  margin-top: 1rem;
+}
+
+.sb-incident-field {
+  margin-bottom: 1rem;
+}
+
+.sb-incident-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.sb-incident-submit-sticky {
+  position: sticky;
+  bottom: 0;
+  padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+}
+
+.sb-driver-page--incident {
+  padding-bottom: 4rem;
+}
+
+.sb-incident-report-btn {
+  width: 100%;
+  margin-bottom: 0.75rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.sb-reason-chip.on {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
 }

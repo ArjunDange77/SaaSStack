@@ -203,8 +203,8 @@ class Command(BaseCommand):
             return u
 
         kamlesh = _user("kamlesh", "kamlesh@sai-baba-school-bus.test", TenantMembership.ROLE_OWNER)
-        suresh_u = _user("suresh", "suresh@sai-baba-school-bus.test", TenantMembership.ROLE_STAFF)
-        arun_u = _user("arun", "arun@sai-baba-school-bus.test", TenantMembership.ROLE_STAFF)
+        suresh_u = _user("suresh", "suresh@sai-baba-school-bus.test", TenantMembership.ROLE_DRIVER)
+        arun_u = _user("arun", "arun@sai-baba-school-bus.test", TenantMembership.ROLE_DRIVER)
         priya_u = _user("priya", "priya@sai-baba-school-bus.test", TenantMembership.ROLE_PARENT)
         return {"kamlesh": kamlesh, "suresh": suresh_u, "arun": arun_u, "priya": priya_u}
 
@@ -212,7 +212,7 @@ class Command(BaseCommand):
         items = [
             ("Command center", "/sb/dashboard", "layout-dashboard", "", "today", 5),
             ("Today's trips", "/sb/trips", "bus", "", "today", 8),
-            ("Trips (admin)", "/r/sb-trips", "list", "sb-trips", "manage", 35),
+            ("Schedule", "/sb/schedule", "calendar", "", "today", 9),
             ("Attendance", "/sb/attendance", "clipboard-list", "", "today", 10),
             ("Fees", "/sb/fees", "wallet", "", "today", 15),
             ("Notifications", "/sb/notifications", "bell", "", "today", 18),
@@ -468,18 +468,33 @@ class Command(BaseCommand):
                     trip.save()
 
                 marked_at = started_at or timezone.now()
+                is_active_today = trip_date == today and trip.status in (
+                    Trip.STATUS_STARTED,
+                    Trip.STATUS_PICKUP_IN_PROGRESS,
+                    Trip.STATUS_DELAYED,
+                    Trip.STATUS_SCHEDULED,
+                )
                 attendance_rows: list[TripAttendance] = []
                 for sid, student in students:
                     if student.assigned_route_id != route.id:
                         continue
-                    att_rate = STUDENT_ATTENDANCE_RATE.get(sid, 0.88)
-                    srng = random.Random(sid * 1000 + trip_date.toordinal())
-                    present = srng.random() < att_rate
-                    pickup = TripAttendance.PRESENT if present else TripAttendance.ABSENT
-                    drop = TripAttendance.PRESENT if present else TripAttendance.NOT_MARKED
-                    absent_reason = ""
-                    if not present:
-                        absent_reason = srng.choices(ABSENT_REASONS, weights=ABSENT_REASON_WEIGHTS)[0]
+                    if is_active_today:
+                        pickup = TripAttendance.NOT_MARKED
+                        drop = TripAttendance.NOT_MARKED
+                        absent_reason = ""
+                        att_marked_at = None
+                    else:
+                        att_rate = STUDENT_ATTENDANCE_RATE.get(sid, 0.88)
+                        srng = random.Random(sid * 1000 + trip_date.toordinal())
+                        present = srng.random() < att_rate
+                        pickup = TripAttendance.PRESENT if present else TripAttendance.ABSENT
+                        drop = TripAttendance.PRESENT if present else TripAttendance.NOT_MARKED
+                        absent_reason = ""
+                        if not present:
+                            absent_reason = srng.choices(
+                                ABSENT_REASONS, weights=ABSENT_REASON_WEIGHTS
+                            )[0]
+                        att_marked_at = marked_at
 
                     attendance_rows.append(
                         TripAttendance(
@@ -489,7 +504,7 @@ class Command(BaseCommand):
                             pickup_status=pickup,
                             drop_status=drop,
                             pickup_absent_reason=absent_reason,
-                            marked_at=marked_at,
+                            marked_at=att_marked_at,
                         )
                     )
                 if attendance_rows:

@@ -34,12 +34,29 @@ class ResourceListMetaView(APIView):
         return Response(data)
 
 
+def _deny_product_resource_access(request, slug: str) -> Response | None:
+    if slug.startswith("sb-"):
+        from apps.products.school_bus.rbac import can_access_resource
+
+        if not can_access_resource(request, slug):
+            return Response({"detail": "You do not have permission to perform this action."}, status=403)
+    if slug.startswith("pg-"):
+        from apps.products.pg_management.rbac import can_access_resource
+
+        if not can_access_resource(request, slug):
+            return Response({"detail": "You do not have permission to perform this action."}, status=403)
+    return None
+
+
 class ResourceSchemaView(APIView):
     """GET /api/meta/schema/<slug>/ — schema authority for the React engine."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request, slug):
+        denied = _deny_product_resource_access(request, slug)
+        if denied is not None:
+            return denied
         entry = get_resource(slug)
         if entry is None:
             return Response({"detail": "unknown_resource"}, status=404)

@@ -37,6 +37,12 @@ export interface SbBriefingBanner {
   message: string;
 }
 
+export interface SbTripHealth {
+  not_started: boolean;
+  gps_stale: boolean;
+  not_marked_count: number;
+}
+
 export interface SbBriefingTrip {
   id: number;
   route_name: string;
@@ -48,6 +54,7 @@ export interface SbBriefingTrip {
   elapsed: string;
   completed_at_display?: string;
   status: string;
+  health?: SbTripHealth;
 }
 
 export interface SbActionItem {
@@ -120,6 +127,27 @@ export interface SbDriverChecklistRow {
   pickup_absent_reason: string;
 }
 
+export interface SbTrackingState {
+  active: boolean;
+  trip_id: number | null;
+  last_location: { latitude: string; longitude: string; recorded_at: string } | null;
+  stale: boolean;
+}
+
+export interface SbTripSummary {
+  trip_id: number;
+  route_name: string;
+  bus_fleet_number: string;
+  driver_name: string;
+  duration_minutes: number | null;
+  present_count: number;
+  absent_count: number;
+  not_marked_count: number;
+  gps_coverage_pct: number;
+  incident_count: number;
+  completed_at: string | null;
+}
+
 export interface SbDriverToday {
   trip_id: number | null;
   trip_status: string | null;
@@ -133,6 +161,21 @@ export interface SbDriverToday {
   checklist: SbDriverChecklistRow[];
   can_open_checklist: boolean;
   last_location: { latitude: string; longitude: string; recorded_at: string } | null;
+  progress: { marked_count: number; total_students: number; not_marked_count: number };
+  completed_summary: SbTripSummary | null;
+}
+
+export interface SbLiveFleetTrip {
+  trip_id: number;
+  route_name: string;
+  bus_fleet_number: string;
+  status: string;
+  last_location: { latitude: string; longitude: string; recorded_at: string } | null;
+  stale: boolean;
+  student_count: number;
+  not_started?: boolean;
+  gps_stale?: boolean;
+  not_marked_count?: number;
 }
 
 export type SbHeroLevel = "safe" | "warning" | "danger" | "neutral";
@@ -157,6 +200,20 @@ export interface SbChildFee {
   payment_link_url: string;
 }
 
+export interface SbTodayTripSummary {
+  trip_id: number;
+  trip_date: string;
+  status: string;
+  route_name: string;
+  bus_number: string;
+  pickup_status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  present_count?: number;
+  absent_count?: number;
+  duration_minutes?: number | null;
+}
+
 export interface SbParentChild {
   id: number;
   full_name: string;
@@ -171,8 +228,33 @@ export interface SbParentChild {
   fee_status: string;
   fee_overdue_amount: string;
   hero_status: SbHeroStatus;
+  today_trip_summary?: SbTodayTripSummary | null;
+  tracking: SbTrackingState;
   calendar_days: SbCalendarDay[];
   fees: SbChildFee[];
+}
+
+export interface SbDriverScheduleTrip {
+  trip_id: number;
+  trip_date: string;
+  status: string;
+  route_name: string;
+  bus_fleet_number: string;
+  is_today: boolean;
+}
+
+export interface SbDriverSchedule {
+  days: number;
+  start_date: string;
+  end_date: string;
+  trips: SbDriverScheduleTrip[];
+  holidays: { id: number; holiday_date: string; name: string }[];
+}
+
+export interface SbTenantHoliday {
+  id: number;
+  holiday_date: string;
+  name: string;
 }
 
 export interface SbParentMe {
@@ -396,6 +478,58 @@ export function useSbDriverToday() {
   });
 }
 
+export function useSbDriverSchedule(days = 7) {
+  const { tenantSlug } = useAuth();
+  return useQuery({
+    queryKey: scopeTenant(tenantSlug, ["sb-driver-schedule", days]),
+    queryFn: async () => {
+      const { data } = await api.get<SbDriverSchedule>("/sb/driver/schedule/", {
+        params: { days },
+      });
+      return data;
+    },
+  });
+}
+
+export function useSbHolidays(startDate?: string, endDate?: string) {
+  const { tenantSlug } = useAuth();
+  return useQuery({
+    queryKey: scopeTenant(tenantSlug, ["sb-holidays", startDate ?? "", endDate ?? ""]),
+    queryFn: async () => {
+      const { data } = await api.get<{ holidays: SbTenantHoliday[] }>("/sb/operator/holidays/", {
+        params: { start_date: startDate, end_date: endDate },
+      });
+      return data.holidays;
+    },
+  });
+}
+
+export function useSbHolidayMutations() {
+  const qc = useQueryClient();
+  const { tenantSlug } = useAuth();
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: scopeTenant(tenantSlug, ["sb-holidays"]) });
+
+  const create = useMutation({
+    mutationFn: async (body: { holiday_date: string; name?: string }) => {
+      const { data } = await api.post<SbTenantHoliday>("/sb/operator/holidays/", body);
+      return data;
+    },
+    onSuccess: invalidate,
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/sb/operator/holidays/?id=${id}`);
+    },
+    onSuccess: invalidate,
+  });
+
+  return { create, remove };
+}
+
+const SB_TRACKING_REFETCH_MS = 20_000;
+
 export function useSbParentMe() {
   const { tenantSlug } = useAuth();
   return useQuery({
@@ -404,6 +538,54 @@ export function useSbParentMe() {
       const { data } = await api.get<SbParentMe>("/sb/parent/me/");
       return data;
     },
+    refetchInterval: (query) => {
+      const children = query.state.data?.children ?? [];
+      const tracking = children.some((c) => c.tracking?.active);
+      return tracking ? SB_TRACKING_REFETCH_MS : false;
+    },
+  });
+}
+
+export function useSbLiveFleet() {
+  const { tenantSlug } = useAuth();
+  return useQuery({
+    queryKey: scopeTenant(tenantSlug, ["sb-live-fleet"]),
+    queryFn: async () => {
+      const { data } = await api.get<{ trips: SbLiveFleetTrip[] }>("/sb/operator/live-fleet/");
+      return data.trips;
+    },
+    refetchInterval: SB_TRACKING_REFETCH_MS,
+  });
+}
+
+export function useSbTripsGenerate() {
+  const qc = useQueryClient();
+  const { tenantSlug } = useAuth();
+  return useMutation({
+    mutationFn: async (days: number) => {
+      const { data } = await api.post<{ created: number }>("/sb/operator/trips/generate/", {
+        days,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: scopeTenant(tenantSlug, ["sb-operator-trips-today"]) });
+      qc.invalidateQueries({ queryKey: scopeTenant(tenantSlug, ["sb-operator-trips-date"]) });
+      qc.invalidateQueries({ queryKey: scopeTenant(tenantSlug, ["sb-holidays"]) });
+      qc.invalidateQueries({ queryKey: scopeTenant(tenantSlug, ["sb-driver-schedule"]) });
+    },
+  });
+}
+
+export function useSbTripSummary(tripId: number | null) {
+  const { tenantSlug } = useAuth();
+  return useQuery({
+    queryKey: scopeTenant(tenantSlug, ["sb-trip-summary", tripId ?? 0]),
+    queryFn: async () => {
+      const { data } = await api.get<SbTripSummary>(`/sb/operator/trips/${tripId}/summary/`);
+      return data;
+    },
+    enabled: tripId != null && tripId > 0,
   });
 }
 
@@ -436,10 +618,19 @@ export function useSbTripActions(tripId: number) {
 
   const complete = useMutation({
     mutationFn: async () => {
-      await api.post(`/sb/driver/trips/${tripId}/complete/`);
+      const { data } = await api.post<{ summary?: SbTripSummary }>(
+        `/sb/driver/trips/${tripId}/complete/`
+      );
+      return data;
     },
     onSuccess: invalidate,
   });
 
-  return { start, attendance, complete };
+  const postLocation = useMutation({
+    mutationFn: async (coords: { latitude: number; longitude: number }) => {
+      await api.post(`/sb/driver/trips/${tripId}/location/`, coords);
+    },
+  });
+
+  return { start, attendance, complete, postLocation };
 }

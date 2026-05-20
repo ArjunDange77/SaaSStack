@@ -1,57 +1,16 @@
-from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.permissions import BasePermission
 
 from apps.registry.permissions import get_membership, get_tenant_role
-from apps.registry.role_permissions import RoleBasedModelPermission
+from apps.registry.rbac import CapabilityResourcePermission
 
-from .rbac import OPERATOR_ROLES, RESIDENT_ROLE, can_access_resource, is_operator, is_resident
+from .rbac import OPERATOR_ROLES, RESIDENT_ROLE, can_access_resource, is_operator, is_resident, rules_for_role
 
 
-class PGRolePermission(RoleBasedModelPermission):
+class PGRolePermission(CapabilityResourcePermission):
     """Tenant membership + per-resource PG role matrix."""
 
-    def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        if request.user.is_superuser:
-            return True
-        if get_membership(request) is None:
-            return False
-        slug = getattr(view, "resource_slug", "")
-        if not can_access_resource(request, slug):
-            return False
-        role = get_tenant_role(request)
-        if request.method == "DELETE":
-            from .rbac import rules_for_role
-
-            rules = rules_for_role(slug, role) or {}
-            if not rules.get("delete"):
-                return False
-        if request.method in ("POST", "PUT", "PATCH") and not getattr(view, "action", None):
-            from .rbac import rules_for_role
-
-            rules = rules_for_role(slug, role) or {}
-            if request.method == "POST" and not rules.get("create"):
-                return False
-            if request.method in ("PUT", "PATCH") and not rules.get("update"):
-                return False
-        action = getattr(view, "action", None)
-        if action and action not in (
-            "list",
-            "create",
-            "retrieve",
-            "update",
-            "partial_update",
-            "destroy",
-        ):
-            if action == "timeline" and request.method in SAFE_METHODS:
-                return True
-            from .rbac import rules_for_role
-
-            rules = rules_for_role(slug, role) or {}
-            allowed = rules.get("actions")
-            if allowed is not None and action not in allowed:
-                return False
-        return True
+    rules_for_role = staticmethod(rules_for_role)
+    can_access_resource = staticmethod(can_access_resource)
 
     def has_object_permission(self, request, view, obj):
         if request.user.is_superuser:

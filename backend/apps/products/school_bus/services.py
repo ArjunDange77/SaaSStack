@@ -21,6 +21,7 @@ from .models import (
     Route,
     RouteStop,
     Student,
+    TenantHoliday,
     Trip,
     TripAttendance,
     TripLocation,
@@ -38,6 +39,77 @@ DRIVER_ACTIVE_STATUSES = (
     Trip.STATUS_PICKUP_IN_PROGRESS,
     Trip.STATUS_INCIDENT_REPORTED,
 )
+
+TRACKABLE_TRIP_STATUSES = (
+    Trip.STATUS_STARTED,
+    Trip.STATUS_PICKUP_IN_PROGRESS,
+    Trip.STATUS_DELAYED,
+    Trip.STATUS_INCIDENT_REPORTED,
+)
+
+LOCATION_STALE_SECONDS = 180
+
+
+def _serialize_location(loc: TripLocation | None) -> dict | None:
+    if loc is None:
+        return None
+    return {
+        "latitude": str(loc.latitude),
+        "longitude": str(loc.longitude),
+        "recorded_at": loc.recorded_at.isoformat(),
+    }
+
+
+def _location_is_stale(recorded_at) -> bool:
+    if recorded_at is None:
+        return True
+    age = (timezone.now() - recorded_at).total_seconds()
+    return age > LOCATION_STALE_SECONDS
+
+
+def _latest_trip_location(tenant, trip: Trip) -> TripLocation | None:
+    return (
+        TripLocation.objects.filter(tenant=tenant, trip=trip).order_by("-recorded_at").first()
+    )
+
+
+def _child_tracking(tenant, trip: Trip | None) -> dict:
+    inactive = {
+        "active": False,
+        "trip_id": None,
+        "last_location": None,
+        "stale": True,
+    }
+    if trip is None or trip.status not in TRACKABLE_TRIP_STATUSES:
+        return inactive
+    loc = _latest_trip_location(tenant, trip)
+    last = _serialize_location(loc)
+    return {
+        "active": True,
+        "trip_id": trip.id,
+        "last_location": last,
+        "stale": _location_is_stale(loc.recorded_at if loc else None),
+    }
+
+
+def _trip_health_signals(tenant, trip: Trip) -> dict:
+    """Operator-facing trip health for briefing / live fleet."""
+    now = timezone.localtime()
+    not_started = trip.status in (Trip.STATUS_SCHEDULED, Trip.STATUS_DELAYED) and trip.started_at is None
+    if not_started and now.date() == trip.trip_date:
+        not_started = (now.hour, now.minute) >= (8, 0)
+    loc = _latest_trip_location(tenant, trip)
+    gps_stale = trip.status in TRACKABLE_TRIP_STATUSES and (
+        loc is None or _location_is_stale(loc.recorded_at)
+    )
+    not_marked = TripAttendance.objects.filter(
+        trip=trip, pickup_status=TripAttendance.NOT_MARKED
+    ).count()
+    return {
+        "not_started": not_started,
+        "gps_stale": gps_stale,
+        "not_marked_count": not_marked,
+    }
 
 
 def get_driver_today_trip(tenant, driver: Driver) -> Trip | None:
@@ -138,7 +210,7 @@ def mark_attendance(trip: Trip, marks: list[dict], user) -> int:
         record.marked_at = now
         record.marked_by = user
         record.save()
-        if record.pickup_status == TripAttendance.PRESENT:
+        if record.pickup_status == TripAttendance.ABSENT:
             from .notifications import notify_attendance_marked
 
             stop_name = ""
@@ -154,6 +226,37 @@ def mark_attendance(trip: Trip, marks: list[dict], user) -> int:
     return updated
 
 
+def build_trip_summary(trip: Trip) -> dict:
+    """Snapshot attendance + duration for owner views after complete."""
+    tenant = trip.tenant
+    atts = TripAttendance.objects.filter(trip=trip)
+    present = atts.filter(pickup_status=TripAttendance.PRESENT).count()
+    absent = atts.filter(pickup_status=TripAttendance.ABSENT).count()
+    not_marked = atts.filter(pickup_status=TripAttendance.NOT_MARKED).count()
+    duration_minutes = None
+    if trip.started_at and trip.completed_at:
+        duration_minutes = int((trip.completed_at - trip.started_at).total_seconds() // 60)
+    loc_count = TripLocation.objects.filter(tenant=tenant, trip=trip).count()
+    gps_coverage_pct = 0
+    if trip.started_at and trip.completed_at and duration_minutes and duration_minutes > 0:
+        expected_pings = max(1, duration_minutes // 1)
+        gps_coverage_pct = min(100, int(100 * loc_count / expected_pings))
+    incidents = Incident.objects.filter(tenant=tenant, trip=trip).count()
+    return {
+        "trip_id": trip.id,
+        "route_name": trip.route.name,
+        "bus_fleet_number": trip.bus.fleet_number,
+        "driver_name": trip.driver.full_name,
+        "duration_minutes": duration_minutes,
+        "present_count": present,
+        "absent_count": absent,
+        "not_marked_count": not_marked,
+        "gps_coverage_pct": gps_coverage_pct,
+        "incident_count": incidents,
+        "completed_at": trip.completed_at.isoformat() if trip.completed_at else None,
+    }
+
+
 def complete_trip(trip: Trip) -> Trip:
     if trip.status not in (
         Trip.STATUS_PICKUP_IN_PROGRESS,
@@ -161,9 +264,66 @@ def complete_trip(trip: Trip) -> Trip:
         Trip.STATUS_INCIDENT_REPORTED,
     ):
         raise ValueError(f"Cannot complete trip in status {trip.status}")
+    now = timezone.now()
+    unmarked = TripAttendance.objects.filter(
+        trip=trip, pickup_status=TripAttendance.NOT_MARKED
+    )
+    for record in unmarked:
+        record.pickup_status = TripAttendance.PRESENT
+        record.marked_at = now
+        record.save(update_fields=["pickup_status", "marked_at", "updated_at"])
     trip.status = Trip.STATUS_COMPLETED
     trip.completed_at = timezone.now()
-    trip.save(update_fields=["status", "completed_at", "updated_at"])
+    trip.summary_json = build_trip_summary(trip)
+    trip.save(update_fields=["status", "completed_at", "summary_json", "updated_at"])
+    return trip
+
+
+def reset_trip_for_demo(trip: Trip) -> Trip:
+    """Clear trip progress and move to today so the assigned driver can start fresh."""
+    today = _today()
+    conflict = (
+        Trip.objects.filter(
+            tenant=trip.tenant,
+            route=trip.route,
+            bus=trip.bus,
+            driver=trip.driver,
+            trip_date=today,
+        )
+        .exclude(pk=trip.pk)
+        .first()
+    )
+    if conflict is not None:
+        raise ValueError(
+            f"A trip already exists for this route, bus, and driver on {today} "
+            f"(trip #{conflict.id}). Remove or reset that trip first."
+        )
+
+    TripLocation.objects.filter(trip=trip).delete()
+    TripAttendance.objects.filter(trip=trip).update(
+        pickup_status=TripAttendance.NOT_MARKED,
+        drop_status=TripAttendance.NOT_MARKED,
+        pickup_absent_reason="",
+        marked_at=None,
+        marked_by=None,
+    )
+
+    trip.status = Trip.STATUS_SCHEDULED
+    trip.trip_date = today
+    trip.started_at = None
+    trip.completed_at = None
+    trip.summary_json = None
+    trip.save(
+        update_fields=[
+            "status",
+            "trip_date",
+            "started_at",
+            "completed_at",
+            "summary_json",
+            "updated_at",
+        ]
+    )
+    _ensure_attendance_for_trip(trip)
     return trip
 
 
@@ -285,15 +445,44 @@ def driver_today_payload(tenant, driver: Driver) -> dict:
         "checklist": [],
         "can_open_checklist": False,
         "last_location": None,
+        "progress": {"marked_count": 0, "total_students": 0, "not_marked_count": 0},
+        "completed_summary": None,
     }
 
     trip = get_driver_today_trip(tenant, driver)
     if trip is None:
+        completed = (
+            Trip.objects.filter(
+                tenant=tenant,
+                driver=driver,
+                trip_date=today,
+                status=Trip.STATUS_COMPLETED,
+            )
+            .select_related("route", "bus")
+            .first()
+        )
+        if completed:
+            empty["trip_id"] = completed.id
+            empty["trip_status"] = completed.status
+            empty["started_at"] = (
+                completed.started_at.isoformat() if completed.started_at else None
+            )
+            empty["route_name"] = completed.route.name
+            empty["bus_fleet_number"] = completed.bus.fleet_number
+            empty["route"] = {
+                "id": completed.route_id,
+                "name": completed.route.name,
+                "direction": completed.route.direction,
+            }
+            empty["bus"] = {"id": completed.bus_id, "fleet_number": completed.bus.fleet_number}
+            empty["completed_summary"] = completed.summary_json or build_trip_summary(completed)
         return empty
 
     can_open = trip.status not in (Trip.STATUS_SCHEDULED, Trip.STATUS_DELAYED)
     checklist = _build_checklist_for_trip(tenant, trip) if can_open else []
-    loc = TripLocation.objects.filter(tenant=tenant, trip=trip).order_by("-recorded_at").first()
+    loc = _latest_trip_location(tenant, trip)
+    marked_count = sum(1 for row in checklist if row["pickup_status"] != TripAttendance.NOT_MARKED)
+    total_students = len(checklist)
     return {
         "trip_id": trip.id,
         "trip_status": trip.status,
@@ -306,15 +495,13 @@ def driver_today_payload(tenant, driver: Driver) -> dict:
         "bus": {"id": trip.bus_id, "fleet_number": trip.bus.fleet_number},
         "checklist": checklist,
         "can_open_checklist": can_open,
-        "last_location": (
-            {
-                "latitude": str(loc.latitude),
-                "longitude": str(loc.longitude),
-                "recorded_at": loc.recorded_at.isoformat(),
-            }
-            if loc
-            else None
-        ),
+        "last_location": _serialize_location(loc),
+        "progress": {
+            "marked_count": marked_count,
+            "total_students": total_students,
+            "not_marked_count": total_students - marked_count,
+        },
+        "completed_summary": None,
     }
 
 
@@ -393,6 +580,30 @@ def _attendance_calendar_days(tenant, student: Student, year: int, month: int) -
     return days
 
 
+def _child_today_trip_summary(trip: Trip | None, att: TripAttendance | None) -> dict | None:
+    if trip is None:
+        return None
+    pickup_time = ""
+    if att and att.pickup_status == TripAttendance.PRESENT and att.marked_at:
+        pickup_time = timezone.localtime(att.marked_at).strftime("%I:%M %p").lstrip("0")
+    summary = {
+        "trip_id": trip.id,
+        "trip_date": str(trip.trip_date),
+        "trip_status": trip.status,
+        "route_name": trip.route.name,
+        "bus_number": trip.bus.fleet_number,
+        "pickup_status": att.pickup_status if att else TripAttendance.NOT_MARKED,
+        "pickup_time": pickup_time,
+        "started_at": trip.started_at.isoformat() if trip.started_at else None,
+        "completed_at": trip.completed_at.isoformat() if trip.completed_at else None,
+    }
+    if trip.status == Trip.STATUS_COMPLETED and trip.summary_json:
+        summary["present_count"] = trip.summary_json.get("present_count", 0)
+        summary["absent_count"] = trip.summary_json.get("absent_count", 0)
+        summary["duration_minutes"] = trip.summary_json.get("duration_minutes")
+    return summary
+
+
 def parent_me_payload(tenant, parent: Parent) -> dict:
     children = Student.objects.filter(tenant=tenant, parent=parent).select_related(
         "assigned_route", "assigned_bus", "pickup_stop", "drop_stop"
@@ -400,11 +611,15 @@ def parent_me_payload(tenant, parent: Parent) -> dict:
     today = _today()
     child_rows = []
     for child in children:
-        trip = Trip.objects.filter(
-            tenant=tenant,
-            route=child.assigned_route,
-            trip_date=today,
-        ).first()
+        trip = (
+            Trip.objects.filter(
+                tenant=tenant,
+                route=child.assigned_route,
+                trip_date=today,
+            )
+            .select_related("route", "bus")
+            .first()
+        )
         att = None
         if trip:
             att = TripAttendance.objects.filter(trip=trip, student=child).first()
@@ -432,6 +647,8 @@ def parent_me_payload(tenant, parent: Parent) -> dict:
                 "fee_status": child.fee_status,
                 "fee_overdue_amount": str(overdue),
                 "hero_status": _parent_hero_status(trip, att, child),
+                "today_trip_summary": _child_today_trip_summary(trip, att),
+                "tracking": _child_tracking(tenant, trip),
                 "calendar_days": _attendance_calendar_days(tenant, child, today.year, today.month),
                 "fees": [
                     {
@@ -488,22 +705,92 @@ def operator_attendance_history_payload(tenant, limit: int = 50) -> list[dict]:
     return rows
 
 
-def generate_daily_trips(tenant=None, trip_date: date | None = None) -> int:
-    """Create scheduled trips for today (weekdays). Idempotent per route+date."""
-    trip_date = trip_date or _today()
+def _is_holiday(tenant, trip_date: date) -> bool:
+    return TenantHoliday.objects.filter(tenant=tenant, holiday_date=trip_date).exists()
+
+
+def driver_schedule_payload(tenant, driver: Driver, days: int = 7) -> dict:
+    """Upcoming trips and holidays for the driver's calendar."""
+    days = max(1, min(int(days), 31))
+    start = _today()
+    end = start + timedelta(days=days - 1)
+    trips = (
+        Trip.objects.filter(
+            tenant=tenant,
+            driver=driver,
+            trip_date__gte=start,
+            trip_date__lte=end,
+        )
+        .select_related("route", "bus")
+        .order_by("trip_date", "id")
+    )
+    holiday_rows = TenantHoliday.objects.filter(
+        tenant=tenant,
+        holiday_date__gte=start,
+        holiday_date__lte=end,
+    ).order_by("holiday_date")
+    return {
+        "days": days,
+        "start_date": str(start),
+        "end_date": str(end),
+        "trips": [
+            {
+                "trip_id": t.id,
+                "trip_date": str(t.trip_date),
+                "status": t.status,
+                "route_name": t.route.name,
+                "bus_fleet_number": t.bus.fleet_number,
+                "is_today": t.trip_date == start,
+            }
+            for t in trips
+        ],
+        "holidays": [
+            {"id": h.id, "holiday_date": str(h.holiday_date), "name": h.name or "Holiday"}
+            for h in holiday_rows
+        ],
+    }
+
+
+def operator_holidays_payload(tenant, start: date | None = None, end: date | None = None) -> list[dict]:
+    qs = TenantHoliday.objects.filter(tenant=tenant)
+    if start:
+        qs = qs.filter(holiday_date__gte=start)
+    if end:
+        qs = qs.filter(holiday_date__lte=end)
+    return [
+        {"id": h.id, "holiday_date": str(h.holiday_date), "name": h.name or "Holiday"}
+        for h in qs.order_by("holiday_date")
+    ]
+
+
+def create_tenant_holiday(tenant, holiday_date: date, name: str = "") -> TenantHoliday:
+    return TenantHoliday.objects.create(
+        tenant=tenant,
+        holiday_date=holiday_date,
+        name=name.strip(),
+    )
+
+
+def delete_tenant_holiday(tenant, holiday_id: int) -> None:
+    deleted, _ = TenantHoliday.objects.filter(tenant=tenant, id=holiday_id).delete()
+    if not deleted:
+        raise ValueError("Holiday not found")
+
+
+def _generate_trips_for_date(tenant, trip_date: date) -> int:
     if trip_date.weekday() >= 5:
         return 0
-    routes = Route.objects.filter(active=True)
-    if tenant is not None:
-        routes = routes.filter(tenant=tenant)
+    if _is_holiday(tenant, trip_date):
+        return 0
+    routes = Route.objects.filter(tenant=tenant, active=True)
     created = 0
-    for route in routes.select_related("tenant", "default_driver", "default_driver__assigned_bus"):
+    for route in routes.select_related("default_driver", "default_driver__assigned_bus"):
         driver = route.default_driver
         bus = driver.assigned_bus if driver else None
         if not driver or not bus:
             continue
         trip, was_created = Trip.objects.get_or_create(
-            tenant=route.tenant,
+            tenant=tenant,
             route=route,
             bus=bus,
             driver=driver,
@@ -514,6 +801,83 @@ def generate_daily_trips(tenant=None, trip_date: date | None = None) -> int:
             created += 1
         _ensure_attendance_for_trip(trip)
     return created
+
+
+def generate_daily_trips(tenant=None, trip_date: date | None = None) -> int:
+    """Create scheduled trips for today (weekdays). Idempotent per route+date."""
+    trip_date = trip_date or _today()
+    if tenant is None:
+        total = 0
+        from apps.tenancy.models import Tenant
+
+        for t in Tenant.objects.filter(is_active=True):
+            total += _generate_trips_for_date(t, trip_date)
+        return total
+    return _generate_trips_for_date(tenant, trip_date)
+
+
+def generate_trips_for_range(
+    tenant, start_date: date, end_date: date
+) -> dict:
+    """Create scheduled trips for each weekday in [start_date, end_date], skipping holidays."""
+    if end_date < start_date:
+        raise ValueError("end_date must be on or after start_date")
+    created = 0
+    skipped_holiday = 0
+    skipped_weekend = 0
+    d = start_date
+    while d <= end_date:
+        if d.weekday() >= 5:
+            skipped_weekend += 1
+        elif _is_holiday(tenant, d):
+            skipped_holiday += 1
+        else:
+            created += _generate_trips_for_date(tenant, d)
+        d += timedelta(days=1)
+    return {
+        "created": created,
+        "skipped_holiday": skipped_holiday,
+        "skipped_weekend": skipped_weekend,
+        "start_date": str(start_date),
+        "end_date": str(end_date),
+    }
+
+
+def operator_live_fleet_payload(tenant) -> dict:
+    today = _today()
+    trips = Trip.objects.filter(
+        tenant=tenant,
+        trip_date=today,
+        status__in=TRACKABLE_TRIP_STATUSES,
+    ).select_related("route", "bus")
+    rows = []
+    for trip in trips:
+        loc = _latest_trip_location(tenant, trip)
+        student_count = TripAttendance.objects.filter(trip=trip).count()
+        rows.append(
+            {
+                "trip_id": trip.id,
+                "route_name": trip.route.name,
+                "bus_fleet_number": trip.bus.fleet_number,
+                "status": trip.status,
+                "last_location": _serialize_location(loc),
+                "stale": _location_is_stale(loc.recorded_at if loc else None),
+                "student_count": student_count,
+                **_trip_health_signals(tenant, trip),
+            }
+        )
+    return {"trips": rows}
+
+
+def operator_trip_summary_payload(tenant, trip_id: int) -> dict:
+    trip = Trip.objects.filter(tenant=tenant, id=trip_id).first()
+    if trip is None:
+        raise ValueError("Trip not found")
+    if trip.summary_json:
+        return trip.summary_json
+    if trip.status != Trip.STATUS_COMPLETED:
+        raise ValueError("Trip summary available after completion")
+    return build_trip_summary(trip)
 
 
 def annotate_student_fee_status(queryset):
@@ -649,6 +1013,7 @@ def operator_briefing_payload(tenant, user) -> dict:
         elif trip.started_at:
             mins = int((timezone.now() - trip.started_at).total_seconds() // 60)
             elapsed = f"{mins} min"
+        health = _trip_health_signals(tenant, trip)
         trip_cards.append(
             {
                 "id": trip.id,
@@ -661,6 +1026,7 @@ def operator_briefing_payload(tenant, user) -> dict:
                 "elapsed": elapsed,
                 "completed_at_display": completed_at_display,
                 "status": trip.status,
+                "health": health,
             }
         )
 
@@ -757,12 +1123,17 @@ def _serialize_trip_operator(trip: Trip, *, include_stops: bool = True) -> dict:
     current_idx = next((i for i, s in enumerate(stops) if s.get("current")), 0)
     current_name = stops[current_idx]["name"] if stops and current_idx < len(stops) else ""
     duration_minutes = None
+    max_display_mins = 8 * 60
     if trip.started_at and trip.completed_at:
-        duration_minutes = int(
-            (trip.completed_at - trip.started_at).total_seconds() // 60
+        duration_minutes = min(
+            max_display_mins,
+            int((trip.completed_at - trip.started_at).total_seconds() // 60),
         )
     elif trip.started_at:
-        duration_minutes = int((timezone.now() - trip.started_at).total_seconds() // 60)
+        duration_minutes = min(
+            max_display_mins,
+            int((timezone.now() - trip.started_at).total_seconds() // 60),
+        )
     incident_count = Incident.objects.filter(tenant=trip.tenant, trip=trip).count()
     return {
         "id": trip.id,

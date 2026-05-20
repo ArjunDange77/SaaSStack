@@ -10,6 +10,10 @@ describe("postLoginPath", () => {
     expect(postLoginPath("staff", "sai-baba-school-bus", 12, null)).toBe("/sb/driver");
   });
 
+  it("never sends owner to driver portal even with driver_id", () => {
+    expect(postLoginPath("owner", "sai-baba-school-bus", 12, null)).toBe("/sb/dashboard");
+  });
+
   it("sends parent to parent portal", () => {
     expect(postLoginPath("parent", "sai-baba-school-bus", null, 3)).toBe("/sb/parent");
   });

@@ -1,19 +1,54 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiErrorMessage } from "@/api/client";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { LiveBusMap } from "@/components/school_bus/LiveBusMap";
 import { StopByStopAttendance } from "@/components/school_bus/StopByStopAttendance";
 import type { AbsentReason } from "@/components/school_bus/StudentMarkCard";
-import { useSbDriverToday, useSbTripActions } from "@/hooks/useSchoolBus";
+import { useSbDriverLocationShare } from "@/hooks/useSbDriverLocationShare";
+import { useSbDriverToday, useSbTripActions, type SbTripSummary } from "@/hooks/useSchoolBus";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
+const ELAPSED_CAP_MS = 8 * 60 * 60 * 1000;
+
+function tripElapsedMinutes(startedAt: string | null, completedAt: string | null): number {
+  if (!startedAt) return 0;
+  const start = new Date(startedAt).getTime();
+  const end = completedAt
+    ? new Date(completedAt).getTime()
+    : Math.min(Date.now(), start + ELAPSED_CAP_MS);
+  return Math.max(0, Math.floor((end - start) / 60000));
+}
+
 export function SbDriverTrip() {
-  const { id } = useParams<{ id: string }>();
-  const tripId = Number(id);
   const { data, isLoading, error, refetch } = useSbDriverToday();
+  const tripId = data?.trip_id ?? 0;
   const { start, attendance, complete } = useSbTripActions(tripId);
   const [actionError, setActionError] = useState("");
-  const [gpsOn, setGpsOn] = useState(false);
+  const [finishSummary, setFinishSummary] = useState<SbTripSummary | null>(null);
+  const [showGpsPrompt, setShowGpsPrompt] = useState(false);
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   useDocumentTitle("Driver — Trip");
+
+  const tripStatus = data?.trip_status ?? "";
+  const canStart = tripStatus === "scheduled" || tripStatus === "delayed";
+  const canMark = ["started", "pickup_in_progress", "incident_reported"].includes(tripStatus);
+  const tripActive = canMark;
+  const { sharing, setSharingEnabled, error: gpsError } = useSbDriverLocationShare(
+    tripId,
+    tripActive
+  );
+
+  const elapsedMins = useMemo(
+    () => tripElapsedMinutes(data?.started_at ?? null, data?.completed_summary?.completed_at ?? null),
+    [data?.started_at, data?.completed_summary?.completed_at]
+  );
+  const absentCount = useMemo(
+    () => (data?.checklist ?? []).filter((r) => r.pickup_status === "absent").length,
+    [data?.checklist]
+  );
+  const canFinish = canMark;
 
   if (isLoading || !data) {
     return (
@@ -23,7 +58,7 @@ export function SbDriverTrip() {
     );
   }
 
-  if (error || data.trip_id !== tripId) {
+  if (error || !data.trip_id) {
     return (
       <div className="sb-driver-page">
         <p className="error">{apiErrorMessage(error, "Trip not found.")}</p>
@@ -32,18 +67,12 @@ export function SbDriverTrip() {
     );
   }
 
-  const tripStatus = data.trip_status ?? "";
-  const canStart = tripStatus === "scheduled" || tripStatus === "delayed";
-  const canMark = ["started", "pickup_in_progress", "incident_reported"].includes(tripStatus);
-  const elapsedMins = data.started_at
-    ? Math.max(0, Math.floor((Date.now() - new Date(data.started_at).getTime()) / 60000))
-    : 0;
-
   const onStart = async () => {
     setActionError("");
     try {
       await start.mutateAsync();
       await refetch();
+      setShowGpsPrompt(true);
     } catch (err) {
       setActionError(apiErrorMessage(err, "Could not start trip."));
     }
@@ -52,14 +81,21 @@ export function SbDriverTrip() {
   const onComplete = async () => {
     setActionError("");
     try {
-      await complete.mutateAsync();
+      const result = await complete.mutateAsync();
+      setFinishSummary(result.summary ?? data.completed_summary);
+      setShowFinishConfirm(false);
       await refetch();
     } catch (err) {
       setActionError(apiErrorMessage(err, "Could not complete trip."));
+      setShowFinishConfirm(false);
     }
   };
 
-  const onMarkPickup = async (studentId: number, status: "present" | "absent", reason?: AbsentReason) => {
+  const onMarkPickup = async (
+    studentId: number,
+    status: "present" | "absent" | "not_marked",
+    reason?: AbsentReason
+  ) => {
     setActionError("");
     try {
       await attendance.mutateAsync([
@@ -75,16 +111,43 @@ export function SbDriverTrip() {
     }
   };
 
+  if (finishSummary || (tripStatus === "completed" && data.completed_summary)) {
+    const s = finishSummary ?? data.completed_summary!;
+    return (
+      <div className="sb-driver-page">
+        <div className="sb-trip-complete" role="status">
+          <div className="sb-trip-complete-icon" aria-hidden>
+            ✓
+          </div>
+          <h2>Trip complete</h2>
+          <p>
+            {s.present_count} present, {s.absent_count} absent
+            {s.duration_minutes != null ? ` · ${s.duration_minutes} min` : ""}
+          </p>
+          <Link className="sb-driver-btn" to="/sb/driver">
+            Back to today
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="sb-driver-page">
-      <p>
-        <Link to="/sb/driver">← Today</Link>
-      </p>
+    <div className="sb-driver-page sb-driver-page--trip">
+      <Breadcrumbs
+        crumbs={[
+          { label: "Today", to: "/sb/driver" },
+          { label: data.route.name || data.route_name },
+        ]}
+      />
       <header className="sb-driver-header">
         <div>
           <h1>{data.route.name}</h1>
           <p className="muted">
             {data.bus.fleet_number} · {elapsedMins > 0 ? `${elapsedMins} min elapsed` : data.trip_date}
+            {data.progress
+              ? ` · ${data.progress.total_students} students${absentCount > 0 ? ` · ${absentCount} absent` : ""}`
+              : ""}
           </p>
         </div>
         <span className={`sb-trip-chip sb-trip-chip--${tripStatus}`}>
@@ -92,15 +155,62 @@ export function SbDriverTrip() {
         </span>
       </header>
 
+      {canMark && (
+        <Link to="/sb/driver/incident" className="sb-driver-btn sb-incident-report-btn">
+          Report incident
+        </Link>
+      )}
+
+      {showGpsPrompt && !sharing && canMark && (
+        <div className="sb-gps-consent" role="dialog" aria-labelledby="gps-consent-title">
+          <p id="gps-consent-title">
+            <strong>Share location with parents?</strong>
+          </p>
+          <p className="muted">Location updates every 20 seconds while sharing is on.</p>
+          <div className="sb-gps-consent-actions">
+            <button
+              type="button"
+              className="sb-driver-btn sb-driver-btn-primary"
+              onClick={() => {
+                setSharingEnabled(true);
+                setShowGpsPrompt(false);
+              }}
+            >
+              Share location
+            </button>
+            <button
+              type="button"
+              className="sb-driver-btn"
+              onClick={() => setShowGpsPrompt(false)}
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="sb-gps-pills">
         <button
           type="button"
-          className={`sb-gps-pill ${gpsOn ? "sb-gps-pill--on" : ""}`}
-          onClick={() => setGpsOn(!gpsOn)}
+          className={`sb-gps-pill ${sharing ? "sb-gps-pill--on" : ""}`}
+          onClick={() => setSharingEnabled(!sharing)}
+          disabled={!canMark}
         >
-          {gpsOn ? "Sharing live" : "Location off"}
+          {sharing ? "Live · updates every 20s" : "Location off — tap to enable"}
         </button>
       </div>
+      {sharing && <p className="muted sb-gps-hint">Parents see the bus on the map; GPS sends about every 20 seconds.</p>}
+      {gpsError && <p className="error">{gpsError}</p>}
+
+      {data.last_location && (
+        <LiveBusMap
+          latitude={data.last_location.latitude}
+          longitude={data.last_location.longitude}
+          label={data.route.name}
+          lastUpdated={data.last_location.recorded_at}
+          height={160}
+        />
+      )}
 
       {actionError && <p className="error">{actionError}</p>}
 
@@ -120,13 +230,39 @@ export function SbDriverTrip() {
         canMark={canMark}
         disabled={attendance.isPending}
         onMarkPickup={onMarkPickup}
-        onCompleteTrip={onComplete}
+        stickyFinish
+        onCompleteTrip={() => setShowFinishConfirm(true)}
         completePending={complete.isPending}
       />
 
-      <Link to="/sb/driver/incident" className="sb-incident-fab" aria-label="Report incident">
-        !
-      </Link>
+      <div className="sb-driver-sticky-bar">
+        {canMark && (
+          <>
+            <button
+              type="button"
+              className="sb-driver-btn sb-driver-btn-primary"
+              disabled={!canFinish || complete.isPending}
+              onClick={() => setShowFinishConfirm(true)}
+            >
+              Finish trip
+            </button>
+            <p className="muted sb-finish-hint">
+              Students are on the bus unless marked absent.
+            </p>
+          </>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={showFinishConfirm}
+        title="Finish trip?"
+        confirmLabel="Finish trip"
+        onConfirm={onComplete}
+        onCancel={() => setShowFinishConfirm(false)}
+        confirmDisabled={complete.isPending}
+      >
+        <p>All students are marked. End this trip and share the summary with the operator?</p>
+      </ConfirmDialog>
     </div>
   );
 }

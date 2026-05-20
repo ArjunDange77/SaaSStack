@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { IconDownload } from "@tabler/icons-react";
-import { Link } from "react-router-dom";
 import { api, apiErrorMessage } from "@/api/client";
 import { AlertBanner } from "@/components/school_bus/AlertBanner";
 import { Avatar } from "@/components/school_bus/Avatar";
@@ -171,9 +170,6 @@ export function SbAttendancePage() {
           </table>
         </div>
       )}
-      <p className="muted sb-quick-links">
-        <Link to="/sb/dashboard">← Command center</Link>
-      </p>
     </div>
   );
 }

@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { apiErrorMessage } from "@/api/client";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useSbAttendanceHistory } from "@/hooks/useSchoolBus";
@@ -19,9 +18,6 @@ export function SbAttendanceHistory() {
         title="Attendance history"
         subtitle="Recent pickup and drop marks across trips"
       />
-      <p className="muted sb-quick-links">
-        <Link to="/sb/dashboard">← Command center</Link>
-      </p>
       {isLoading && <p className="muted">Loading…</p>}
       {error && <p className="error">{apiErrorMessage(error, "Could not load attendance.")}</p>}
       {data && data.length === 0 && <p className="muted">No attendance records yet.</p>}

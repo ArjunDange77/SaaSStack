@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     DriverIncidentCreateView,
+    DriverScheduleView,
     DriverTodayView,
     DriverTripAttendanceView,
     DriverTripCompleteView,
@@ -12,8 +13,12 @@ from .views import (
     OperatorAttendanceSummaryView,
     OperatorBriefingView,
     OperatorDashboardView,
+    OperatorLiveFleetView,
+    OperatorTripSummaryView,
+    OperatorTripsGenerateView,
     OperatorFeeRemindView,
     OperatorFeesGroupedView,
+    OperatorHolidaysView,
     OperatorNotificationsLogView,
     OperatorReminderBroadcastView,
     OperatorTripsByDateView,
@@ -29,6 +34,18 @@ urlpatterns = [
     path("dashboard/", SchoolBusDashboardView.as_view(), name="school-bus-dashboard"),
     path("operator/dashboard/", OperatorDashboardView.as_view(), name="sb-operator-dashboard"),
     path("operator/briefing/", OperatorBriefingView.as_view(), name="sb-operator-briefing"),
+    path("operator/live-fleet/", OperatorLiveFleetView.as_view(), name="sb-operator-live-fleet"),
+    path(
+        "operator/trips/generate/",
+        OperatorTripsGenerateView.as_view(),
+        name="sb-operator-trips-generate",
+    ),
+    path("operator/holidays/", OperatorHolidaysView.as_view(), name="sb-operator-holidays"),
+    path(
+        "operator/trips/<int:trip_id>/summary/",
+        OperatorTripSummaryView.as_view(),
+        name="sb-operator-trip-summary",
+    ),
     path("operator/fees/", OperatorFeesGroupedView.as_view(), name="sb-operator-fees"),
     path("operator/notifications/", OperatorNotificationsLogView.as_view(), name="sb-operator-notifications"),
     path(
@@ -55,6 +72,7 @@ urlpatterns = [
     ),
     path("operator/reminders/", OperatorReminderBroadcastView.as_view(), name="sb-operator-reminders"),
     path("driver/today/", DriverTodayView.as_view(), name="sb-driver-today"),
+    path("driver/schedule/", DriverScheduleView.as_view(), name="sb-driver-schedule"),
     path("driver/trips/<int:trip_id>/start/", DriverTripStartView.as_view(), name="sb-driver-trip-start"),
     path(
         "driver/trips/<int:trip_id>/attendance/",

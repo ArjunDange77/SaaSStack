@@ -15,6 +15,9 @@ import { NotificationBell } from "./NotificationBell";
 export function AppShell() {
   const { user, logout, tenantSlug, setTenantSlug, role } = useAuth();
   const isOperator = role === "owner" || role === "staff";
+  if (role === "driver") {
+    return null;
+  }
   const schoolBusTenant = isSchoolBusTenant(tenantSlug);
   const location = useLocation();
   const showSchoolBusChrome =

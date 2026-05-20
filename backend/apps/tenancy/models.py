@@ -25,11 +25,13 @@ class TenantMembership(models.Model):
 
     ROLE_OWNER = "owner"
     ROLE_STAFF = "staff"
+    ROLE_DRIVER = "driver"
     ROLE_RESIDENT = "resident"
     ROLE_PARENT = "parent"
     ROLE_CHOICES = [
         (ROLE_OWNER, "Owner"),
         (ROLE_STAFF, "Staff"),
+        (ROLE_DRIVER, "Driver"),
         (ROLE_RESIDENT, "Resident"),
         (ROLE_PARENT, "Parent"),
     ]

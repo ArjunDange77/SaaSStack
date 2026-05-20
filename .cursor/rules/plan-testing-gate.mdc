@@ -1,0 +1,47 @@
+---
+description: Every implementation plan must include baseline tests, new tests per phase, and after-implementation verification gates.
+alwaysApply: true
+---
+
+# Plan testing gate
+
+When creating or updating an **implementation plan** (CreatePlan, plan markdown, or multi-phase feature work), always include a **Testing strategy** section with three parts.
+
+## 1. Baseline (before code changes)
+
+- Command: `bash scripts/test-all.sh` from repo root (see [testing.mdc](testing.mdc))
+- Record: pytest count, vitest count, coverage floors (backend 70%, frontend 40%)
+- Optional: `validate_deploy_profile.py` if deploy/ changes
+- List **regression anchors** — existing test files that must stay green
+
+## 2. New tests (during implementation)
+
+For each plan phase or todo, specify:
+
+| Phase | Backend | Frontend |
+|-------|---------|----------|
+| … | pytest path + what behavior | vitest path + what behavior |
+
+Rules:
+
+- Add tests **with or before** the feature (TDD where practical)
+- Touch API → integration test in owning app `tests/`
+- Touch UI → vitest for component/hook
+- Do not delete or weaken existing assertions to get green
+
+## 3. After-implementation gate (per phase / before merge)
+
+- Re-run `bash scripts/test-all.sh` — must pass
+- All new tests from section 2 for that phase must pass
+- No merge if coverage floors drop unless user explicitly approves
+
+## Plan todos
+
+Include at minimum:
+
+- `test-baseline` — run and record baseline (first)
+- `test-after-<phase>` or single `test-after-implementation` — final verification
+
+## Reference
+
+Full policy: [.cursor/rules/testing.mdc](testing.mdc). Smoke: `deploy/scripts/smoke_unified_staging.sh` for staging School Bus + PG.

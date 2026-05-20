@@ -28,8 +28,8 @@ export function groupChecklistByStop(rows: SbDriverChecklistRow[]): StopGroup[] 
   return [...map.values()].sort((a, b) => a.sequence - b.sequence || a.stopName.localeCompare(b.stopName));
 }
 
-function stopFullyMarked(students: SbDriverChecklistRow[]) {
-  return students.every((s) => s.pickup_status !== "not_marked");
+function stopAbsentCount(students: SbDriverChecklistRow[]) {
+  return students.filter((s) => s.pickup_status === "absent").length;
 }
 
 export function StopByStopAttendance({
@@ -39,22 +39,28 @@ export function StopByStopAttendance({
   onMarkPickup,
   onCompleteTrip,
   completePending,
+  stickyFinish = false,
 }: {
   checklist: SbDriverChecklistRow[];
   canMark: boolean;
   disabled?: boolean;
-  onMarkPickup: (studentId: number, status: "present" | "absent", reason?: AbsentReason) => void;
-  onCompleteTrip: () => void;
+  onMarkPickup: (
+    studentId: number,
+    status: "present" | "absent" | "not_marked",
+    reason?: AbsentReason
+  ) => void;
+  onCompleteTrip?: () => void;
   completePending?: boolean;
+  stickyFinish?: boolean;
 }) {
   const stops = useMemo(() => groupChecklistByStop(checklist), [checklist]);
   const [stopIndex, setStopIndex] = useState(0);
-  const [celebrating, setCelebrating] = useState(false);
 
   const current = stops[stopIndex];
-  const allMarked = checklist.length > 0 && checklist.every((s) => s.pickup_status !== "not_marked");
   const isLastStop = stopIndex >= stops.length - 1;
-  const currentDone = current ? stopFullyMarked(current.students) : false;
+  const absentCount = current ? stopAbsentCount(current.students) : 0;
+  const currentTotal = current?.students.length ?? 0;
+  const onBusCount = currentTotal - absentCount;
 
   const goNextStop = () => {
     if (!isLastStop) {
@@ -62,25 +68,8 @@ export function StopByStopAttendance({
     }
   };
 
-  const handleComplete = () => {
-    setCelebrating(true);
-    onCompleteTrip();
-  };
-
   if (checklist.length === 0) {
     return <p className="muted">No students on this route.</p>;
-  }
-
-  if (celebrating || (allMarked && !canMark)) {
-    return (
-      <div className="sb-trip-complete" role="status">
-        <div className="sb-trip-complete-icon" aria-hidden>
-          ✓
-        </div>
-        <h2>Trip complete</h2>
-        <p className="muted">All students marked. Great job!</p>
-      </div>
-    );
   }
 
   if (!current) return null;
@@ -98,7 +87,10 @@ export function StopByStopAttendance({
           ←
         </button>
         <div className="sb-stop-nav-label">
-          <span className="sb-stop-nav-title">Stop {stopIndex + 1} of {stops.length}</span>
+          <span className="sb-stop-nav-title">
+            Stop {stopIndex + 1} of {stops.length} · {onBusCount} on bus
+            {absentCount > 0 ? ` · ${absentCount} absent` : ""}
+          </span>
           <strong>{current.stopName}</strong>
         </div>
         <button
@@ -119,29 +111,37 @@ export function StopByStopAttendance({
             name={row.full_name}
             pickupStatus={row.pickup_status}
             disabled={disabled || !canMark}
-            onMarkPresent={() => onMarkPickup(row.student_id, "present")}
             onMarkAbsent={(reason) => onMarkPickup(row.student_id, "absent", reason)}
+            onReset={() => onMarkPickup(row.student_id, "not_marked")}
           />
         ))}
       </div>
 
-      <div className="sb-stop-footer">
-        {canMark && currentDone && !isLastStop && (
-          <button type="button" className="sb-driver-btn sb-driver-btn-primary sb-stop-next" onClick={goNextStop}>
-            Next stop
-          </button>
-        )}
-        {canMark && allMarked && (
-          <button
-            type="button"
-            className="sb-driver-btn sb-driver-btn-primary sb-stop-next"
-            disabled={completePending}
-            onClick={handleComplete}
-          >
-            Complete trip
-          </button>
-        )}
-      </div>
+      {!stickyFinish && (
+        <div className="sb-stop-footer">
+          {canMark && !isLastStop && (
+            <button type="button" className="sb-driver-btn sb-driver-btn-primary sb-stop-next" onClick={goNextStop}>
+              Next stop
+            </button>
+          )}
+          {canMark && onCompleteTrip && (
+            <button
+              type="button"
+              className="sb-driver-btn sb-driver-btn-primary sb-stop-next"
+              disabled={completePending}
+              onClick={onCompleteTrip}
+            >
+              Complete trip
+            </button>
+          )}
+        </div>
+      )}
+
+      {stickyFinish && canMark && !isLastStop && (
+        <button type="button" className="sb-driver-btn sb-stop-next" onClick={goNextStop}>
+          Next stop
+        </button>
+      )}
     </div>
   );
 }

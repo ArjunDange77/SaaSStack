@@ -145,6 +145,37 @@ class TripSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("tenant", "created_at", "updated_at", "started_at", "completed_at")
 
+    def validate(self, attrs):
+        tenant = self.context.get("tenant")
+        if tenant is None:
+            return attrs
+
+        route = attrs.get("route") or (self.instance.route if self.instance else None)
+        bus = attrs.get("bus") or (self.instance.bus if self.instance else None)
+        driver = attrs.get("driver") or (self.instance.driver if self.instance else None)
+        trip_date = attrs.get("trip_date") or (
+            self.instance.trip_date if self.instance else None
+        )
+
+        if route is None or bus is None or driver is None or trip_date is None:
+            return attrs
+
+        qs = Trip.objects.alive().filter(
+            tenant=tenant,
+            route=route,
+            bus=bus,
+            driver=driver,
+            trip_date=trip_date,
+        )
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(
+                "A trip already exists for this route, bus, driver, and date. "
+                "Open the existing trip or change route, bus, driver, or date."
+            )
+        return attrs
+
 
 class TripAttendanceSerializer(serializers.ModelSerializer):
     class Meta:

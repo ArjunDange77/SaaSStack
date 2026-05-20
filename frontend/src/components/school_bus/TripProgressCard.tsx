@@ -1,3 +1,5 @@
+import type { SbTripHealth } from "@/hooks/useSchoolBus";
+
 export interface TripProgress {
   id: number;
   route_name: string;
@@ -9,11 +11,22 @@ export interface TripProgress {
   elapsed: string;
   completed_at_display?: string;
   status: string;
+  health?: SbTripHealth;
+}
+
+function healthHints(health?: SbTripHealth): string[] {
+  if (!health) return [];
+  const hints: string[] = [];
+  if (health.not_started) hints.push("Not started");
+  if (health.gps_stale) hints.push("No GPS");
+  if (health.not_marked_count > 0) hints.push(`${health.not_marked_count} not marked`);
+  return hints;
 }
 
 export function TripProgressCard({ trip }: { trip: TripProgress }) {
   const isCompleted = trip.status === "completed";
   const pct = trip.stop_total ? Math.round((trip.stop_index / trip.stop_total) * 100) : 0;
+  const hints = healthHints(trip.health);
 
   return (
     <article className="sb-trip-progress-card">
@@ -24,6 +37,9 @@ export function TripProgressCard({ trip }: { trip: TripProgress }) {
         </span>
       </header>
       <p className="muted">{trip.driver_name}</p>
+      {hints.length > 0 && !isCompleted && (
+        <p className="sb-trip-health-hints">{hints.join(" · ")}</p>
+      )}
       {isCompleted ? (
         <>
           <p>Transported {trip.onboard} students</p>

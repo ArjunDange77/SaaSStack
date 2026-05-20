@@ -229,6 +229,7 @@ class Trip(TenantDomainModel):
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_SCHEDULED)
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    summary_json = models.JSONField(null=True, blank=True)
 
     class Meta:
         ordering = ["-trip_date", "-id"]
@@ -394,6 +395,25 @@ class Reminder(TenantDomainModel):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class TenantHoliday(TenantDomainModel):
+    """Tenant-wide non-school days; trip generation skips these dates."""
+
+    holiday_date = models.DateField()
+    name = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["holiday_date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "holiday_date"],
+                name="school_bus_unique_tenant_holiday_date",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.holiday_date} {self.name or 'Holiday'}"
 
 
 class TripLocation(TenantDomainModel):

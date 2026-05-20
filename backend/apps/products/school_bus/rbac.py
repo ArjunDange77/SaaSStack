@@ -7,7 +7,7 @@ from apps.registry.permissions import get_tenant_role
 
 OPERATOR_ROLES = ("owner", "staff")
 PARENT_ROLE = "parent"
-DRIVER_ROLE = "staff"
+DRIVER_ROLE = "driver"
 
 _OPERATOR = {"create": True, "update": True, "delete": True, "actions": None}
 _STAFF = {"create": True, "update": True, "delete": False, "actions": None}
@@ -36,6 +36,9 @@ _RESOURCE_RULES: dict[str, dict[str, dict]] = {
 
 CATALOG_OPERATOR = tuple(_RESOURCE_RULES.keys())
 
+# Declarative contract (registry ProductRBACMixin)
+RESOURCE_RULES = _RESOURCE_RULES
+
 
 def rules_for_role(slug: str, role: str | None) -> dict | None:
     if role is None:
@@ -46,6 +49,8 @@ def rules_for_role(slug: str, role: str | None) -> dict | None:
 def can_access_resource(request, slug: str) -> bool:
     role = get_tenant_role(request)
     if role is None:
+        return False
+    if role == DRIVER_ROLE:
         return False
     if role in OPERATOR_ROLES:
         return slug in CATALOG_OPERATOR

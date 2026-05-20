@@ -138,10 +138,10 @@ Green `pytest --cov-fail-under=70` + `npm run test:coverage` means:
 | Branch | CI | Deploy |
 |--------|-----|--------|
 | `feature/*` | lint, test, build | never |
-| `staging` | on PR + path-filtered push | **PG** → `deploy-pg-staging.yml` · **School Bus** → `deploy-schoolbus-staging.yml` |
-| `main` | on PR + path-filtered push | **PG** → `deploy-pg-production.yml` · **School Bus** → `deploy-schoolbus-production.yml` (slot swap) |
+| `staging` | on PR + path-filtered push | **Deploy Staging** (unified `rg-saasstack-staging`) |
+| `main` | on PR only | never (production via `workflow_dispatch` only) |
 
-Kernel-only merges do not auto-deploy; use `workflow_dispatch` on the product workflow you need.
+Before pushing: `bash scripts/test-all.sh`. Manual re-deploy or re-seed: **Actions → Deploy Staging**.
 
 - Health: `GET /api/health/` (version, environment, DB/storage checks)
 - **Azure staging (India):** operator guides live in `deploy/docs/` (**local only**, gitignored — not on GitHub). Start with `deploy/docs/india-staging-deploy.md` after copying `deploy/.secrets/azure-account.local.env.example` → `azure-account.local.env`.

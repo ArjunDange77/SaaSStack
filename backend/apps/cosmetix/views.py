@@ -59,7 +59,13 @@ class NavBarItemListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        from apps.registry.permissions import get_tenant_role
+        from apps.tenancy.models import TenantMembership
+
         tenant = getattr(request, "tenant", None)
+        role = get_tenant_role(request)
+        if role == TenantMembership.ROLE_DRIVER:
+            return Response([])
         qs = resolve_tenant_scoped_queryset(NavBarItem, tenant)
         data = NavBarItemSerializer(qs, many=True).data
         return Response(data)

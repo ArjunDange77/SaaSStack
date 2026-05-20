@@ -142,6 +142,12 @@ export function useResourceMutations(slug: string, schema?: ResourceSchema) {
     qc.invalidateQueries({ queryKey: scopeTenant(tenant, "resource", slug) });
     qc.invalidateQueries({ queryKey: scopeTenant(tenant, "timeline", slug) });
     qc.invalidateQueries({ queryKey: scopeTenant(tenant, "pg", "dashboard") });
+    if (slug === "sb-trips") {
+      qc.invalidateQueries({ queryKey: scopeTenant(tenant, ["sb-operator-trips-today"]) });
+      qc.invalidateQueries({ queryKey: scopeTenant(tenant, ["sb-operator-trips-date"]) });
+      qc.invalidateQueries({ queryKey: scopeTenant(tenant, ["sb-operator-dashboard"]) });
+      qc.invalidateQueries({ queryKey: scopeTenant(tenant, ["sb-driver-today"]) });
+    }
   };
 
   const create = useMutation({

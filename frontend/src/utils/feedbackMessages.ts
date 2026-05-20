@@ -6,6 +6,7 @@ const ACTION_SUCCESS: Record<string, string> = {
   verify: "Document verified",
   reject: "Document rejected",
   mark_paid: "Rent marked paid",
+  reset_for_demo: "Trip reset",
   in_progress: "Complaint marked in progress",
   resolve: "Complaint resolved",
 };

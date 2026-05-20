@@ -151,6 +151,8 @@ cd frontend && npm run dev   # http://localhost:5173
 
 Logins: `sb-operator`, `sb-driver`, `sb-parent` — password `admin`, tenant `sb-demo`.
 
-**V1 out of scope:** payment gateway, WhatsApp/SMS, live GPS, PDF reporting.
+**V1 out of scope:** payment gateway, WhatsApp/SMS, PDF reporting.
+
+**Live GPS (staging V1):** driver shares location on HTTPS (~20s updates); operator **Live fleet** and parent map read `last_location`. Requires browser location permission.
 
 **Ops:** `python manage.py generate_monthly_fees --tenant sb-demo` for monthly fee rows.

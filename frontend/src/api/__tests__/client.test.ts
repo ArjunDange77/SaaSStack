@@ -39,20 +39,37 @@ describe("apiErrorMessage", () => {
     expect(msg).toMatch(/server error/i);
   });
 
-  it("returns session message for 401", () => {
+  it("returns session message for 401 on authenticated routes", () => {
     const err = new axios.AxiosError(
       "unauth",
       "401",
-      undefined,
+      { url: "/api/r/sb-trips/" } as never,
       undefined,
       {
         status: 401,
         data: { detail: "Token invalid" },
         statusText: "Unauthorized",
         headers: {},
-        config: {} as never,
+        config: { url: "/api/r/sb-trips/" } as never,
       }
     );
     expect(apiErrorMessage(err, "fallback")).toMatch(/session expired/i);
+  });
+
+  it("returns credentials message for 401 on login", () => {
+    const err = new axios.AxiosError(
+      "unauth",
+      "401",
+      { url: "/api/auth/login/" } as never,
+      undefined,
+      {
+        status: 401,
+        data: { detail: "No active account" },
+        statusText: "Unauthorized",
+        headers: {},
+        config: { url: "/api/auth/login/" } as never,
+      }
+    );
+    expect(apiErrorMessage(err, "fallback")).toMatch(/incorrect username or password/i);
   });
 });

@@ -31,6 +31,16 @@ export function DynamicActionRenderer({ schema, recordId, record, onDone, classN
   if (!actions.length) return null;
 
   const fire = async (action: ActionMeta) => {
+    if (action.name === "reset_for_demo") {
+      const ok = window.confirm(
+        "Reset this trip?\n\n" +
+          "• Moves the trip to today\n" +
+          "• Sets status to Scheduled\n" +
+          "• Clears attendance marks and GPS history\n\n" +
+          "The driver can start the trip again from their app."
+      );
+      if (!ok) return;
+    }
     const method = action.methods[0] || "post";
     await runAction.mutateAsync({
       id: recordId,

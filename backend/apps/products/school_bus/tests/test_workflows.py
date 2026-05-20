@@ -24,14 +24,16 @@ def test_driver_today_api(sb_driver_client, sb_tenant, sb_driver_setup):
 
 
 @pytest.mark.django_db
-def test_driver_today_hides_completed_trip(sb_driver_client, sb_tenant, sb_driver_setup):
+def test_driver_today_shows_completed_summary(sb_driver_client, sb_tenant, sb_driver_setup):
     trip = services.ensure_trip_for_driver(sb_tenant, sb_driver_setup["driver"])
-    trip.status = Trip.STATUS_COMPLETED
-    trip.save(update_fields=["status"])
+    services.start_trip(trip)
+    services.complete_trip(trip)
     response = sb_driver_client.get("/api/sb/driver/today/")
     assert response.status_code == 200
     data = response.json()
-    assert data["trip_id"] is None
+    assert data["trip_id"] == trip.id
+    assert data["trip_status"] == Trip.STATUS_COMPLETED
+    assert data["completed_summary"] is not None
     assert data["checklist"] == []
 
 
@@ -49,7 +51,12 @@ def test_driver_trip_flow(sb_driver_client, sb_tenant, sb_driver_setup):
         ).status_code
         == 200
     )
-    assert sb_driver_client.post(f"/api/sb/driver/trips/{trip_id}/complete/").status_code == 200
+    complete = sb_driver_client.post(f"/api/sb/driver/trips/{trip_id}/complete/")
+    assert complete.status_code == 200
+    trip = Trip.objects.get(pk=trip_id)
+    assert trip.started_at is not None
+    assert trip.completed_at is not None
+    assert complete.json().get("summary") is not None
 
 
 @pytest.mark.django_db
@@ -64,6 +71,56 @@ def test_parent_me_api(sb_parent_client, sb_tenant, sb_parent_setup):
     assert response.status_code == 200
     data = response.json()
     assert len(data["children"]) == 1
+
+
+@pytest.mark.django_db
+def test_driver_schedule_api(sb_driver_client, sb_tenant, sb_driver_setup):
+    services.ensure_trip_for_driver(sb_tenant, sb_driver_setup["driver"])
+    response = sb_driver_client.get("/api/sb/driver/schedule/?days=7")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["days"] == 7
+    assert len(data["trips"]) >= 1
+
+
+@pytest.mark.django_db
+def test_operator_holidays_api(sb_operator_client, sb_tenant):
+    from datetime import timedelta
+
+    d = services._today()
+    while d.weekday() >= 5:
+        d += timedelta(days=1)
+    create = sb_operator_client.post(
+        "/api/sb/operator/holidays/",
+        {"holiday_date": str(d), "name": "API holiday"},
+        format="json",
+    )
+    assert create.status_code == 201
+    holiday_id = create.json()["id"]
+    listed = sb_operator_client.get("/api/sb/operator/holidays/")
+    assert listed.status_code == 200
+    assert any(h["id"] == holiday_id for h in listed.json()["holidays"])
+    deleted = sb_operator_client.delete(f"/api/sb/operator/holidays/?id={holiday_id}")
+    assert deleted.status_code == 204
+
+
+@pytest.mark.django_db
+def test_complete_trip_api_auto_marks_unmarked(sb_driver_client, sb_tenant, sb_driver_setup):
+    from apps.products.school_bus.models import Student, TripAttendance
+
+    driver = sb_driver_setup["driver"]
+    student = Student.objects.create(
+        tenant=sb_tenant,
+        full_name="API On Bus",
+        assigned_route=driver.assigned_route,
+        assigned_bus=driver.assigned_bus,
+    )
+    trip = services.ensure_trip_for_driver(sb_tenant, driver)
+    sb_driver_client.post(f"/api/sb/driver/trips/{trip.id}/start/")
+    response = sb_driver_client.post(f"/api/sb/driver/trips/{trip.id}/complete/")
+    assert response.status_code == 200
+    att = TripAttendance.objects.get(trip=trip, student=student)
+    assert att.pickup_status == TripAttendance.PRESENT
 
 
 @pytest.mark.django_db

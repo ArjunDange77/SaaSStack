@@ -1,8 +1,17 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, apiErrorMessage } from "@/api/client";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useSbDriverToday } from "@/hooks/useSchoolBus";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+
+const SEVERITIES = ["low", "medium", "high"];
+const CATEGORIES = ["delay", "safety", "mechanical", "other"];
+
+function labelize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
 
 export function SbDriverIncident() {
   const navigate = useNavigate();
@@ -17,7 +26,7 @@ export function SbDriverIncident() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!data) return;
+    if (!data?.trip_id) return;
     setSubmitting(true);
     setError("");
     try {
@@ -39,30 +48,32 @@ export function SbDriverIncident() {
   };
 
   return (
-    <div className="sb-driver-page">
-      <p>
-        <Link to="/sb/driver">← Today</Link>
-      </p>
+    <div className="sb-driver-page sb-driver-page--incident">
+      <Breadcrumbs
+        crumbs={[
+          { label: "Today", to: "/sb/driver" },
+          { label: "Report incident" },
+        ]}
+      />
       <h1>Report incident</h1>
-      {!data ? (
+      {!data?.trip_id ? (
         <p className="muted">Load today&apos;s trip first.</p>
       ) : (
-        <form className="sb-incident-form" onSubmit={onSubmit}>
-          <div className="field">
-            <label htmlFor="severity">Severity</label>
-            <select id="severity" value={severity} onChange={(e) => setSeverity(e.target.value)}>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
+        <form className="portal-card sb-incident-card" onSubmit={onSubmit}>
+          <div className="sb-incident-field">
+            <span className="sb-incident-label">Severity</span>
+            <SegmentedControl
+              options={SEVERITIES.map(labelize)}
+              value={labelize(severity)}
+              onChange={(v) => setSeverity(v.toLowerCase())}
+            />
           </div>
-          <div className="field">
-            <label htmlFor="category">Category</label>
-            <input
-              id="category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="delay, safety, …"
+          <div className="sb-incident-field">
+            <span className="sb-incident-label">Category</span>
+            <SegmentedControl
+              options={CATEGORIES.map(labelize)}
+              value={labelize(category)}
+              onChange={(v) => setCategory(v.toLowerCase())}
             />
           </div>
           <div className="field">
@@ -85,11 +96,20 @@ export function SbDriverIncident() {
             />
           </div>
           {error && <p className="error">{error}</p>}
-          <button type="submit" className="sb-driver-btn sb-driver-btn-primary" disabled={submitting}>
-            {submitting ? "Submitting…" : "Submit report"}
-          </button>
+          <div className="sb-incident-submit-sticky">
+            <button
+              type="submit"
+              className="sb-driver-btn sb-driver-btn-primary"
+              disabled={submitting}
+            >
+              {submitting ? "Submitting…" : "Submit report"}
+            </button>
+          </div>
         </form>
       )}
+      <p>
+        <Link to="/sb/driver">← Back to today</Link>
+      </p>
     </div>
   );
 }

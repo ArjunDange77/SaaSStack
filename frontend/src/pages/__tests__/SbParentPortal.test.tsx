@@ -9,6 +9,10 @@ vi.mock("@/hooks/useSchoolBus", () => ({
   useSbParentMe: vi.fn(),
 }));
 
+vi.mock("@/components/school_bus/LiveBusMap", () => ({
+  LiveBusMap: () => <div data-testid="live-bus-map" />,
+}));
+
 const mockParentMe = vi.mocked(useSbParentMe);
 
 describe("SbParentPortal", () => {
@@ -33,7 +37,27 @@ describe("SbParentPortal", () => {
             hero_status: {
               level: "safe",
               headline: "Aarav Sharma is on the bus",
-              detail: "Picked up at Oak Street",
+              detail: "Picked up at Oak Street · 9:45 AM",
+            },
+            today_trip_summary: {
+              trip_id: 10,
+              trip_date: "2026-05-20",
+              status: "pickup_in_progress",
+              route_name: "Morning Route A",
+              bus_number: "BUS-101",
+              pickup_status: "present",
+              started_at: "2026-05-20T04:00:00Z",
+              completed_at: null,
+            },
+            tracking: {
+              active: true,
+              trip_id: 10,
+              last_location: {
+                latitude: "15.4909",
+                longitude: "73.8278",
+                recorded_at: "2026-05-20T04:15:00Z",
+              },
+              stale: false,
             },
             calendar_days: [{ date: "2026-05-01", status: "present" }],
             fees: [
@@ -55,15 +79,19 @@ describe("SbParentPortal", () => {
     } as unknown as ReturnType<typeof useSbParentMe>);
   });
 
-  it("renders hero, fee pills, and calendar", () => {
+  it("renders hero, today trip card, fee pills, and calendar", () => {
     renderWithQuery(
       <MemoryRouter>
         <SbParentPortal />
       </MemoryRouter>
     );
     expect(screen.getByText(/Hello, Priya/i)).toBeInTheDocument();
+    expect(screen.getByText(/Today's trip/i)).toBeInTheDocument();
     expect(screen.getByText(/on the bus/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Aarav Sharma is on the bus/i })).toBeInTheDocument();
+    expect(screen.getByText(/Picked up at Oak Street/i)).toBeInTheDocument();
+    expect(screen.getByText(/9:45 AM/i)).toBeInTheDocument();
+    expect(screen.getByTestId("live-bus-map")).toBeInTheDocument();
     expect(screen.getByText(/1500/)).toBeInTheDocument();
     expect(screen.getByText(/Fee due/i)).toBeInTheDocument();
   });

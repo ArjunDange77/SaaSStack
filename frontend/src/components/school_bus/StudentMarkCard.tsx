@@ -13,50 +13,51 @@ export function StudentMarkCard({
   stopName,
   pickupStatus,
   disabled,
-  onMarkPresent,
   onMarkAbsent,
+  onReset,
 }: {
   name: string;
   stopName?: string;
   pickupStatus: string;
   disabled?: boolean;
-  onMarkPresent: () => void;
   onMarkAbsent: (reason: AbsentReason) => void;
+  onReset?: () => void;
 }) {
   const [showReasons, setShowReasons] = useState(false);
-  const marked = pickupStatus !== "not_marked";
+  const isAbsent = pickupStatus === "absent";
 
   return (
-    <div className="sb-student-mark-card">
+    <div className="sb-student-mark-card sb-student-mark-card--row">
       <div className="sb-student-mark-info">
         <strong>{name}</strong>
         {stopName ? <div className="muted">{stopName}</div> : null}
       </div>
-      {marked ? (
-        <span className={`sb-mark-status sb-mark-status--${pickupStatus}`}>
-          {pickupStatus.replace(/_/g, " ")}
-        </span>
-      ) : (
-        <div className="sb-mark-actions">
+      <div className="sb-student-mark-actions-col">
+        {isAbsent ? (
           <button
             type="button"
-            className="sb-mark-btn sb-mark-btn--present"
-            disabled={disabled}
-            onClick={onMarkPresent}
-          >
-            Present
-          </button>
-          <button
-            type="button"
-            className="sb-mark-btn sb-mark-btn--absent"
-            disabled={disabled}
-            onClick={() => setShowReasons((v) => !v)}
+            className="sb-mark-status sb-mark-status--absent"
+            disabled={disabled || !onReset}
+            onClick={() => {
+              setShowReasons(false);
+              onReset?.();
+            }}
+            title="Tap to undo"
           >
             Absent
           </button>
-        </div>
-      )}
-      {showReasons && !marked && (
+        ) : (
+          <button
+            type="button"
+            className="sb-mark-absent-btn"
+            disabled={disabled}
+            onClick={() => setShowReasons((v) => !v)}
+          >
+            Mark absent
+          </button>
+        )}
+      </div>
+      {showReasons && !isAbsent && (
         <div className="sb-absent-reasons" role="group" aria-label="Absent reason">
           {ABSENT_REASONS.map((r) => (
             <button

@@ -12,6 +12,8 @@ interface Props {
   slug: string;
   id: string;
   schema: ResourceSchema;
+  /** List/back navigation target (default `/r/:slug`). */
+  listPath?: string;
 }
 
 function formatRelativeTime(iso: string): string {
@@ -26,8 +28,9 @@ function formatRelativeTime(iso: string): string {
   return d.toLocaleString();
 }
 
-export function ResourceDetail({ slug, id, schema }: Props) {
+export function ResourceDetail({ slug, id, schema, listPath }: Props) {
   const navigate = useNavigate();
+  const backPath = listPath ?? `/r/${slug}`;
   const { data: record, isLoading, refetch } = useResourceDetail(slug, id);
   const {
     data: timeline = [],
@@ -50,41 +53,48 @@ export function ResourceDetail({ slug, id, schema }: Props) {
   const handleDelete = async () => {
     if (!window.confirm(`Delete this ${schema.title.slice(0, -1).toLowerCase()}?`)) return;
     await remove.mutateAsync(id);
-    navigate(`/r/${slug}`);
+    navigate(backPath);
   };
 
   return (
     <div className="resource-detail">
-      <p>
-        <Link to={`/r/${slug}`}>← Back to {schema.title}</Link>
-      </p>
-      <h2 className="resource-list-title page-title">
-        {schema.title} #{id}
-      </h2>
-
-      <DynamicActionRenderer
-        schema={schema}
-        recordId={id}
-        record={record}
-        onDone={() => {
-          refetch();
-          refetchTimeline();
-        }}
-        className="toolbar-actions-responsive"
-      />
+      <header className="resource-detail-header">
+        <p className="resource-detail-back">
+          <Link to={backPath}>← Back to {schema.title}</Link>
+        </p>
+        <div className="resource-detail-title-row">
+          <h2 className="resource-list-title page-title">
+            {schema.title} #{id}
+          </h2>
+          {!editing && (
+            <DynamicActionRenderer
+              schema={schema}
+              recordId={id}
+              record={record}
+              onDone={() => {
+                refetch();
+                refetchTimeline();
+              }}
+              className="resource-detail-actions"
+            />
+          )}
+        </div>
+      </header>
 
       {!editing ? (
         <>
-          {displayFields.map((field) => (
-            <div key={field.name} className="field field-block">
-              <label>{field.label}</label>
-              <CellValue field={field} value={record[field.name]} labelMaps={labelMaps} />
-              {(field.ui?.help_text || field.help_text) && (
-                <p className="field-help">{field.ui?.help_text || field.help_text}</p>
-              )}
-            </div>
-          ))}
-          <div className="toolbar toolbar-actions-responsive">
+          <div className="resource-detail-body">
+            {displayFields.map((field) => (
+              <div key={field.name} className="field field-block">
+                <label>{field.label}</label>
+                <CellValue field={field} value={record[field.name]} labelMaps={labelMaps} />
+                {(field.ui?.help_text || field.help_text) && (
+                  <p className="field-help">{field.ui?.help_text || field.help_text}</p>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="resource-detail-footer toolbar toolbar-actions-responsive">
             {schema.capabilities?.update !== false && (
               <button type="button" onClick={() => setEditing(true)}>Edit</button>
             )}
@@ -110,7 +120,7 @@ export function ResourceDetail({ slug, id, schema }: Props) {
         />
       )}
 
-      <section className="timeline" aria-labelledby="activity-heading">
+      <section className="timeline resource-detail-timeline" aria-labelledby="activity-heading">
         <button
           type="button"
           className="timeline-toggle secondary"

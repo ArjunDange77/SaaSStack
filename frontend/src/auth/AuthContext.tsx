@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AUTH_EXPIRED_EVENT, clearAuthStorage, fetchMe, login as apiLogin } from "@/api/client";
+import { queryClient } from "@/lib/queryClient";
 
-export type AppRole = "owner" | "staff" | "resident" | "parent" | null;
+export type AppRole = "owner" | "staff" | "driver" | "resident" | "parent" | null;
 
 interface AuthState {
   accessToken: string | null;
@@ -15,7 +16,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   isAuthenticated: boolean;
-  login: (username: string, password: string, tenantSlug?: string) => Promise<void>;
+  login: (username: string, password: string, tenantSlug?: string) => Promise<Record<string, unknown>>;
   logout: () => void;
   setTenantSlug: (slug: string) => void;
   refreshMe: () => Promise<void>;
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const onExpired = () => {
+      queryClient.clear();
       setAccessToken(null);
       setUser(null);
       setRole(null);
@@ -109,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (username: string, password: string, tenant = "demo") => {
+      queryClient.clear();
       await apiLogin(username, password);
       setAccessToken(localStorage.getItem("access"));
       setTenantSlug(tenant);
@@ -116,17 +119,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!me.role) {
         clearAuthStorage();
         setAccessToken(null);
+        queryClient.clear();
         throw new Error(
-          `No access to tenant "${tenant}". Check the tenant slug, or ask your operator to add your account.`
+          "No access to this organization. Check the tenant slug or contact your operator."
         );
       }
       applyMe(me);
+      return me;
     },
     [setTenantSlug, applyMe]
   );
 
   const logout = useCallback(() => {
     clearAuthStorage();
+    queryClient.clear();
     setAccessToken(null);
     setUser(null);
     setRole(null);

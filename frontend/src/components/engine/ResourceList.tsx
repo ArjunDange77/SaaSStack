@@ -8,8 +8,16 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { IconLayoutGrid, IconList } from "@tabler/icons-react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useResourceList, useResourceMutations } from "@/hooks/useResource";
+import { todayYmdIST } from "@/utils/datetime";
 import { DynamicTable } from "./DynamicTable";
 import { ResourceForm } from "./ResourceForm";
+
+function createFormInitial(slug: string): Record<string, unknown> | undefined {
+  if (slug === "sb-trips") {
+    return { status: "scheduled", trip_date: todayYmdIST() };
+  }
+  return undefined;
+}
 
 const ROOM_STATUS_LABEL: Record<string, string> = {
   available: "Available",
@@ -34,6 +42,12 @@ function rowToRoomCard(row: Record<string, unknown>): RoomCardData {
 interface Props {
   slug: string;
   schema: ResourceSchema;
+  /** Embedded in a product page (e.g. Today's trips → All trips tab). */
+  embedded?: boolean;
+  /** Hide list page title; parent supplies header. */
+  hideHeader?: boolean;
+  /** Row navigation path; default `/r/:slug/:id`. */
+  rowPath?: (id: string | number) => string;
 }
 
 function filtersFromSearchParams(
@@ -59,7 +73,7 @@ function activeFilterKey(
   return null;
 }
 
-export function ResourceList({ slug, schema }: Props) {
+export function ResourceList({ slug, schema, embedded = false, hideHeader = false, rowPath }: Props) {
   const navigate = useNavigate();
   const { tenantSlug } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -108,8 +122,20 @@ export function ResourceList({ slug, schema }: Props) {
   const rows = data?.results ?? [];
   const total = data?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const sortField = schema.ordering?.default?.[0]?.replace(/^-/, "") ?? "";
+  const defaultOrdering = schema.ordering?.default?.[0] ?? "";
+  const sortField = defaultOrdering.replace(/^-/, "");
   const activeKey = activeFilterKey(filterParams, listFilters);
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, total);
+
+  const toggleSort = (col: string) => {
+    const field = col.replace(/^-/, "");
+    setOrdering((prev) => {
+      if (prev === `-${field}`) return field;
+      if (prev === field) return `-${field}`;
+      return `-${field}`;
+    });
+  };
 
   const applyFilter = (filter: ListFilterMeta) => {
     const next = new URLSearchParams(searchParams);
@@ -126,14 +152,29 @@ export function ResourceList({ slug, schema }: Props) {
     setSearchParams(next, { replace: true });
   };
 
+  const showSbTripsStandaloneChrome = slug === "sb-trips" && !embedded;
+  const detailNavigate = rowPath ?? ((id: string | number) => `/r/${slug}/${id}`);
+  const canCreate = schema.capabilities?.create !== false && !(showSbTripsStandaloneChrome);
+
   return (
-    <div>
-      <header className="page-header">
-        <div className="page-header-text">
-          <h2 className="resource-list-title page-title">{schema.title}</h2>
-          {schema.description && <p className="page-subtitle muted">{schema.description}</p>}
+    <div className={embedded ? "resource-list-embedded" : undefined}>
+      {!hideHeader && (
+        <header className="page-header">
+          <div className="page-header-text">
+            <h2 className="resource-list-title page-title">{schema.title}</h2>
+            {schema.description && <p className="page-subtitle muted">{schema.description}</p>}
+          </div>
+        </header>
+      )}
+      {showSbTripsStandaloneChrome && (
+        <div className="sb-crud-trips-banner" role="note">
+          <p>
+            Trips are auto-generated on weekdays. Use{" "}
+            <Link to="/sb/trips">Today&apos;s trips</Link> to generate schedules and view live
+            status.
+          </p>
         </div>
-      </header>
+      )}
       <div
         className={
           slug === "pg-rooms" ? "rooms-toolbar toolbar-responsive" : "toolbar toolbar-responsive"
@@ -158,13 +199,18 @@ export function ResourceList({ slug, schema }: Props) {
             <option value={`-${sortField}`}>{sortField} ↓</option>
           </select>
         )}
-        {schema.capabilities?.create !== false && (
+        {showSbTripsStandaloneChrome && (
+          <Link to="/sb/trips" className="sb-trips-product-link">
+            Open Today&apos;s trips →
+          </Link>
+        )}
+        {canCreate && (
           <button
             type="button"
             className={slug === "pg-rooms" ? "new-btn" : undefined}
             onClick={() => setShowCreate(true)}
           >
-            {slug === "pg-rooms" ? "+ New room" : "New"}
+            {slug === "pg-rooms" ? "+ New room" : slug === "sb-trips" ? "New trip" : "New"}
           </button>
         )}
         {listViews.includes("grid") && (
@@ -242,7 +288,9 @@ export function ResourceList({ slug, schema }: Props) {
           schema={schema}
           rows={rows}
           loading={isLoading || isFetching}
-          onRowClick={(row) => navigate(`/r/${slug}/${row.id}`)}
+          onRowClick={(row) => navigate(detailNavigate(String(row.id)))}
+          sortColumn={ordering || defaultOrdering}
+          onSortColumn={sortField ? toggleSort : undefined}
         />
       )}
 
@@ -251,7 +299,7 @@ export function ResourceList({ slug, schema }: Props) {
           Previous
         </button>
         <span>
-          Page {page} of {totalPages} ({total} records)
+          Showing {rangeStart}–{rangeEnd} of {total} · Page {page} of {totalPages}
         </span>
         <button
           type="button"
@@ -267,6 +315,7 @@ export function ResourceList({ slug, schema }: Props) {
         <div className="modal-backdrop">
           <ResourceForm
             schema={schema}
+            initial={createFormInitial(slug)}
             submitting={create.isPending}
             onCancel={() => setShowCreate(false)}
             onSubmit={async (body) => {

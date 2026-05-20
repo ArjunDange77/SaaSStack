@@ -1,7 +1,11 @@
+from datetime import timedelta
 from decimal import Decimal
 
+from django.db import IntegrityError
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -29,6 +33,7 @@ from .permissions import (
     SBRolePermission,
     get_driver_for_user,
     get_parent_for_user,
+    is_operator,
 )
 from .rbac import build_capabilities
 from .serializers import (
@@ -121,6 +126,11 @@ class TripViewSet(SBViewSet):
     resource_slug = "sb-trips"
     queryset = Trip.objects.select_related("route", "bus", "driver")
     serializer_class = TripSerializer
+    action_labels = {"reset_for_demo": "Reset"}
+    search_fields = ("route__name", "bus__fleet_number", "driver__full_name")
+    ordering_fields = ("trip_date", "id", "status", "started_at", "completed_at")
+    ordering = ("-trip_date", "-id")
+    filter_backends = (SearchFilter, OrderingFilter)
     relation_display_fields = {
         "route": "name",
         "bus": "fleet_number",
@@ -136,6 +146,49 @@ class TripViewSet(SBViewSet):
         "started_at",
         "completed_at",
     )
+    list_filters = (
+        {"param": "status", "label": "Scheduled", "value": Trip.STATUS_SCHEDULED},
+        {"param": "status", "label": "In progress", "value": Trip.STATUS_PICKUP_IN_PROGRESS},
+        {"param": "status", "label": "Completed", "value": Trip.STATUS_COMPLETED},
+        {"param": "status", "label": "Delayed", "value": Trip.STATUS_DELAYED},
+    )
+
+    _DUPLICATE_TRIP_MSG = (
+        "A trip already exists for this route, bus, driver, and date. "
+        "Open the existing trip or change route, bus, driver, or date."
+    )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            self.perform_create(serializer)
+        except IntegrityError:
+            raise ValidationError(self._DUPLICATE_TRIP_MSG) from None
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            qs = qs.filter(status=status_param)
+        trip_date = self.request.query_params.get("trip_date")
+        if trip_date:
+            qs = qs.filter(trip_date=trip_date)
+        return qs
+
+    @action(detail=True, methods=["post"], url_path="reset-for-demo")
+    def reset_for_demo(self, request, pk=None):
+        if not is_operator(request):
+            return Response({"detail": "Operator access required."}, status=403)
+        trip = self.get_object()
+        try:
+            services.reset_trip_for_demo(trip)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        trip.refresh_from_db()
+        return Response(TripSerializer(trip).data)
 
 
 class TripAttendanceViewSet(SBViewSet):
@@ -198,6 +251,62 @@ class OperatorBriefingView(APIView):
         if tenant is None:
             return Response({"detail": "Tenant required"}, status=400)
         return Response(services.operator_briefing_payload(tenant, request.user))
+
+
+class OperatorLiveFleetView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        return Response(services.operator_live_fleet_payload(tenant))
+
+
+class OperatorTripsGenerateView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def post(self, request):
+        from datetime import date as date_cls
+
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        days = request.data.get("days")
+        if days is not None:
+            try:
+                days = int(days)
+            except (TypeError, ValueError):
+                return Response({"detail": "days must be an integer"}, status=400)
+            start = services._today()
+            end = start + timedelta(days=max(0, days - 1))
+        else:
+            raw_start = request.data.get("start_date") or str(services._today())
+            raw_end = request.data.get("end_date") or raw_start
+            try:
+                start = date_cls.fromisoformat(str(raw_start))
+                end = date_cls.fromisoformat(str(raw_end))
+            except ValueError:
+                return Response({"detail": "Invalid date"}, status=400)
+        try:
+            payload = services.generate_trips_for_range(tenant, start, end)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(payload)
+
+
+class OperatorTripSummaryView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request, trip_id: int):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        try:
+            payload = services.operator_trip_summary_payload(tenant, trip_id)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(payload)
 
 
 class OperatorFeesGroupedView(APIView):
@@ -307,6 +416,80 @@ class OperatorFeeRemindView(APIView):
         return Response(payload)
 
 
+class DriverScheduleView(APIView):
+    permission_classes = [IsAuthenticated, SBDriverPermission]
+
+    def get(self, request):
+        tenant = request.tenant
+        driver = get_driver_for_user(request)
+        if tenant is None or driver is None:
+            return Response({"detail": "Driver profile required"}, status=400)
+        try:
+            days = int(request.query_params.get("days", "7"))
+        except ValueError:
+            return Response({"detail": "days must be an integer"}, status=400)
+        return Response(services.driver_schedule_payload(tenant, driver, days=days))
+
+
+class OperatorHolidaysView(APIView):
+    permission_classes = [IsAuthenticated, SBOperatorPermission]
+
+    def get(self, request):
+        from datetime import date as date_cls
+
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        start = end = None
+        raw_start = request.query_params.get("start_date")
+        raw_end = request.query_params.get("end_date")
+        try:
+            if raw_start:
+                start = date_cls.fromisoformat(str(raw_start))
+            if raw_end:
+                end = date_cls.fromisoformat(str(raw_end))
+        except ValueError:
+            return Response({"detail": "Invalid date"}, status=400)
+        return Response({"holidays": services.operator_holidays_payload(tenant, start, end)})
+
+    def post(self, request):
+        from datetime import date as date_cls
+
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        raw_date = request.data.get("holiday_date")
+        if not raw_date:
+            return Response({"detail": "holiday_date required"}, status=400)
+        try:
+            holiday_date = date_cls.fromisoformat(str(raw_date))
+        except ValueError:
+            return Response({"detail": "Invalid holiday_date"}, status=400)
+        name = str(request.data.get("name", ""))
+        holiday = services.create_tenant_holiday(tenant, holiday_date, name=name)
+        return Response(
+            {
+                "id": holiday.id,
+                "holiday_date": str(holiday.holiday_date),
+                "name": holiday.name or "Holiday",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request):
+        tenant = request.tenant
+        if tenant is None:
+            return Response({"detail": "Tenant required"}, status=400)
+        holiday_id = request.data.get("id") or request.query_params.get("id")
+        if holiday_id is None:
+            return Response({"detail": "id required"}, status=400)
+        try:
+            services.delete_tenant_holiday(tenant, int(holiday_id))
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=404)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class DriverTodayView(APIView):
     permission_classes = [IsAuthenticated, SBDriverPermission]
 
@@ -386,7 +569,13 @@ class DriverTripCompleteView(APIView):
             services.complete_trip(trip)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
-        return Response({"trip_id": trip.id, "status": trip.status})
+        return Response(
+            {
+                "trip_id": trip.id,
+                "status": trip.status,
+                "summary": trip.summary_json,
+            }
+        )
 
 
 class DriverIncidentCreateView(APIView):
@@ -399,6 +588,13 @@ class DriverIncidentCreateView(APIView):
             return Response({"detail": "Driver profile required"}, status=400)
         ser = IncidentSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+        trip = ser.validated_data.get("trip")
+        if trip is not None:
+            if (
+                trip.tenant_id != tenant.id
+                or not Trip.objects.filter(tenant=tenant, id=trip.id, driver=driver).exists()
+            ):
+                return Response({"detail": "Not found"}, status=404)
         incident = ser.save(tenant=tenant, reported_by=request.user)
         trip = incident.trip
         if trip and trip.status != Trip.STATUS_COMPLETED:

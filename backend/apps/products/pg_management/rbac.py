@@ -47,6 +47,9 @@ _RESOURCE_RULES: dict[str, dict[str, dict]] = {
     },
 }
 
+# Declarative contract (registry ProductRBACMixin)
+RESOURCE_RULES = _RESOURCE_RULES
+
 # Slugs visible in operator catalog (residents use portal, not catalog)
 CATALOG_OPERATOR = OPERATOR_ROLES
 CATALOG_RESIDENT = ("resident",)  # only complaints in engine for residents

@@ -1,8 +1,9 @@
+from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 
 from apps.registry.storage import set_storage_tenant_slug
 
-from .models import Tenant
+from .models import Tenant, TenantMembership
 
 
 class TenantMiddleware(MiddlewareMixin):
@@ -32,3 +33,15 @@ class TenantMiddleware(MiddlewareMixin):
 
         tenant = getattr(request, "tenant", None)
         set_storage_tenant_slug(getattr(tenant, "slug", None) if tenant else None)
+
+        user = getattr(request, "user", None)
+        if (
+            tenant is not None
+            and user is not None
+            and user.is_authenticated
+            and not user.is_superuser
+        ):
+            if not TenantMembership.objects.filter(
+                user=user, tenant=tenant, is_active=True
+            ).exists():
+                return JsonResponse({"detail": "invalid_tenant"}, status=403)
