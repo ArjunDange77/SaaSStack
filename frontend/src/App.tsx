@@ -20,6 +20,7 @@ import { SbParentPortal } from "@/pages/school_bus/SbParentPortal";
 import { PublicBookingPage } from "@/pages/PublicBookingPage";
 import { ResidentPortal } from "@/pages/ResidentPortal";
 import { PortalRoute } from "@/components/PortalRoute";
+import { PortalErrorBoundary } from "@/components/PortalErrorBoundary";
 import { ResourceDetailRoute, ResourceListRoute } from "@/pages/ResourceRoute";
 
 function SbTripDetailRedirect() {
@@ -98,7 +99,9 @@ export default function App() {
         element={
           <Protected>
             <PortalRoute requiredRole="parent">
-              <SbParentPortal />
+              <PortalErrorBoundary title="School Bus">
+                <SbParentPortal />
+              </PortalErrorBoundary>
             </PortalRoute>
           </Protected>
         }

@@ -41,15 +41,30 @@ if [[ -n "${SB_SMOKE_USER:-}" && -n "${SB_SMOKE_PASSWORD:-}" ]]; then
       *) paths="operator/briefing" ;;
     esac
     for path in $paths; do
-      code="$(curl -s -o /dev/null -w "%{http_code}" \
-        -H "Authorization: Bearer ${token}" \
-        -H "X-Tenant: ${tenant}" \
-        "${API_BASE_URL}/api/sb/${path}/")"
-      if [[ "$code" != "200" ]]; then
-        echo "FAIL: /api/sb/${path}/ returned $code for ${SB_SMOKE_USER}"
-        exit 1
+      if [[ "$path" == "parent/me" ]]; then
+        body="$(curl -sS -w "\n%{http_code}" \
+          -H "Authorization: Bearer ${token}" \
+          -H "X-Tenant: ${tenant}" \
+          "${API_BASE_URL}/api/sb/${path}/")"
+        code="${body##*$'\n'}"
+        body="${body%$'\n'*}"
+        if [[ "$code" != "200" ]]; then
+          echo "FAIL: /api/sb/${path}/ returned $code for ${SB_SMOKE_USER}"
+          exit 1
+        fi
+        echo "OK: /api/sb/${path}/ → $code"
+        echo "$body" | python3 "$ROOT/deploy/scripts/lib/validate_sb_parent_me.py" || exit 1
+      else
+        code="$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "Authorization: Bearer ${token}" \
+          -H "X-Tenant: ${tenant}" \
+          "${API_BASE_URL}/api/sb/${path}/")"
+        if [[ "$code" != "200" ]]; then
+          echo "FAIL: /api/sb/${path}/ returned $code for ${SB_SMOKE_USER}"
+          exit 1
+        fi
+        echo "OK: /api/sb/${path}/ → $code"
       fi
-      echo "OK: /api/sb/${path}/ → $code"
     done
   else
     echo "WARN: could not obtain token for SB_SMOKE_USER; skipping authenticated checks"

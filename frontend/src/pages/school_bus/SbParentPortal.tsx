@@ -39,7 +39,7 @@ function TodayTripSummaryCard({
 }: {
   summary: NonNullable<import("@/hooks/useSchoolBus").SbTodayTripSummary>;
 }) {
-  const status = summary.status.replace(/_/g, " ");
+  const status = (summary.trip_status ?? "scheduled").replace(/_/g, " ");
   return (
     <section className="sb-parent-today-trip portal-card">
       <h3>Today&apos;s trip</h3>
@@ -50,7 +50,7 @@ function TodayTripSummaryCard({
         {status}
         {summary.duration_minutes != null ? ` · ${summary.duration_minutes} min` : ""}
       </p>
-      {summary.status === "completed" && summary.present_count != null && (
+      {summary.trip_status === "completed" && summary.present_count != null && (
         <p className="muted">
           {summary.present_count} present, {summary.absent_count ?? 0} absent
         </p>

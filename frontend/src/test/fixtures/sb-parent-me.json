@@ -1,0 +1,57 @@
+{
+  "parent": { "id": 131, "full_name": "Priya Naik" },
+  "children": [
+    {
+      "id": 196,
+      "full_name": "Rahul Naik",
+      "school_name": "St. Brito's School",
+      "class_grade": "Grade 5",
+      "route_name": "Route 1 Morning — St. Brito's",
+      "bus_number": "BUS-101",
+      "pickup_stop": "Mall De Goa",
+      "drop_stop": "Mall De Goa",
+      "pickup_status": "not_marked",
+      "drop_status": "not_marked",
+      "fee_status": "unpaid",
+      "fee_overdue_amount": "0",
+      "hero_status": {
+        "level": "warning",
+        "headline": "Bus en route for Rahul Naik",
+        "detail": "Mall De Goa"
+      },
+      "today_trip_summary": {
+        "trip_id": 1495,
+        "trip_date": "2026-05-21",
+        "trip_status": "started",
+        "route_name": "Route 1 Morning — St. Brito's",
+        "bus_number": "BUS-101",
+        "pickup_status": "not_marked",
+        "pickup_time": "",
+        "started_at": "2026-05-20T19:16:57.725142+00:00",
+        "completed_at": null
+      },
+      "tracking": {
+        "active": true,
+        "trip_id": 1495,
+        "last_location": {
+          "latitude": "15.490900",
+          "longitude": "73.827800",
+          "recorded_at": "2026-05-20T19:16:58.197756+00:00"
+        },
+        "stale": false
+      },
+      "calendar_days": [{ "date": "2026-05-01", "status": "none" }],
+      "fees": [
+        {
+          "month": "May 2026",
+          "amount": "1500.00",
+          "status": "unpaid",
+          "due_date": "2026-05-10",
+          "payment_link_url": ""
+        }
+      ]
+    }
+  ],
+  "reminders": [],
+  "recent_incidents": []
+}

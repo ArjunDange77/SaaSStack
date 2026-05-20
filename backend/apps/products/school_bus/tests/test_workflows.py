@@ -60,17 +60,27 @@ def test_driver_trip_flow(sb_driver_client, sb_tenant, sb_driver_setup):
 
 
 @pytest.mark.django_db
-def test_parent_me_api(sb_parent_client, sb_tenant, sb_parent_setup):
+def test_parent_me_api(sb_parent_client, sb_tenant, sb_parent_setup, sb_driver_setup):
     parent = sb_parent_setup["parent"]
     Student.objects.create(
         tenant=sb_tenant,
         full_name="Child",
         parent=parent,
+        assigned_route=sb_driver_setup["route"],
+        assigned_bus=sb_driver_setup["bus"],
     )
+    services.ensure_trip_for_driver(sb_tenant, sb_driver_setup["driver"])
     response = sb_parent_client.get("/api/sb/parent/me/")
     assert response.status_code == 200
     data = response.json()
     assert len(data["children"]) == 1
+    child = data["children"][0]
+    assert isinstance(child.get("tracking"), dict)
+    assert isinstance(child.get("fees"), list)
+    summary = child.get("today_trip_summary")
+    assert summary is not None
+    assert summary.get("trip_status")
+    assert "status" not in summary
 
 
 @pytest.mark.django_db

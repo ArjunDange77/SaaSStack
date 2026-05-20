@@ -39,6 +39,11 @@ Or from repo root: `bash scripts/test-all.sh` (runs Ruff, then pytest + vitest)
 - **CI** (`ci.yml`): Ruff (scoped paths), `pytest --cov-fail-under=70`, `npm run test:coverage`
 - **Staging smoke** (`smoke_test.py`): operator + resident auth, `/api/accounts/me/`, `/api/pg/resident/me/`, catalog/schema/dashboard/public rooms
 
+## School Bus portals
+
+- Vitest fixtures for parent/driver portals must match **API field names** (e.g. `today_trip_summary.trip_status`, not `status`). Use `frontend/src/test/fixtures/sb-parent-me.json` or extend it.
+- Deploy/local smoke: `deploy/scripts/lib/validate_sb_parent_me.py` runs on `parent/me` when using `priya` / `sb-parent` in `smoke_schoolbus_staging.sh` and `verify_sb_local_logins.sh`.
+
 ## E2E
 
 Playwright E2E is deferred. Rely on API/unit tests + deploy smoke until E2E is added in a follow-up phase.

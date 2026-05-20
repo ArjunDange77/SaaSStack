@@ -42,7 +42,7 @@ describe("SbParentPortal", () => {
             today_trip_summary: {
               trip_id: 10,
               trip_date: "2026-05-20",
-              status: "pickup_in_progress",
+              trip_status: "pickup_in_progress",
               route_name: "Morning Route A",
               bus_number: "BUS-101",
               pickup_status: "present",
@@ -87,6 +87,7 @@ describe("SbParentPortal", () => {
     );
     expect(screen.getByText(/Hello, Priya/i)).toBeInTheDocument();
     expect(screen.getByText(/Today's trip/i)).toBeInTheDocument();
+    expect(screen.getByText(/pickup in progress/i)).toBeInTheDocument();
     expect(screen.getByText(/on the bus/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Aarav Sharma is on the bus/i })).toBeInTheDocument();
     expect(screen.getByText(/Picked up at Oak Street/i)).toBeInTheDocument();

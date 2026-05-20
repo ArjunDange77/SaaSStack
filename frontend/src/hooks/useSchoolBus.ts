@@ -203,10 +203,11 @@ export interface SbChildFee {
 export interface SbTodayTripSummary {
   trip_id: number;
   trip_date: string;
-  status: string;
+  trip_status: string;
   route_name: string;
   bus_number: string;
   pickup_status: string;
+  pickup_time?: string;
   started_at: string | null;
   completed_at: string | null;
   present_count?: number;
